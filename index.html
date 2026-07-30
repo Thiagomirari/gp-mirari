@@ -1068,8 +1068,8 @@
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase-config.js?v=20260730-crm-card-expand"></script>
-  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260730-crm-card-expand" />
+  <script src="./supabase-config.js?v=20260730-crm-secoes"></script>
+  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260730-crm-secoes" />
 </head>
 <body>
   <main class="app-shell">
@@ -3279,7 +3279,6 @@
                 </div>
                 ` : ""}
               </article>
-              ${state.crm.expandedLeadId === lead.id ? `
               <article class="panel soft-panel" style="grid-column:1/-1">
                 <div class="section-title"><div><p class="eyebrow">Tarefas comerciais</p><h2>Agenda da oportunidade</h2></div><button class="secondary" id="add-crm-task-bottom" type="button">Nova tarefa</button></div>
                 <div class="task-list">
@@ -3297,7 +3296,6 @@
                   ${(lead.history || []).slice().reverse().map(item => `<div class="history-item"><strong>${formatDateTime(item.at)}</strong><br><small>${escapeHtml(userName(item.userId))}: ${escapeHtml(item.text)}</small></div>`).join("") || "<small>Nenhuma interacao registrada.</small>"}
                 </div>
               </article>
-              ` : ""}
             </div>
           ` : "<p class='muted'>Cadastre ou selecione uma oportunidade para ver detalhes.</p>"}
         </section>
@@ -5019,8 +5017,8 @@
     initializeApp();
   </script>
   <!-- Script classico para que o MVP tambem carregue ao abrir este HTML diretamente. -->
-  <script src="./assets/saas-core.js?v=20260730-crm-card-expand"></script>
-  <script src="./assets/saas-extension.js?v=20260730-crm-card-expand"></script>
+  <script src="./assets/saas-core.js?v=20260730-crm-secoes"></script>
+  <script src="./assets/saas-extension.js?v=20260730-crm-secoes"></script>
 </body>
 </html>
 

@@ -11,7 +11,7 @@ const core = await read("assets/saas-core.js");
 assert.match(index, /GP Mirari - MVP Local/);
 assert.match(index, /saas-core\.js/);
 assert.match(index, /saas-extension\.js/);
-assert.match(index, /saas-extension\.js\?v=20260730-crm-card-expand/);
+assert.match(index, /saas-extension\.js\?v=20260730-crm-secoes/);
 assert.match(index, /crm-optional-fields/);
 assert.match(index, /Data do primeiro contato/);
 assert.match(index, /Proxima tarefa/);
