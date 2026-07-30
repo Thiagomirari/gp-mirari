@@ -616,6 +616,9 @@
 
     .hidden { display: none !important; }
     .muted { color: var(--muted); }
+    .warning-text { color: var(--amber) !important; }
+    .danger-text { color: var(--red) !important; }
+    .crm-card .warning-text, .crm-card .danger-text { font-weight: 800; }
     .red { color: var(--red); }
     .green { color: var(--green); }
     .spacer { height: 8px; }
@@ -1235,6 +1238,7 @@
         <div class="form-grid">
           <label>Cliente existente <select id="crm-client-existing"></select></label>
           <label>Nome do cliente <input id="crm-client" required /></label>
+          <label>Data do primeiro contato <input id="crm-first-contact" type="date" required /></label>
           <details class="crm-optional-fields">
             <summary>Adicionar informacoes comerciais agora</summary>
             <div class="form-grid crm-optional-grid">
@@ -1248,9 +1252,11 @@
           <label>Responsavel <select id="crm-owner"></select></label>
           <label>Funil <select id="crm-funnel"></select></label>
           <label>Etapa <select id="crm-stage"></select></label>
-          <label>Proxima acao <input id="crm-next-action" type="date" /></label>
             </div>
           </details>
+          <label>Proxima acao <input id="crm-next-action-text" placeholder="Ex: Agendar briefing" required /></label>
+          <label>Data da proxima acao <input id="crm-next-action" type="date" required /></label>
+          <label>Responsavel pela acao <select id="crm-next-action-owner" required></select></label>
         </div>
         <textarea id="crm-notes" placeholder="Observacoes comerciais, dores do cliente, preferencias e combinados"></textarea>
         <div class="actions">
@@ -1443,8 +1449,21 @@
         lead.labels = lead.labels || [];
         lead.funnelId = lead.funnelId || (crmStageFrom(next.crm, lead.stageId).funnelId || next.crm.activeFunnelId);
         lead.createdAt = lead.createdAt || todayISO;
+        lead.crmDates = lead.crmDates || {};
+        lead.crmDates.firstContact = lead.crmDates.firstContact || lead.firstContactDate || lead.createdAt;
+        if (lead.briefingDate) lead.crmDates.briefing = lead.crmDates.briefing || lead.briefingDate;
+        if (lead.projectReceivedDate) lead.crmDates.projectReceived = lead.crmDates.projectReceived || lead.projectReceivedDate;
+        if (lead.proposalSentDate) lead.crmDates.proposalSent = lead.crmDates.proposalSent || lead.proposalSentDate;
+        if (lead.presentationDate) lead.crmDates.presentation = lead.crmDates.presentation || lead.presentationDate;
+        if (lead.closedAt) lead.crmDates.closed = lead.crmDates.closed || lead.closedAt;
+        if (lead.lostAt) lead.crmDates.lost = lead.crmDates.lost || lead.lostAt;
         lead.enteredAt = lead.enteredAt || lead.createdAt;
+        lead.stageEnteredAt = lead.stageEnteredAt || lead.enteredAt || lead.createdAt;
+        lead.lastMovementAt = lead.lastMovementAt || lead.updatedAt || lead.stageEnteredAt || lead.createdAt;
         lead.updatedAt = lead.updatedAt || lead.createdAt;
+        lead.nextActionText = lead.nextActionText || lead.nextAction || "";
+        lead.nextActionOwnerId = lead.nextActionOwnerId || lead.ownerId || "";
+        lead.pipeline = lead.pipeline || {};
       });
       next.history = next.history || [];
       next.activeTab = next.activeTab || "projects";
@@ -2091,16 +2110,17 @@
       if (state.activeTab === "crm") {
         const leads = state.crm.leads || [];
         const visible = crmVisibleLeads();
+        const stats = crmDashboardStats(visible);
         const won = leads.filter(lead => lead.status === "Ganha").length;
         const lost = leads.filter(lead => lead.status === "Perdida").length;
         document.getElementById("metric-active-label").textContent = "Oportunidades abertas";
         document.getElementById("metric-late-label").textContent = "Valor no funil";
-        document.getElementById("metric-due-label").textContent = "Fechadas";
-        document.getElementById("metric-progress-label").textContent = "Perdidas";
+        document.getElementById("metric-due-label").textContent = "Sem proxima acao";
+        document.getElementById("metric-progress-label").textContent = "Acao atrasada";
         document.getElementById("metric-active").textContent = visible.filter(lead => lead.status === "Aberta").length;
-        document.getElementById("metric-late").textContent = formatMoney(visible.reduce((sum, lead) => sum + moneyNumber(lead.value), 0));
-        document.getElementById("metric-due").textContent = won;
-        document.getElementById("metric-progress").textContent = lost;
+        document.getElementById("metric-late").textContent = formatMoney(stats.totalPipeline);
+        document.getElementById("metric-due").textContent = stats.missingAction.length;
+        document.getElementById("metric-progress").textContent = stats.lateAction.length;
         return;
       }
       const al = alerts();
@@ -2631,6 +2651,85 @@
       return client;
     }
 
+    const crmDateLabels = {
+      firstContact: "Primeiro contato",
+      briefing: "Briefing",
+      projectReceived: "Recebimento do projeto",
+      proposalSent: "Envio da proposta",
+      presentation: "Apresentacao",
+      closed: "Fechamento",
+      lost: "Perda"
+    };
+
+    const crmLossReasons = ["Preco", "Prazo", "Financeiro", "Concorrencia", "Projeto", "Timing", "Sem resposta", "Outro"];
+
+    function crmStageDateKey(stage) {
+      const name = String(stage && stage.name || "").toLowerCase();
+      if (/briefing/.test(name)) return "briefing";
+      if (/projeto/.test(name) && /(receb|recep|entrada|projeto)/.test(name)) return "projectReceived";
+      if (/proposta/.test(name)) return "proposalSent";
+      if (/apresent/.test(name)) return "presentation";
+      if ((stage && stage.closedType === "won") || /fechad|ganh/.test(name) || Number(stage && stage.probability || 0) === 100) return "closed";
+      if ((stage && stage.closedType === "lost") || /perdid/.test(name)) return "lost";
+      return "";
+    }
+
+    function crmTouchStageAutomation(lead, oldStageId, newStageId, at = nowISO()) {
+      if (!lead) return;
+      const oldStage = crmStage(oldStageId);
+      const newStage = crmStage(newStageId);
+      lead.crmDates = lead.crmDates || {};
+      const dateKey = crmStageDateKey(newStage);
+      if (dateKey && !lead.crmDates[dateKey]) {
+        lead.crmDates[dateKey] = at.slice(0, 10);
+        lead.events.push({ at, type: "crm_date_recorded", dateKey, stageId: newStageId, userId: currentUser() ? currentUser().id : "" });
+        lead.history.push({ at, userId: currentUser() ? currentUser().id : "", text: `${crmDateLabels[dateKey]} registrado automaticamente pela etapa ${newStage.name || "-"}.` });
+      }
+      if (oldStageId !== newStageId) {
+        lead.stageEnteredAt = at.slice(0, 10);
+        lead.lastMovementAt = at;
+        lead.events.push({ at, type: "stage_changed", from: oldStageId, to: newStageId, userId: currentUser() ? currentUser().id : "" });
+        lead.history.push({ at, userId: currentUser() ? currentUser().id : "", text: `Etapa alterada de ${oldStage.name || "-"} para ${newStage.name || "-"}.` });
+      }
+    }
+
+    function crmPipelineMetrics(lead) {
+      const firstContact = (lead.crmDates && lead.crmDates.firstContact) || lead.createdAt || todayISO;
+      const stageEntered = lead.stageEnteredAt || lead.enteredAt || firstContact;
+      const lastMovement = String(lead.lastMovementAt || lead.updatedAt || stageEntered).slice(0, 10);
+      const end = (lead.crmDates && (lead.crmDates.closed || lead.crmDates.lost)) || todayISO;
+      return {
+        sinceFirstContact: daysBetween(firstContact, todayISO),
+        inCurrentStage: daysBetween(stageEntered, todayISO),
+        withoutMovement: daysBetween(lastMovement, todayISO),
+        totalCycle: daysBetween(firstContact, end)
+      };
+    }
+
+    function crmActionState(lead) {
+      if (lead.status !== "Aberta") return "";
+      if (!lead.nextActionText || !lead.nextActionDate || !lead.nextActionOwnerId) return "missing";
+      if (lead.nextActionDate < todayISO) return "late";
+      return "ok";
+    }
+
+    function crmDashboardStats(leads = crmVisibleLeads()) {
+      const open = leads.filter(lead => lead.status === "Aberta");
+      const won = leads.filter(lead => lead.status === "Ganha");
+      const totalPipeline = open.reduce((sum, lead) => sum + moneyNumber(lead.value), 0);
+      const weightedPipeline = open.reduce((sum, lead) => sum + moneyNumber(lead.value) * (Number(crmStage(lead.stageId).probability || 0) / 100), 0);
+      const missingAction = open.filter(lead => crmActionState(lead) === "missing");
+      const lateAction = open.filter(lead => crmActionState(lead) === "late");
+      const avgClose = won.length ? Math.round(won.reduce((sum, lead) => sum + crmPipelineMetrics(lead).totalCycle, 0) / won.length) : 0;
+      const stageRows = activeCrmStages().map(stage => {
+        const stageLeads = leads.filter(lead => lead.stageId === stage.id);
+        const avgDays = stageLeads.length ? Math.round(stageLeads.reduce((sum, lead) => sum + crmPipelineMetrics(lead).inCurrentStage, 0) / stageLeads.length) : 0;
+        const conversion = leads.length ? Math.round((stageLeads.length / leads.length) * 100) : 0;
+        return { stage, count: stageLeads.length, avgDays, conversion };
+      });
+      return { open, won, totalPipeline, weightedPipeline, missingAction, lateAction, avgClose, stageRows };
+    }
+
     function crmVisibleLeads() {
       const filters = state.filters;
       const funnelId = activeCrmFunnel().id || state.crm.activeFunnelId;
@@ -2651,6 +2750,8 @@
 
     function crmCard(lead) {
       const stage = crmStage(lead.stageId);
+      const actionState = crmActionState(lead);
+      const actionLabel = actionState === "missing" ? "Sem proxima acao" : actionState === "late" ? "Acao atrasada" : `Proxima acao: ${formatDate(lead.nextActionDate)}`;
       return `
         <button class="crm-card ${lead.id === state.crm.selectedLeadId ? "selected" : ""}" type="button" data-crm-lead="${lead.id}">
           <div class="crm-card-top">
@@ -2666,7 +2767,7 @@
             <span class="pill">${stage.probability || 0}%</span>
           </div>
           ${lead.labels && lead.labels.length ? `<div class="crm-labels">${lead.labels.map(label => `<span class="crm-label" style="background:${escapeHtml(label.color || "#8b6f47")}">${escapeHtml(label.text)}</span>`).join("")}</div>` : ""}
-          <small>Proxima acao: ${formatDate(lead.nextActionDate)}</small>
+          <small class="${actionState === "late" ? "danger-text" : actionState === "missing" ? "warning-text" : ""}">${escapeHtml(actionLabel)}${lead.nextActionText ? ` | ${escapeHtml(lead.nextActionText)}` : ""}</small>
         </button>
       `;
     }
@@ -2676,6 +2777,7 @@
       const lead = selectedLead();
       const activeStages = activeCrmStages();
       const activeFunnel = activeCrmFunnel();
+      const stats = crmDashboardStats(visible);
       document.getElementById("tab-crm").innerHTML = `
         <section class="panel">
           <div class="crm-toolbar">
@@ -2688,6 +2790,18 @@
               <button class="secondary" id="open-crm-filter" type="button">Filtros</button>
               <button class="secondary" id="open-crm-settings" type="button">Configurar funil</button>
               <button class="primary" id="open-crm-lead" type="button">Nova oportunidade</button>
+            </div>
+          </div>
+          <div class="metrics crm-dashboard" style="margin-bottom:12px;">
+            <div class="metric"><span>Valor ponderado</span><strong>${formatMoney(stats.weightedPipeline)}</strong></div>
+            <div class="metric"><span>Tempo medio fechamento</span><strong>${stats.avgClose} dias</strong></div>
+            <div class="metric"><span>Sem proxima acao</span><strong>${stats.missingAction.length}</strong></div>
+            <div class="metric"><span>Acao vencida</span><strong>${stats.lateAction.length}</strong></div>
+          </div>
+          <div class="panel soft-panel crm-dashboard-detail" style="margin-bottom:12px;">
+            <div class="section-title"><div><p class="eyebrow">Dashboard comercial</p><h2>Indicadores do funil</h2></div><span class="pill">${formatMoney(stats.totalPipeline)}</span></div>
+            <div class="subtask-meta">
+              ${stats.stageRows.map(row => `<span class="pill">${escapeHtml(row.stage.name)}: ${row.avgDays} dias | ${row.conversion}%</span>`).join("")}
             </div>
           </div>
           <div class="crm-board">
@@ -2721,8 +2835,10 @@
                   <span class="pill">${escapeHtml(lead.closedValue || lead.value || "Sem valor")}</span>
                   <span class="pill">${escapeHtml(userName(lead.ownerId))}</span>
                   <span class="pill">${escapeHtml(lead.status)}</span>
-                  <span class="pill">Entrada ${formatDate(lead.enteredAt || lead.createdAt)}</span>
-                  <span class="pill">Proxima acao ${formatDate(lead.nextActionDate)}</span>
+                  <span class="pill">Contato ${formatDate((lead.crmDates && lead.crmDates.firstContact) || lead.createdAt)}</span>
+                  <span class="pill">Etapa ${crmPipelineMetrics(lead).inCurrentStage} dias</span>
+                  <span class="pill">Sem movimento ${crmPipelineMetrics(lead).withoutMovement} dias</span>
+                  <span class="pill ${crmActionState(lead) === "late" ? "danger-text" : crmActionState(lead) === "missing" ? "warning-text" : ""}">Acao ${formatDate(lead.nextActionDate)}</span>
                 </div>
                 ${lead.labels && lead.labels.length ? `<div class="crm-labels">${lead.labels.map(label => `<span class="crm-label" style="background:${escapeHtml(label.color || "#8b6f47")}">${escapeHtml(label.text)}</span>`).join("")}</div>` : ""}
                 <p>${escapeHtml(lead.notes || "Sem observacoes.")}</p>
@@ -2732,12 +2848,24 @@
                   <label>Contato <input id="crm-detail-contact" value="${escapeHtml(lead.contact || "")}" /></label>
                   <label>Origem <input id="crm-detail-source" value="${escapeHtml(lead.source || "")}" /></label>
                   <label>Interesse <input id="crm-detail-interest" value="${escapeHtml(lead.interest || "")}" /></label>
+                  <label>Data do primeiro contato <input id="crm-detail-first-contact" type="date" value="${escapeHtml((lead.crmDates && lead.crmDates.firstContact) || lead.createdAt || todayISO)}" /></label>
                   <label>Etapa <select id="crm-detail-stage">${activeStages.map(stage => option(stage.id, stage.name, lead.stageId)).join("")}</select></label>
                   <label>Status <select id="crm-detail-status">${["Aberta", "Pausada"].map(value => option(value, value, lead.status)).join("")}</select></label>
                   <label>Responsavel <select id="crm-detail-owner">${state.users.filter(user => user.active).map(user => option(user.id, user.name, lead.ownerId)).join("")}</select></label>
-                  <label>Proxima acao <input id="crm-detail-next" type="date" value="${escapeHtml(lead.nextActionDate || todayISO)}" /></label>
+                  <label>Proxima acao <input id="crm-detail-next-text" value="${escapeHtml(lead.nextActionText || "")}" placeholder="Ex: Ligar para alinhar briefing" /></label>
+                  <label>Data da proxima acao <input id="crm-detail-next" type="date" value="${escapeHtml(lead.nextActionDate || "")}" /></label>
+                  <label>Responsavel pela acao <select id="crm-detail-next-owner">${state.users.filter(user => user.active).map(user => option(user.id, user.name, lead.nextActionOwnerId || lead.ownerId)).join("")}</select></label>
                   <label>Etiquetas <input id="crm-detail-labels" value="${escapeHtml((lead.labels || []).map(label => label.text).join(", "))}" /></label>
                   <label>Cor das etiquetas <input id="crm-detail-label-color" type="color" value="${escapeHtml((lead.labels && lead.labels[0] && lead.labels[0].color) || "#8b6f47")}" /></label>
+                </div>
+                <div class="subtask-meta">
+                  ${Object.entries(crmDateLabels).filter(([key]) => key !== "firstContact").map(([key, label]) => `<span class="pill">${label}: ${formatDate(lead.crmDates && lead.crmDates[key])}</span>`).join("")}
+                </div>
+                <div class="subtask-meta">
+                  <span class="pill">Desde contato: ${crmPipelineMetrics(lead).sinceFirstContact} dias</span>
+                  <span class="pill">Na etapa atual: ${crmPipelineMetrics(lead).inCurrentStage} dias</span>
+                  <span class="pill">Sem movimentacao: ${crmPipelineMetrics(lead).withoutMovement} dias</span>
+                  <span class="pill">Ciclo total: ${crmPipelineMetrics(lead).totalCycle} dias</span>
                 </div>
                 <textarea id="crm-detail-notes" placeholder="Observacoes da oportunidade">${escapeHtml(lead.notes || "")}</textarea>
                 <textarea id="crm-detail-note" placeholder="Adicionar comentario ou registro comercial"></textarea>
@@ -2825,9 +2953,12 @@
       const funnels = (state.crm.funnels || []).filter(funnel => funnel.active !== false);
       const activeStages = activeCrmStages();
       document.getElementById("crm-owner").innerHTML = state.users.filter(user => user.active).map(user => option(user.id, user.name, currentUser() ? currentUser().id : "")).join("");
+      document.getElementById("crm-next-action-owner").innerHTML = state.users.filter(user => user.active).map(user => option(user.id, user.name, currentUser() ? currentUser().id : "")).join("");
       document.getElementById("crm-client-existing").innerHTML = option("", "Criar novo cliente", "") + (state.clients || []).filter(client => client.status !== "archived").map(client => option(client.id, client.name, "")).join("");
       document.getElementById("crm-funnel").innerHTML = funnels.map(funnel => option(funnel.id, funnel.name, state.crm.activeFunnelId)).join("");
       document.getElementById("crm-stage").innerHTML = activeStages.map(stage => option(stage.id, stage.name, activeStages[0] && activeStages[0].id)).join("");
+      document.getElementById("crm-first-contact").value = todayISO;
+      document.getElementById("crm-next-action-text").value = "";
       document.getElementById("crm-next-action").value = todayISO;
     }
 
@@ -3377,7 +3508,17 @@
         const labelColor = document.getElementById("crm-label-color").value || "#8b6f47";
         const selectedClient = (state.clients || []).find(client => client.id === document.getElementById("crm-client-existing").value);
         const clientName = (selectedClient ? selectedClient.name : document.getElementById("crm-client").value.trim());
+        const firstContactDate = document.getElementById("crm-first-contact").value || todayISO;
+        const nextActionText = document.getElementById("crm-next-action-text").value.trim();
+        const nextActionDate = document.getElementById("crm-next-action").value;
+        const nextActionOwnerId = document.getElementById("crm-next-action-owner").value || document.getElementById("crm-owner").value;
+        if (!nextActionText || !nextActionDate || !nextActionOwnerId) {
+          toast("Informe proxima acao, data e responsavel.");
+          return;
+        }
         const crmClient = selectedClient || crmFindOrCreateClient(clientName, { contact: document.getElementById("crm-contact").value.trim(), source: "CRM" });
+        const selectedStageId = document.getElementById("crm-stage").value;
+        const createdAt = nowISO();
         const lead = {
           id: uid("lead"),
           client: clientName,
@@ -3392,14 +3533,20 @@
           labels: crmLabelsFromInput(document.getElementById("crm-labels").value, labelColor),
           priority: document.getElementById("crm-priority").value,
           status: "Aberta",
-          nextActionDate: document.getElementById("crm-next-action").value || todayISO,
+          nextActionText,
+          nextActionDate,
+          nextActionOwnerId,
           notes: document.getElementById("crm-notes").value.trim(),
           createdAt: todayISO,
-          enteredAt: todayISO,
+          enteredAt: firstContactDate,
+          stageEnteredAt: todayISO,
+          lastMovementAt: createdAt,
           updatedAt: todayISO,
-          events: [{ at: nowISO(), type: "created", stageId: document.getElementById("crm-stage").value, userId: currentUser() ? currentUser().id : "" }],
-          history: [{ at: nowISO(), userId: currentUser() ? currentUser().id : "", text: "Oportunidade criada no CRM." }]
+          crmDates: { firstContact: firstContactDate },
+          events: [{ at: createdAt, type: "created", stageId: selectedStageId, firstContactDate, nextActionText, nextActionDate, nextActionOwnerId, userId: currentUser() ? currentUser().id : "" }],
+          history: [{ at: createdAt, userId: currentUser() ? currentUser().id : "", text: "Oportunidade criada no CRM." }]
         };
+        crmTouchStageAutomation(lead, "", lead.stageId, createdAt);
         state.crm.leads.push(lead);
         state.crm.selectedLeadId = lead.id;
         state.crm.activeFunnelId = lead.funnelId;
@@ -3419,7 +3566,11 @@
           source: lead.source || "",
           interest: lead.interest || "",
           value: lead.value || "",
-          notes: lead.notes || ""
+          notes: lead.notes || "",
+          firstContact: (lead.crmDates && lead.crmDates.firstContact) || lead.createdAt || "",
+          nextActionText: lead.nextActionText || "",
+          nextActionDate: lead.nextActionDate || "",
+          nextActionOwnerId: lead.nextActionOwnerId || ""
         };
         const targetStageId = document.getElementById("crm-detail-stage").value;
         const targetStage = crmStage(targetStageId);
@@ -3431,6 +3582,13 @@
           closeCRMAsLost();
           return;
         }
+        const nextActionText = document.getElementById("crm-detail-next-text").value.trim();
+        const nextActionDate = document.getElementById("crm-detail-next").value;
+        const nextActionOwnerId = document.getElementById("crm-detail-next-owner").value;
+        if ((document.getElementById("crm-detail-status").value || lead.status) === "Aberta" && (!nextActionText || !nextActionDate || !nextActionOwnerId)) {
+          toast("Oportunidades abertas precisam de proxima acao, data e responsavel.");
+          return;
+        }
         lead.stageId = targetStageId;
         lead.client = document.getElementById("crm-detail-client").value.trim() || lead.client;
         lead.contact = document.getElementById("crm-detail-contact").value.trim();
@@ -3438,19 +3596,23 @@
         lead.interest = document.getElementById("crm-detail-interest").value.trim();
         lead.value = document.getElementById("crm-detail-value").value.trim();
         lead.notes = document.getElementById("crm-detail-notes").value.trim();
+        lead.crmDates = lead.crmDates || {};
+        lead.crmDates.firstContact = document.getElementById("crm-detail-first-contact").value || lead.crmDates.firstContact || lead.createdAt || todayISO;
         const linkedClient = crmFindOrCreateClient(lead.client, { contact: lead.contact, source: "CRM" });
         lead.clientId = linkedClient.id;
         lead.status = document.getElementById("crm-detail-status").value;
         lead.ownerId = document.getElementById("crm-detail-owner").value;
-        lead.nextActionDate = document.getElementById("crm-detail-next").value || todayISO;
+        lead.nextActionText = nextActionText;
+        lead.nextActionDate = nextActionDate;
+        lead.nextActionOwnerId = nextActionOwnerId;
         lead.labels = crmLabelsFromInput(document.getElementById("crm-detail-labels").value, document.getElementById("crm-detail-label-color").value);
         lead.updatedAt = todayISO;
         const note = document.getElementById("crm-detail-note").value.trim();
         if (oldStage !== lead.stageId) {
-          lead.events.push({ at: nowISO(), type: "stage_changed", from: oldStage, to: lead.stageId, userId: currentUser() ? currentUser().id : "" });
-          lead.history.push({ at: nowISO(), userId: currentUser() ? currentUser().id : "", text: `Etapa alterada de ${crmStage(oldStage).name || "-"} para ${crmStage(lead.stageId).name || "-"}.` });
+          crmTouchStageAutomation(lead, oldStage, lead.stageId);
         }
-        const commercialChanged = Object.entries(oldCommercial).filter(([key, value]) => value !== (lead[key] || "")).map(([key]) => key);
+        const commercialNow = { ...lead, firstContact: (lead.crmDates && lead.crmDates.firstContact) || "" };
+        const commercialChanged = Object.entries(oldCommercial).filter(([key, value]) => value !== (commercialNow[key] || "")).map(([key]) => key);
         if (commercialChanged.length) {
           lead.events.push({ at: nowISO(), type: "commercial_updated", fields: commercialChanged, userId: currentUser() ? currentUser().id : "" });
           lead.history.push({ at: nowISO(), userId: currentUser() ? currentUser().id : "", text: `Dados comerciais atualizados: ${commercialChanged.join(", ")}.` });
@@ -3592,12 +3754,17 @@
       }
       const closedValue = prompt("Informe o valor fechado:", lead.closedValue || lead.value || "");
       if (!closedValue) return;
+      const oldStage = lead.stageId;
+      const at = nowISO();
       lead.closedValue = closedValue.trim();
       lead.status = "Ganha";
       lead.stageId = wonStage.id;
+      lead.crmDates = lead.crmDates || {};
+      lead.crmDates.closed = lead.crmDates.closed || todayISO;
       lead.updatedAt = todayISO;
-      lead.events.push({ at: nowISO(), type: "won", value: lead.closedValue, userId: currentUser() ? currentUser().id : "" });
-      lead.history.push({ at: nowISO(), userId: currentUser() ? currentUser().id : "", text: `Negocio fechado com valor de ${lead.closedValue}. Projeto criado automaticamente.` });
+      crmTouchStageAutomation(lead, oldStage, lead.stageId, at);
+      lead.events.push({ at, type: "won", value: lead.closedValue, userId: currentUser() ? currentUser().id : "" });
+      lead.history.push({ at, userId: currentUser() ? currentUser().id : "", text: `Negocio fechado com valor de ${lead.closedValue}. Projeto criado automaticamente.` });
       const id = uid("p");
       const project = buildProject({
         id,
@@ -3618,22 +3785,68 @@
       render();
     }
 
-    function closeCRMAsLost() {
+    function openCRMLostModal() {
+      const lead = selectedLead();
+      if (!lead) return;
+      const existing = lead.lostReasonCategory || lead.lostReason || "Preco";
+      const modal = document.createElement("div");
+      modal.className = "modal open";
+      modal.setAttribute("aria-hidden", "false");
+      modal.innerHTML = `
+        <div class="modal-box">
+          <div class="panel-header">
+            <div><p class="eyebrow">CRM Mirari</p><h2>Negocio perdido</h2></div>
+            <button class="ghost" type="button" data-close-lost-modal>Fechar</button>
+          </div>
+          <div class="form-box">
+            <label>Motivo da perda
+              <select id="crm-lost-reason">${crmLossReasons.map(reason => option(reason, reason, existing)).join("")}</select>
+            </label>
+            <textarea id="crm-lost-comment" placeholder="Comentarios da negociacao, aprendizados e detalhes opcionais">${escapeHtml(lead.lostComment || "")}</textarea>
+            <div class="actions">
+              <button class="secondary" type="button" data-close-lost-modal>Cancelar</button>
+              <button class="danger" type="button" id="confirm-crm-lost">Confirmar perda</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+      modal.querySelectorAll("[data-close-lost-modal]").forEach(button => button.onclick = () => modal.remove());
+      modal.querySelector("#confirm-crm-lost").onclick = () => {
+        const reason = document.getElementById("crm-lost-reason").value;
+        const comment = document.getElementById("crm-lost-comment").value.trim();
+        closeCRMAsLost(reason, comment);
+        modal.remove();
+      };
+    }
+
+    function closeCRMAsLost(reasonValue = "", commentValue = "") {
       const lead = selectedLead();
       if (!lead) return;
       const lostStage = crmLostStage();
-      if (!confirm("Confirmar negocio perdido?")) return;
-      const reason = prompt("Informe o motivo do nao fechamento:", lead.lostReason || "");
-      if (!reason || !reason.trim()) {
-        alert("O motivo do nao fechamento e obrigatorio.");
+      const reason = String(reasonValue || "").trim();
+      if (!reason) {
+        openCRMLostModal();
         return;
       }
-      lead.lostReason = reason.trim();
+      if (!crmLossReasons.includes(reason)) {
+        alert("Selecione um motivo padronizado para a perda.");
+        return;
+      }
+      if (!confirm("Confirmar negocio perdido?")) return;
+      const oldStage = lead.stageId;
+      const at = nowISO();
+      lead.lostReasonCategory = reason;
+      lead.lostReason = reason;
+      lead.lostComment = String(commentValue || "").trim();
       lead.status = "Perdida";
       if (lostStage) lead.stageId = lostStage.id;
+      lead.crmDates = lead.crmDates || {};
+      lead.crmDates.lost = lead.crmDates.lost || todayISO;
       lead.updatedAt = todayISO;
-      lead.events.push({ at: nowISO(), type: "lost", reason: lead.lostReason, userId: currentUser() ? currentUser().id : "" });
-      lead.history.push({ at: nowISO(), userId: currentUser() ? currentUser().id : "", text: `Negocio perdido. Motivo: ${lead.lostReason}` });
+      if (oldStage !== lead.stageId) crmTouchStageAutomation(lead, oldStage, lead.stageId, at);
+      lead.events.push({ at, type: "lost", reason: lead.lostReasonCategory, comment: lead.lostComment, userId: currentUser() ? currentUser().id : "" });
+      lead.history.push({ at, userId: currentUser() ? currentUser().id : "", text: `Negocio perdido. Motivo: ${lead.lostReasonCategory}${lead.lostComment ? ` | ${lead.lostComment}` : ""}` });
       toast("Negocio marcado como perdido.");
       render();
     }
