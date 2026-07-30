@@ -295,6 +295,8 @@
     .crm-next-task { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: .74rem; }
     .crm-expand-toggle { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--text); font-size: 16px; font-weight: 900; cursor: pointer; }
     .crm-label-editor { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: #fffaf5; }
+    .crm-label-manage { display: grid; gap: 8px; }
+    .crm-label-manage-row { display: grid; grid-template-columns: minmax(160px, 1fr) 76px auto auto; gap: 8px; align-items: end; padding: 8px; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
     .commercial-calendar { display: grid; grid-template-columns: repeat(7, minmax(130px, 1fr)); gap: 8px; overflow-x: auto; }
     .commercial-day { min-height: 112px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
     .commercial-task-chip { display: block; margin-top: 7px; padding: 7px; border-radius: 8px; background: #f7f2ed; color: var(--text); font-size: .72rem; }
@@ -1059,8 +1061,8 @@
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase-config.js?v=20260730-crm-ajustes"></script>
-  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260730-crm-ajustes" />
+  <script src="./supabase-config.js?v=20260730-crm-etiquetas"></script>
+  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260730-crm-etiquetas" />
 </head>
 <body>
   <main class="app-shell">
@@ -3056,6 +3058,40 @@
       }).join("");
     }
 
+    function crmLabelManageRows() {
+      return `<div class="crm-label-manage">${(state.crm.labels || []).map(label => `
+        <div class="crm-label-manage-row">
+          <label>Nome <input data-inline-crm-label-name="${label.id}" value="${escapeHtml(label.name)}" /></label>
+          <label>Cor <input data-inline-crm-label-color="${label.id}" type="color" value="${escapeHtml(label.color || "#8b6f47")}" /></label>
+          <button class="secondary" data-inline-save-crm-label="${label.id}" type="button">Salvar</button>
+          <button class="danger" data-inline-remove-crm-label="${label.id}" type="button">Excluir</button>
+        </div>
+      `).join("") || "<small>Nenhuma etiqueta cadastrada.</small>"}</div>`;
+    }
+
+    function saveCrmLabel(labelId, nameSelector, colorSelector) {
+      const label = (state.crm.labels || []).find(item => item.id === labelId);
+      if (!label) return;
+      const oldName = label.name;
+      const nameInput = document.querySelector(nameSelector);
+      const colorInput = document.querySelector(colorSelector);
+      label.name = nameInput ? (nameInput.value.trim() || label.name) : label.name;
+      label.color = colorInput ? (colorInput.value || label.color) : label.color;
+      (state.crm.leads || []).forEach(lead => (lead.labels || []).forEach(item => {
+        if (item.id === label.id || item.text === oldName) Object.assign(item, { id: label.id, text: label.name, color: label.color });
+      }));
+      toast("Etiqueta salva.");
+      render();
+    }
+
+    function removeCrmLabel(labelId) {
+      if (!confirm("Excluir etiqueta e remover das oportunidades?")) return;
+      state.crm.labels = (state.crm.labels || []).filter(label => label.id !== labelId);
+      (state.crm.leads || []).forEach(lead => lead.labels = (lead.labels || []).filter(label => label.id !== labelId));
+      toast("Etiqueta excluida.");
+      render();
+    }
+
     function crmMentionedUsers(text) {
       const lower = String(text || "").toLowerCase();
       return state.users.filter(user => lower.includes("@" + String(user.name || user.username || "").toLowerCase())).map(user => user.id);
@@ -3211,6 +3247,10 @@
                     <label>Cor <input id="crm-inline-label-color" type="color" value="#8b6f47" /></label>
                     <button class="secondary" id="crm-inline-add-label" type="button">Criar e selecionar</button>
                   </div>
+                  <details>
+                    <summary>Editar ou apagar etiquetas</summary>
+                    ${crmLabelManageRows()}
+                  </details>
                 </div>
                 <div class="subtask-meta">
                   ${Object.entries(crmDateLabels).filter(([key]) => key !== "firstContact").map(([key, label]) => `<span class="pill">${label}: ${formatDate(lead.crmDates && lead.crmDates[key])}</span>`).join("")}
@@ -3930,6 +3970,11 @@
         select.innerHTML = crmLabelOptions([...(selectedLead().labels || []), { id: label.id, text: label.name, color: label.color }]);
         toast("Etiqueta criada e selecionada.");
       };
+      document.querySelectorAll("[data-inline-save-crm-label]").forEach(button => button.onclick = () => {
+        const id = button.dataset.inlineSaveCrmLabel;
+        saveCrmLabel(id, `[data-inline-crm-label-name="${id}"]`, `[data-inline-crm-label-color="${id}"]`);
+      });
+      document.querySelectorAll("[data-inline-remove-crm-label]").forEach(button => button.onclick = () => removeCrmLabel(button.dataset.inlineRemoveCrmLabel));
       const chatForm = document.getElementById("crm-chat-form");
       if (chatForm) chatForm.onsubmit = event => {
         event.preventDefault();
@@ -4181,24 +4226,11 @@
         render();
       };
       document.querySelectorAll("[data-save-crm-label]").forEach(button => button.onclick = () => {
-        const label = (state.crm.labels || []).find(item => item.id === button.dataset.saveCrmLabel);
-        if (!label) return;
-        const oldName = label.name;
-        label.name = document.querySelector(`[data-crm-label-name="${label.id}"]`).value.trim() || label.name;
-        label.color = document.querySelector(`[data-crm-label-color="${label.id}"]`).value || label.color;
-        (state.crm.leads || []).forEach(lead => (lead.labels || []).forEach(item => {
-          if (item.id === label.id || item.text === oldName) Object.assign(item, { id: label.id, text: label.name, color: label.color });
-        }));
-        toast("Etiqueta salva.");
-        render();
+        const id = button.dataset.saveCrmLabel;
+        saveCrmLabel(id, `[data-crm-label-name="${id}"]`, `[data-crm-label-color="${id}"]`);
       });
       document.querySelectorAll("[data-remove-crm-label]").forEach(button => button.onclick = () => {
-        const id = button.dataset.removeCrmLabel;
-        if (!confirm("Excluir etiqueta e remover das oportunidades?")) return;
-        state.crm.labels = (state.crm.labels || []).filter(label => label.id !== id);
-        (state.crm.leads || []).forEach(lead => lead.labels = (lead.labels || []).filter(label => label.id !== id));
-        toast("Etiqueta excluida.");
-        render();
+        removeCrmLabel(button.dataset.removeCrmLabel);
       });
       const templateForm = document.getElementById("crm-task-template-form");
       if (templateForm) templateForm.onsubmit = event => {
@@ -4973,8 +5005,8 @@
     initializeApp();
   </script>
   <!-- Script classico para que o MVP tambem carregue ao abrir este HTML diretamente. -->
-  <script src="./assets/saas-core.js?v=20260730-crm-ajustes"></script>
-  <script src="./assets/saas-extension.js?v=20260730-crm-ajustes"></script>
+  <script src="./assets/saas-core.js?v=20260730-crm-etiquetas"></script>
+  <script src="./assets/saas-extension.js?v=20260730-crm-etiquetas"></script>
 </body>
 </html>
 
