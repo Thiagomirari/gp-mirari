@@ -34,6 +34,11 @@ jobs:
             **/.git*/**
             **/.github/**
             **/backups/**
+            **/functions/**
+            **/migrations/**
+            **/supabase/**
             **/tests/**
             **/*.zip
             .cpanel.yml
+            package.json
+            supabase-config.example.js
