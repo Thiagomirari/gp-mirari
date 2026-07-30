@@ -293,7 +293,14 @@
     .crm-card-alert { border-color: rgba(196,138,0,.35); box-shadow: inset 3px 0 0 #C48A00; }
     .crm-card-late { border-color: rgba(198,40,40,.35); box-shadow: inset 3px 0 0 #C62828; }
     .crm-next-task { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: .74rem; }
-    .crm-expand-toggle { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--text); font-size: 16px; font-weight: 900; cursor: pointer; }
+    .crm-opportunity-card { cursor: pointer; border-left: 4px solid #d8aa7f; transition: border-color .16s ease, box-shadow .16s ease, background .16s ease; }
+    .crm-opportunity-card:hover { border-color: #dfb58e; box-shadow: 0 8px 22px rgba(47,47,47,.05); background: #fffdfa; }
+    .crm-opportunity-card.expanded { cursor: default; }
+    .crm-opportunity-card .form-grid,
+    .crm-opportunity-card textarea,
+    .crm-opportunity-card .actions,
+    .crm-opportunity-card .crm-label-editor { cursor: default; }
+    .crm-expand-toggle { min-width: 58px; min-height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--text); font-size: 12px; font-weight: 800; cursor: pointer; }
     .crm-label-editor { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: #fffaf5; }
     .crm-label-manage { display: grid; gap: 8px; }
     .crm-label-manage-row { display: grid; grid-template-columns: minmax(160px, 1fr) 76px auto auto; gap: 8px; align-items: end; padding: 8px; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
@@ -1061,8 +1068,8 @@
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase-config.js?v=20260730-crm-etiquetas"></script>
-  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260730-crm-etiquetas" />
+  <script src="./supabase-config.js?v=20260730-crm-card-expand"></script>
+  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260730-crm-card-expand" />
 </head>
 <body>
   <main class="app-shell">
@@ -3210,10 +3217,10 @@
           </div>
           ${lead ? `
             <div class="detail-grid" style="margin-top:12px;">
-              <article class="panel soft-panel" style="grid-column:1/-1">
+              <article class="panel soft-panel crm-opportunity-card ${state.crm.expandedLeadId === lead.id ? "expanded" : ""}" data-toggle-crm-lead="${lead.id}" style="grid-column:1/-1">
                 <div class="section-title">
                   <div><p class="eyebrow">Oportunidade selecionada</p><h2>${escapeHtml(lead.client)}</h2></div>
-                  <div class="actions"><span class="pill">${escapeHtml(crmStage(lead.stageId).name || "-")}</span><button class="crm-expand-toggle" id="toggle-crm-lead" type="button" title="${state.crm.expandedLeadId === lead.id ? "Recolher" : "Expandir"}">${state.crm.expandedLeadId === lead.id ? "⌃" : "⌄"}</button></div>
+                  <div class="actions"><span class="pill">${escapeHtml(crmStage(lead.stageId).name || "-")}</span><button class="crm-expand-toggle" id="toggle-crm-lead" type="button" title="${state.crm.expandedLeadId === lead.id ? "Recolher" : "Abrir"}">${state.crm.expandedLeadId === lead.id ? "Recolher" : "Abrir"}</button></div>
                 </div>
                 <div class="subtask-meta">
                   <span class="pill">${formatMoney(moneyNumber(lead.closedValue || lead.value))}</span>
@@ -3941,8 +3948,15 @@
         event.stopPropagation();
         openCRMCardConfig(button.dataset.crmCardConfig);
       });
+      document.querySelectorAll("[data-toggle-crm-lead]").forEach(card => card.onclick = event => {
+        if (event.target.closest("input, select, textarea, button, a, details, summary, label")) return;
+        const id = card.dataset.toggleCrmLead;
+        state.crm.expandedLeadId = state.crm.expandedLeadId === id ? "" : id;
+        render();
+      });
       const expandLead = document.getElementById("toggle-crm-lead");
-      if (expandLead) expandLead.onclick = () => {
+      if (expandLead) expandLead.onclick = event => {
+        event.stopPropagation();
         const lead = selectedLead();
         state.crm.expandedLeadId = lead && state.crm.expandedLeadId !== lead.id ? lead.id : "";
         render();
@@ -5005,8 +5019,8 @@
     initializeApp();
   </script>
   <!-- Script classico para que o MVP tambem carregue ao abrir este HTML diretamente. -->
-  <script src="./assets/saas-core.js?v=20260730-crm-etiquetas"></script>
-  <script src="./assets/saas-extension.js?v=20260730-crm-etiquetas"></script>
+  <script src="./assets/saas-core.js?v=20260730-crm-card-expand"></script>
+  <script src="./assets/saas-extension.js?v=20260730-crm-card-expand"></script>
 </body>
 </html>
 
