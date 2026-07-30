@@ -293,7 +293,8 @@
     .crm-card-alert { border-color: rgba(196,138,0,.35); box-shadow: inset 3px 0 0 #C48A00; }
     .crm-card-late { border-color: rgba(198,40,40,.35); box-shadow: inset 3px 0 0 #C62828; }
     .crm-next-task { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: .74rem; }
-    .crm-detail-collapsed { padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+    .crm-expand-toggle { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--text); font-size: 16px; font-weight: 900; cursor: pointer; }
+    .crm-label-editor { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: #fffaf5; }
     .commercial-calendar { display: grid; grid-template-columns: repeat(7, minmax(130px, 1fr)); gap: 8px; overflow-x: auto; }
     .commercial-day { min-height: 112px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
     .commercial-task-chip { display: block; margin-top: 7px; padding: 7px; border-radius: 8px; background: #f7f2ed; color: var(--text); font-size: .72rem; }
@@ -1058,8 +1059,8 @@
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase-config.js?v=20260730-crm-tarefas"></script>
-  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260730-crm-tarefas" />
+  <script src="./supabase-config.js?v=20260730-crm-ajustes"></script>
+  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260730-crm-ajustes" />
 </head>
 <body>
   <main class="app-shell">
@@ -1260,6 +1261,7 @@
           <label>Etiquetas <select id="crm-labels" multiple></select></label>
           <label>Prioridade <select id="crm-priority"><option>Alta</option><option selected>Media</option><option>Baixa</option></select></label>
           <label>Responsavel <select id="crm-owner"></select></label>
+          <label>Especificador <select id="crm-specifier"></select></label>
           <label>Funil <select id="crm-funnel"></select></label>
           <label>Etapa <select id="crm-stage"></select></label>
             </div>
@@ -1490,6 +1492,8 @@
         lead.updatedAt = lead.updatedAt || lead.createdAt;
         lead.nextActionText = lead.nextActionText || lead.nextAction || "";
         lead.nextActionOwnerId = lead.nextActionOwnerId || lead.ownerId || "";
+        const linkedClient = (next.clients || []).find(client => client.id === lead.clientId);
+        lead.specifierId = lead.specifierId || (linkedClient && linkedClient.specifierId) || "";
         lead.chat = lead.chat || [];
         lead.pipeline = lead.pipeline || {};
         (lead.labels || []).forEach(label => {
@@ -2907,6 +2911,24 @@
       return client;
     }
 
+    function crmLeadClient(lead) {
+      return (state.clients || []).find(client => client.id === (lead && lead.clientId));
+    }
+
+    function crmSpecifierName(id) {
+      const item = (state.specifiers || []).find(specifier => specifier.id === id);
+      return item ? item.name : "-";
+    }
+
+    function specifierOptions(selected = "") {
+      return option("", "Sem especificador", selected) + (state.specifiers || []).filter(item => item.active !== false).map(item => option(item.id, item.name, selected)).join("");
+    }
+
+    function formatMoneyInputValue(input) {
+      if (!input || !input.value.trim()) return;
+      input.value = formatMoney(moneyNumber(input.value));
+    }
+
     const crmDateLabels = {
       firstContact: "Primeiro contato",
       briefing: "Briefing",
@@ -3152,14 +3174,15 @@
           </div>
           ${lead ? `
             <div class="detail-grid" style="margin-top:12px;">
-              <article class="panel soft-panel">
+              <article class="panel soft-panel" style="grid-column:1/-1">
                 <div class="section-title">
                   <div><p class="eyebrow">Oportunidade selecionada</p><h2>${escapeHtml(lead.client)}</h2></div>
-                  <span class="pill">${escapeHtml(crmStage(lead.stageId).name || "-")}</span>
+                  <div class="actions"><span class="pill">${escapeHtml(crmStage(lead.stageId).name || "-")}</span><button class="crm-expand-toggle" id="toggle-crm-lead" type="button" title="${state.crm.expandedLeadId === lead.id ? "Recolher" : "Expandir"}">${state.crm.expandedLeadId === lead.id ? "⌃" : "⌄"}</button></div>
                 </div>
                 <div class="subtask-meta">
                   <span class="pill">${formatMoney(moneyNumber(lead.closedValue || lead.value))}</span>
                   <span class="pill">${escapeHtml(userName(lead.ownerId))}</span>
+                  <span class="pill">Especificador: ${escapeHtml(crmSpecifierName(lead.specifierId || (crmLeadClient(lead) || {}).specifierId))}</span>
                   <span class="pill">${escapeHtml(lead.status)}</span>
                   <span class="pill">Contato ${formatDate((lead.crmDates && lead.crmDates.firstContact) || lead.createdAt)}</span>
                   <span class="pill">Etapa ${crmPipelineMetrics(lead).inCurrentStage} dias</span>
@@ -3179,7 +3202,15 @@
                   <label>Etapa <select id="crm-detail-stage">${activeStages.map(stage => option(stage.id, stage.name, lead.stageId)).join("")}</select></label>
                   <label>Status <select id="crm-detail-status">${["Aberta", "Pausada"].map(value => option(value, value, lead.status)).join("")}</select></label>
                   <label>Responsavel <select id="crm-detail-owner">${state.users.filter(user => user.active).map(user => option(user.id, user.name, lead.ownerId)).join("")}</select></label>
-                  <label>Etiquetas <select id="crm-detail-labels" multiple>${crmLabelOptions(lead.labels || [])}</select></label>
+                  <label>Especificador <select id="crm-detail-specifier">${specifierOptions(lead.specifierId || (crmLeadClient(lead) || {}).specifierId || "")}</select></label>
+                </div>
+                <div class="crm-label-editor">
+                  <label>Etiquetas da oportunidade <select id="crm-detail-labels" multiple>${crmLabelOptions(lead.labels || [])}</select></label>
+                  <div class="grid-3">
+                    <label>Nova etiqueta <input id="crm-inline-label-name" placeholder="Ex: Urgente" /></label>
+                    <label>Cor <input id="crm-inline-label-color" type="color" value="#8b6f47" /></label>
+                    <button class="secondary" id="crm-inline-add-label" type="button">Criar e selecionar</button>
+                  </div>
                 </div>
                 <div class="subtask-meta">
                   ${Object.entries(crmDateLabels).filter(([key]) => key !== "firstContact").map(([key, label]) => `<span class="pill">${label}: ${formatDate(lead.crmDates && lead.crmDates[key])}</span>`).join("")}
@@ -3192,14 +3223,6 @@
                 </div>
                 <textarea id="crm-detail-notes" placeholder="Observacoes da oportunidade">${escapeHtml(lead.notes || "")}</textarea>
                 <textarea id="crm-detail-note" placeholder="Adicionar comentario ou registro comercial"></textarea>
-                <div class="task-list">
-                  ${crmTasksForLead(lead.id, true).map(task => `<article class="task-card"><div class="row-between"><strong>${escapeHtml(task.title)}</strong><span class="pill ${crmTaskStatus(task) === "Atrasada" ? "danger-text" : ""}">${escapeHtml(crmTaskStatus(task))}</span></div><div class="subtask-meta"><span class="pill">${escapeHtml(userName(task.ownerId))}</span><span class="pill">${formatDate(task.dueDate)} ${escapeHtml(task.dueTime || "")}</span><span class="pill">${escapeHtml(task.priority)}</span></div></article>`).join("") || "<small>Nenhuma tarefa comercial vinculada.</small>"}
-                </div>
-                <article class="panel soft-panel">
-                  <div class="section-title"><div><p class="eyebrow">Chat interno</p><h2>Comentarios da oportunidade</h2></div></div>
-                  <div class="crm-chat-list">${(lead.chat || []).map(message => `<div class="chat-message"><div class="row-between"><strong>${escapeHtml(userName(message.userId) || message.user || "Equipe")}</strong><small>${formatDateTime(message.at)}</small></div><p>${escapeHtml(message.text)}</p></div>`).join("") || "<small>Sem comentarios internos.</small>"}</div>
-                  <form class="grid-2" id="crm-chat-form"><label>Comentario <input id="crm-chat-message" placeholder="Use @Nome para mencionar um colaborador" required /></label><button class="primary" type="submit">Enviar comentario</button></form>
-                </article>
                 <div class="actions">
                   <button class="primary" id="save-crm-lead" type="button">Salvar alteracoes</button>
                   <button class="secondary" id="add-crm-task" type="button">Nova tarefa</button>
@@ -3207,10 +3230,21 @@
                   <button class="danger" id="mark-crm-lost" type="button">Negocio perdido</button>
                   <button class="danger" id="remove-crm-lead" type="button">Remover</button>
                 </div>
-                ` : `<div class="crm-detail-collapsed"><p class="muted">Detalhes, tarefas, chat e edicao ficam recolhidos para manter o funil limpo.</p><button class="secondary" id="expand-crm-lead" type="button">Expandir</button></div>`}
+                ` : ""}
               </article>
               ${state.crm.expandedLeadId === lead.id ? `
-              <article class="panel soft-panel">
+              <article class="panel soft-panel" style="grid-column:1/-1">
+                <div class="section-title"><div><p class="eyebrow">Tarefas comerciais</p><h2>Agenda da oportunidade</h2></div><button class="secondary" id="add-crm-task-bottom" type="button">Nova tarefa</button></div>
+                <div class="task-list">
+                  ${crmTasksForLead(lead.id, true).map(task => `<article class="task-card"><div class="row-between"><strong>${escapeHtml(task.title)}</strong><span class="pill ${crmTaskStatus(task) === "Atrasada" ? "danger-text" : ""}">${escapeHtml(crmTaskStatus(task))}</span></div><div class="subtask-meta"><span class="pill">${escapeHtml(userName(task.ownerId))}</span><span class="pill">${formatDate(task.dueDate)} ${escapeHtml(task.dueTime || "")}</span><span class="pill">${escapeHtml(task.priority)}</span></div></article>`).join("") || "<small>Nenhuma tarefa comercial vinculada.</small>"}
+                </div>
+              </article>
+              <article class="panel soft-panel" style="grid-column:1/-1">
+                <div class="section-title"><div><p class="eyebrow">Chat interno</p><h2>Comentarios da oportunidade</h2></div></div>
+                <div class="crm-chat-list">${(lead.chat || []).map(message => `<div class="chat-message"><div class="row-between"><strong>${escapeHtml(userName(message.userId) || message.user || "Equipe")}</strong><small>${formatDateTime(message.at)}</small></div><p>${escapeHtml(message.text)}</p></div>`).join("") || "<small>Sem comentarios internos.</small>"}</div>
+                <form class="grid-2" id="crm-chat-form"><label>Comentario <input id="crm-chat-message" placeholder="Use @Nome para mencionar um colaborador" required /></label><button class="primary" type="submit">Enviar comentario</button></form>
+              </article>
+              <article class="panel soft-panel" style="grid-column:1/-1">
                 <div class="section-title"><div><p class="eyebrow">Historico comercial</p><h2>Eventos</h2></div></div>
                 <div class="history-list">
                   ${(lead.history || []).slice().reverse().map(item => `<div class="history-item"><strong>${formatDateTime(item.at)}</strong><br><small>${escapeHtml(userName(item.userId))}: ${escapeHtml(item.text)}</small></div>`).join("") || "<small>Nenhuma interacao registrada.</small>"}
@@ -3315,6 +3349,7 @@
       const activeStages = activeCrmStages();
       document.getElementById("crm-owner").innerHTML = state.users.filter(user => user.active).map(user => option(user.id, user.name, currentUser() ? currentUser().id : "")).join("");
       document.getElementById("crm-next-action-owner").innerHTML = state.users.filter(user => user.active).map(user => option(user.id, user.name, currentUser() ? currentUser().id : "")).join("");
+      document.getElementById("crm-specifier").innerHTML = specifierOptions("");
       document.getElementById("crm-client-existing").innerHTML = option("", "Criar novo cliente", "") + (state.clients || []).filter(client => client.status !== "archived").map(client => option(client.id, client.name, "")).join("");
       document.getElementById("crm-funnel").innerHTML = funnels.map(funnel => option(funnel.id, funnel.name, state.crm.activeFunnelId)).join("");
       document.getElementById("crm-stage").innerHTML = activeStages.map(stage => option(stage.id, stage.name, activeStages[0] && activeStages[0].id)).join("");
@@ -3866,14 +3901,35 @@
         event.stopPropagation();
         openCRMCardConfig(button.dataset.crmCardConfig);
       });
-      const expandLead = document.getElementById("expand-crm-lead");
+      const expandLead = document.getElementById("toggle-crm-lead");
       if (expandLead) expandLead.onclick = () => {
         const lead = selectedLead();
-        state.crm.expandedLeadId = lead ? lead.id : "";
+        state.crm.expandedLeadId = lead && state.crm.expandedLeadId !== lead.id ? lead.id : "";
         render();
       };
       const addTask = document.getElementById("add-crm-task");
       if (addTask) addTask.onclick = () => openCommercialTaskModal(state.crm.selectedLeadId);
+      const addTaskBottom = document.getElementById("add-crm-task-bottom");
+      if (addTaskBottom) addTaskBottom.onclick = () => openCommercialTaskModal(state.crm.selectedLeadId);
+      const detailValue = document.getElementById("crm-detail-value");
+      if (detailValue) detailValue.onblur = () => formatMoneyInputValue(detailValue);
+      const modalValue = document.getElementById("crm-value");
+      if (modalValue) modalValue.onblur = () => formatMoneyInputValue(modalValue);
+      const inlineLabel = document.getElementById("crm-inline-add-label");
+      if (inlineLabel) inlineLabel.onclick = () => {
+        const name = document.getElementById("crm-inline-label-name").value.trim();
+        if (!name) return toast("Informe o nome da etiqueta.");
+        let label = (state.crm.labels || []).find(item => item.name.toLowerCase() === name.toLowerCase());
+        if (!label) {
+          label = { id: uid("cl"), name, color: document.getElementById("crm-inline-label-color").value || "#8b6f47" };
+          state.crm.labels.push(label);
+        } else {
+          label.color = document.getElementById("crm-inline-label-color").value || label.color;
+        }
+        const select = document.getElementById("crm-detail-labels");
+        select.innerHTML = crmLabelOptions([...(selectedLead().labels || []), { id: label.id, text: label.name, color: label.color }]);
+        toast("Etiqueta criada e selecionada.");
+      };
       const chatForm = document.getElementById("crm-chat-form");
       if (chatForm) chatForm.onsubmit = event => {
         event.preventDefault();
@@ -3921,6 +3977,8 @@
         if (!selected) return;
         document.getElementById("crm-client").value = selected.name || "";
         document.getElementById("crm-contact").value = selected.contact || "";
+        const specifier = document.getElementById("crm-specifier");
+        if (specifier) specifier.value = selected.specifierId || "";
       };
       if (form) form.onsubmit = event => {
         event.preventDefault();
@@ -3930,7 +3988,9 @@
         const nextActionText = document.getElementById("crm-next-action-text").value.trim();
         const nextActionDate = document.getElementById("crm-next-action").value;
         const nextActionOwnerId = document.getElementById("crm-next-action-owner").value || document.getElementById("crm-owner").value;
-        const crmClient = selectedClient || crmFindOrCreateClient(clientName, { contact: document.getElementById("crm-contact").value.trim(), source: "CRM" });
+        const specifierId = document.getElementById("crm-specifier").value || (selectedClient && selectedClient.specifierId) || "";
+        const crmClient = selectedClient || crmFindOrCreateClient(clientName, { contact: document.getElementById("crm-contact").value.trim(), source: "CRM", specifierId });
+        if (selectedClient && specifierId) selectedClient.specifierId = specifierId;
         const selectedStageId = document.getElementById("crm-stage").value;
         const createdAt = nowISO();
         const lead = {
@@ -3943,6 +4003,7 @@
           funnelId: document.getElementById("crm-funnel").value || state.crm.activeFunnelId,
           stageId: document.getElementById("crm-stage").value,
           ownerId: document.getElementById("crm-owner").value,
+          specifierId,
           value: document.getElementById("crm-value").value.trim() ? formatMoney(moneyNumber(document.getElementById("crm-value").value)) : "",
           labels: crmLabelsFromSelection("crm-labels"),
           priority: document.getElementById("crm-priority").value,
@@ -3985,6 +4046,7 @@
           value: lead.value || "",
           notes: lead.notes || "",
           firstContact: (lead.crmDates && lead.crmDates.firstContact) || lead.createdAt || "",
+          specifierId: lead.specifierId || "",
           labels: (lead.labels || []).map(label => label.text).join(", ")
         };
         const targetStageId = document.getElementById("crm-detail-stage").value;
@@ -4008,6 +4070,8 @@
         lead.crmDates.firstContact = document.getElementById("crm-detail-first-contact").value || lead.crmDates.firstContact || lead.createdAt || todayISO;
         const linkedClient = crmFindOrCreateClient(lead.client, { contact: lead.contact, source: "CRM" });
         lead.clientId = linkedClient.id;
+        lead.specifierId = document.getElementById("crm-detail-specifier").value;
+        linkedClient.specifierId = lead.specifierId || linkedClient.specifierId || "";
         lead.status = document.getElementById("crm-detail-status").value;
         lead.ownerId = document.getElementById("crm-detail-owner").value;
         lead.labels = crmLabelsFromSelection("crm-detail-labels");
@@ -4016,7 +4080,7 @@
         if (oldStage !== lead.stageId) {
           crmTouchStageAutomation(lead, oldStage, lead.stageId);
         }
-        const commercialNow = { ...lead, firstContact: (lead.crmDates && lead.crmDates.firstContact) || "", labels: (lead.labels || []).map(label => label.text).join(", ") };
+        const commercialNow = { ...lead, firstContact: (lead.crmDates && lead.crmDates.firstContact) || "", specifierId: lead.specifierId || "", labels: (lead.labels || []).map(label => label.text).join(", ") };
         const commercialChanged = Object.entries(oldCommercial).filter(([key, value]) => value !== (commercialNow[key] || "")).map(([key]) => key);
         if (commercialChanged.length) {
           lead.events.push({ at: nowISO(), type: "commercial_updated", fields: commercialChanged, userId: currentUser() ? currentUser().id : "" });
@@ -4909,8 +4973,8 @@
     initializeApp();
   </script>
   <!-- Script classico para que o MVP tambem carregue ao abrir este HTML diretamente. -->
-  <script src="./assets/saas-core.js?v=20260730-crm-tarefas"></script>
-  <script src="./assets/saas-extension.js?v=20260730-crm-tarefas"></script>
+  <script src="./assets/saas-core.js?v=20260730-crm-ajustes"></script>
+  <script src="./assets/saas-extension.js?v=20260730-crm-ajustes"></script>
 </body>
 </html>
 
