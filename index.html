@@ -286,9 +286,18 @@
     }
 
     .crm-column-body { display: grid; gap: 6px; padding: 7px; min-height: 120px; }
-    .crm-card { display: grid; gap: 6px; padding: 9px; text-align: left; color: var(--text); }
+    .crm-card { position: relative; display: grid; gap: 6px; padding: 9px; text-align: left; color: var(--text); }
     .crm-card.selected { border-color: var(--mirari-dark); background: #f3e4d4; }
     .crm-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .crm-card-config { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--line); background: rgba(255,255,255,.86); color: var(--muted); font-weight: 900; cursor: pointer; }
+    .crm-card-alert { border-color: rgba(196,138,0,.35); box-shadow: inset 3px 0 0 #C48A00; }
+    .crm-card-late { border-color: rgba(198,40,40,.35); box-shadow: inset 3px 0 0 #C62828; }
+    .crm-next-task { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: .74rem; }
+    .crm-detail-collapsed { padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+    .commercial-calendar { display: grid; grid-template-columns: repeat(7, minmax(130px, 1fr)); gap: 8px; overflow-x: auto; }
+    .commercial-day { min-height: 112px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+    .commercial-task-chip { display: block; margin-top: 7px; padding: 7px; border-radius: 8px; background: #f7f2ed; color: var(--text); font-size: .72rem; }
+    .crm-chat-list { display: grid; gap: 10px; max-height: 260px; overflow: auto; }
     .crm-admin-row { display: grid; grid-template-columns: minmax(150px, 1.2fr) minmax(92px, .7fr) 76px auto; gap: 8px; align-items: end; }
     .crm-admin-row-sortable { grid-template-columns: 34px minmax(150px, 1.2fr) minmax(92px, .7fr) 76px auto; }
     .crm-stage-sort-card { transition: opacity .15s ease, outline-color .15s ease, transform .15s ease; }
@@ -1049,8 +1058,8 @@
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase-config.js?v=20260730-crm-clientes"></script>
-  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260730-crm-clientes" />
+  <script src="./supabase-config.js?v=20260730-crm-tarefas"></script>
+  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260730-crm-tarefas" />
 </head>
 <body>
   <main class="app-shell">
@@ -1075,6 +1084,7 @@
     <nav class="nav" aria-label="Navegacao principal">
       <button class="sidebar-toggle" id="sidebar-toggle" title="Recolher menu" aria-label="Recolher menu" type="button">Menu</button>
       <button class="tab-button active" data-tab="crm" data-short="C" type="button"><span class="nav-icon">C</span><span class="nav-label">CRM</span></button>
+      <button class="tab-button" data-tab="commercial" data-short="M" type="button"><span class="nav-icon">M</span><span class="nav-label">Comercial</span></button>
       <button class="tab-button" data-tab="projects" data-short="P" type="button"><span class="nav-icon">P</span><span class="nav-label">Projetos</span></button>
       <button class="tab-button" data-tab="calendar" data-short="A" type="button"><span class="nav-icon">A</span><span class="nav-label">Calendario</span></button>
       <button class="tab-button" data-tab="kanban" data-short="K" type="button"><span class="nav-icon">K</span><span class="nav-label">Kanban</span></button>
@@ -1090,6 +1100,7 @@
     </section>
 
     <section id="tab-crm" class="tab-view"></section>
+    <section id="tab-commercial" class="tab-view hidden"></section>
     <section id="tab-projects" class="tab-view hidden"></section>
     <section id="tab-calendar" class="tab-view hidden"></section>
     <section id="tab-kanban" class="tab-view hidden"></section>
@@ -1246,17 +1257,16 @@
           <label>Origem <input id="crm-source" placeholder="Instagram, indicacao, arquiteto..." /></label>
           <label>Interesse <input id="crm-interest" placeholder="Ambientes, tipo de projeto..." /></label>
           <label>Valor estimado <input id="crm-value" placeholder="R$ 0,00" /></label>
-          <label>Etiquetas <input id="crm-labels" placeholder="Ex: Urgente, Alto padrao" /></label>
-          <label>Cor das etiquetas <input id="crm-label-color" type="color" value="#8b6f47" /></label>
+          <label>Etiquetas <select id="crm-labels" multiple></select></label>
           <label>Prioridade <select id="crm-priority"><option>Alta</option><option selected>Media</option><option>Baixa</option></select></label>
           <label>Responsavel <select id="crm-owner"></select></label>
           <label>Funil <select id="crm-funnel"></select></label>
           <label>Etapa <select id="crm-stage"></select></label>
             </div>
           </details>
-          <label>Proxima acao <input id="crm-next-action-text" placeholder="Ex: Agendar briefing" required /></label>
-          <label>Data da proxima acao <input id="crm-next-action" type="date" required /></label>
-          <label>Responsavel pela acao <select id="crm-next-action-owner" required></select></label>
+          <label>Proxima tarefa <input id="crm-next-action-text" placeholder="Ex: Agendar briefing" /></label>
+          <label>Data da proxima tarefa <input id="crm-next-action" type="date" /></label>
+          <label>Responsavel pela tarefa <select id="crm-next-action-owner"></select></label>
         </div>
         <textarea id="crm-notes" placeholder="Observacoes comerciais, dores do cliente, preferencias e combinados"></textarea>
         <div class="actions">
@@ -1325,7 +1335,7 @@
       adminEditingSubstage: null,
       adminSubstageDraft: null,
       viewedStageIndexByProject: {},
-      filters: { query: "", calendarView: "timeline", calendarStage: "all", calendarOwner: "all", calendarStatus: "all", calendarPriority: "all", from: "", to: "", taskProject: "all", taskOwner: "all", taskStatus: "all", taskFrom: "", taskTo: "", crmQuery: "", crmStage: "all", crmOwner: "all", crmStatus: "all", crmFrom: "", crmTo: "" },
+      filters: { query: "", calendarView: "timeline", calendarStage: "all", calendarOwner: "all", calendarStatus: "all", calendarPriority: "all", from: "", to: "", taskProject: "all", taskOwner: "all", taskStatus: "all", taskFrom: "", taskTo: "", crmQuery: "", crmStage: "all", crmOwner: "all", crmStatus: "all", crmFrom: "", crmTo: "", commercialView: "list", commercialOwner: "all", commercialStatus: "all", commercialPriority: "all", commercialOpportunity: "all", commercialFrom: "", commercialTo: "" },
       users: [
         { id: "u1", name: "Administrador", username: "ADM", password: "12345", mustChangePassword: true, sessionVersion: 1, role: "Gestor ADM", permission: "ADM", active: true },
         { id: "u2", name: "Daniel", username: "daniel", password: "12345", mustChangePassword: false, sessionVersion: 1, role: "Tecnico", permission: "Operacional", active: true },
@@ -1382,7 +1392,19 @@
           { id: "lead1", funnelId: "crm-standard", client: "Fernanda Moraes", contact: "(11) 99999-0101", source: "Indicacao", interest: "Apartamento completo", stageId: "crm-proposta", ownerId: "u1", value: "R$ 96.000", priority: "Alta", status: "Aberta", nextActionDate: "2026-07-18", notes: "Cliente comparando acabamentos premium.", labels: [{ text: "Alto padrao", color: "#8b6f47" }], createdAt: "2026-07-08", enteredAt: "2026-07-08", updatedAt: "2026-07-12", events: [], history: [{ at: "2026-07-12T09:00:00", userId: "u1", text: "Proposta enviada para revisao da cliente." }] },
           { id: "lead2", funnelId: "crm-standard", client: "Arq. Paula Nunes", contact: "(11) 98888-2222", source: "Parceria arquitetura", interest: "Casa em Alphaville", stageId: "crm-briefing", ownerId: "u2", value: "R$ 180.000", priority: "Alta", status: "Aberta", nextActionDate: "2026-07-19", notes: "Possivel parceria recorrente.", labels: [{ text: "Parceiro", color: "#316fa6" }], createdAt: "2026-07-11", enteredAt: "2026-07-11", updatedAt: "2026-07-11", events: [], history: [{ at: "2026-07-11T14:20:00", userId: "u2", text: "Briefing inicial recebido via WhatsApp." }] },
           { id: "lead3", funnelId: "crm-standard", client: "Lucas Andrade", contact: "(11) 97777-3333", source: "Instagram", interest: "Cozinha planejada", stageId: "crm-contact", ownerId: "u3", value: "R$ 42.000", priority: "Media", status: "Aberta", nextActionDate: "2026-07-17", notes: "Aguardar medidas do ambiente.", labels: [{ text: "Instagram", color: "#2f7d5b" }], createdAt: "2026-07-15", enteredAt: "2026-07-15", updatedAt: "2026-07-15", events: [], history: [{ at: "2026-07-15T17:10:00", userId: "u3", text: "Primeiro contato realizado." }] }
-        ]
+        ],
+        tasks: [],
+        taskTemplates: [
+          { id: "ct-template-lead", stageId: "crm-lead", title: "Realizar primeiro contato", ownerId: "u1", daysAfterStage: 1, time: "10:00", priority: "Alta", required: true, active: true },
+          { id: "ct-template-proposal", stageId: "crm-proposta", title: "Acompanhar proposta enviada", ownerId: "u1", daysAfterStage: 2, time: "09:00", priority: "Alta", required: true, active: true }
+        ],
+        labels: [
+          { id: "cl-premium", name: "Alto padrao", color: "#8b6f47" },
+          { id: "cl-partner", name: "Parceiro", color: "#316fa6" },
+          { id: "cl-instagram", name: "Instagram", color: "#2f7d5b" }
+        ],
+        expandedLeadId: "",
+        chatNotifications: []
       },
       history: []
     };
@@ -1436,6 +1458,11 @@
       next.crm.activeFunnelId = next.crm.activeFunnelId || (next.crm.funnels[0] && next.crm.funnels[0].id) || "crm-standard";
       next.crm.stages = next.crm.stages && next.crm.stages.length ? next.crm.stages : clone(defaultState.crm.stages);
       next.crm.leads = next.crm.leads || [];
+      next.crm.tasks = next.crm.tasks || [];
+      next.crm.taskTemplates = next.crm.taskTemplates || [];
+      next.crm.labels = next.crm.labels || [];
+      next.crm.expandedLeadId = next.crm.expandedLeadId || "";
+      next.crm.chatNotifications = next.crm.chatNotifications || [];
       next.crm.selectedLeadId = next.crm.selectedLeadId || (next.crm.leads[0] && next.crm.leads[0].id) || "";
       next.crm.stages.forEach(stage => {
         stage.funnelId = stage.funnelId || next.crm.activeFunnelId || "crm-standard";
@@ -1463,7 +1490,48 @@
         lead.updatedAt = lead.updatedAt || lead.createdAt;
         lead.nextActionText = lead.nextActionText || lead.nextAction || "";
         lead.nextActionOwnerId = lead.nextActionOwnerId || lead.ownerId || "";
+        lead.chat = lead.chat || [];
         lead.pipeline = lead.pipeline || {};
+        (lead.labels || []).forEach(label => {
+          const name = String(label.text || label.name || "").trim();
+          if (name && !next.crm.labels.some(item => item.name.toLowerCase() === name.toLowerCase())) {
+            next.crm.labels.push({ id: uid("cl"), name, color: label.color || "#8b6f47" });
+          }
+        });
+        if (lead.nextActionDate && !next.crm.tasks.some(task => task.legacyNextActionFor === lead.id)) {
+          next.crm.tasks.push({
+            id: uid("ct"),
+            leadId: lead.id,
+            title: lead.nextActionText || "Proxima tarefa",
+            ownerId: lead.nextActionOwnerId || lead.ownerId || "",
+            dueDate: lead.nextActionDate,
+            dueTime: "09:00",
+            priority: lead.priority || "Media",
+            status: lead.nextActionDate < todayISO ? "Pendente" : "Pendente",
+            required: false,
+            automatic: false,
+            notes: "Migrado da antiga proxima acao.",
+            createdAt: nowISO(),
+            completedAt: "",
+            legacyNextActionFor: lead.id
+          });
+        }
+      });
+      next.crm.tasks.forEach(task => {
+        task.status = task.status || "Pendente";
+        task.priority = task.priority || "Media";
+        task.ownerId = task.ownerId || "";
+        task.dueDate = task.dueDate || todayISO;
+        task.dueTime = task.dueTime || "09:00";
+        task.required = !!task.required;
+        task.automatic = !!task.automatic;
+        task.createdAt = task.createdAt || nowISO();
+      });
+      next.crm.taskTemplates.forEach(template => {
+        template.daysAfterStage = Number(template.daysAfterStage || 1);
+        template.time = template.time || "09:00";
+        template.priority = template.priority || "Media";
+        template.active = template.active !== false;
       });
       next.history = next.history || [];
       next.activeTab = next.activeTab || "projects";
@@ -1886,7 +1954,7 @@
     }
 
     function formatMoney(value) {
-      return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(Number(value) || 0);
+      return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value) || 0);
     }
 
     function escapeHtml(value) {
@@ -2038,6 +2106,7 @@
       if (state.activeTab === "kanban") renderKanban();
       if (state.activeTab === "tasks") renderTasks();
       if (state.activeTab === "crm") renderCRM();
+      if (state.activeTab === "commercial") renderCommercialTasks();
       if (state.activeTab === "admin") renderAdmin();
       bindCommonEvents();
     }
@@ -2045,7 +2114,8 @@
     function renderHeader() {
       const user = currentUser();
       const contexts = {
-        crm: { eyebrow: "CRM Mirari", title: "Funil comercial", description: "Organize oportunidades e acompanhe cada proxima decisao." },
+        crm: { eyebrow: "CRM Mirari", title: "Funil comercial", description: "Organize oportunidades e acompanhe cada proxima tarefa." },
+        commercial: { eyebrow: "CRM Mirari", title: "Tarefas comerciais", description: "Controle atividades comerciais sem misturar com projetos." },
         projects: { eyebrow: "GP Mirari", title: "Projetos", description: "Visibilidade completa das etapas, responsaveis e entregas." },
         calendar: { eyebrow: "GP Mirari", title: "Calendario", description: "Planejamento visual de prazos, etapas e capacidade." },
         kanban: { eyebrow: "GP Mirari", title: "Kanban de projetos", description: "Uma leitura direta do fluxo operacional em andamento." },
@@ -2115,8 +2185,8 @@
         const lost = leads.filter(lead => lead.status === "Perdida").length;
         document.getElementById("metric-active-label").textContent = "Oportunidades abertas";
         document.getElementById("metric-late-label").textContent = "Valor no funil";
-        document.getElementById("metric-due-label").textContent = "Sem proxima acao";
-        document.getElementById("metric-progress-label").textContent = "Acao atrasada";
+        document.getElementById("metric-due-label").textContent = "Sem proxima tarefa";
+        document.getElementById("metric-progress-label").textContent = "Tarefa atrasada";
         document.getElementById("metric-active").textContent = visible.filter(lead => lead.status === "Aberta").length;
         document.getElementById("metric-late").textContent = formatMoney(stats.totalPipeline);
         document.getElementById("metric-due").textContent = stats.missingAction.length;
@@ -2590,6 +2660,192 @@
       `;
     }
 
+    function commercialTaskRows() {
+      const filters = state.filters;
+      return (state.crm.tasks || []).map(task => ({ task, lead: (state.crm.leads || []).find(lead => lead.id === task.leadId) || null, status: crmTaskStatus(task) })).filter(row => {
+        if (filters.commercialOwner !== "all" && row.task.ownerId !== filters.commercialOwner) return false;
+        if (filters.commercialStatus !== "all" && row.status !== filters.commercialStatus) return false;
+        if (filters.commercialPriority !== "all" && row.task.priority !== filters.commercialPriority) return false;
+        if (filters.commercialOpportunity !== "all" && row.task.leadId !== filters.commercialOpportunity) return false;
+        if (filters.commercialFrom && row.task.dueDate < filters.commercialFrom) return false;
+        if (filters.commercialTo && row.task.dueDate > filters.commercialTo) return false;
+        return true;
+      }).sort((a, b) => `${a.task.dueDate} ${a.task.dueTime || ""}`.localeCompare(`${b.task.dueDate} ${b.task.dueTime || ""}`));
+    }
+
+    function renderCommercialTasks() {
+      const rows = commercialTaskRows();
+      const late = rows.filter(row => row.status === "Atrasada").length;
+      const pending = rows.filter(row => row.status === "Pendente").length;
+      const done = rows.filter(row => row.status === "Concluida").length;
+      document.getElementById("tab-commercial").innerHTML = `
+        <section class="panel">
+          <div class="panel-header">
+            <div><p class="eyebrow">Central comercial</p><h2>Tarefas comerciais</h2></div>
+            <div class="actions">
+              <span class="pill">${pending} pendentes</span>
+              <span class="pill">${late} atrasadas</span>
+              <button class="secondary" id="toggle-commercial-view" type="button">${state.filters.commercialView === "calendar" ? "Ver lista" : "Ver calendario"}</button>
+              <button class="secondary" id="open-commercial-filter" type="button">Filtros</button>
+              <button class="primary" id="new-commercial-task" type="button">Nova tarefa</button>
+            </div>
+          </div>
+          <div class="metrics" style="margin:12px 0;">
+            <div class="metric"><span>Pendentes</span><strong>${pending}</strong></div>
+            <div class="metric"><span>Atrasadas</span><strong>${late}</strong></div>
+            <div class="metric"><span>Concluidas</span><strong>${done}</strong></div>
+            <div class="metric"><span>Total filtrado</span><strong>${rows.length}</strong></div>
+          </div>
+          ${state.filters.commercialView === "calendar" ? renderCommercialCalendar(rows) : `
+            <div class="task-list">
+              ${rows.map(({ task, lead, status }) => `
+                <article class="task-card">
+                  <div class="row-between">
+                    <div><strong>${escapeHtml(task.title)}</strong><br><small>${escapeHtml(lead ? `${lead.client} | ${lead.interest || "Oportunidade"}` : "Sem oportunidade")}</small></div>
+                    <span class="pill ${status === "Atrasada" ? "danger-text" : ""}">${escapeHtml(status)}</span>
+                  </div>
+                  <div class="subtask-meta">
+                    <span class="pill">${escapeHtml(userName(task.ownerId))}</span>
+                    <span class="pill">${formatDate(task.dueDate)} ${escapeHtml(task.dueTime || "")}</span>
+                    <span class="pill">${escapeHtml(task.priority)}</span>
+                    <span class="pill">${task.required ? "Obrigatoria" : "Opcional"}</span>
+                    <span class="pill">${task.automatic ? "Automatica" : "Manual"}</span>
+                  </div>
+                  ${task.notes ? `<small>${escapeHtml(task.notes)}</small>` : ""}
+                  <div class="actions">
+                    <button class="primary" data-complete-commercial-task="${task.id}" type="button" ${status === "Concluida" ? "disabled" : ""}>Concluir</button>
+                    <button class="secondary" data-reopen-commercial-task="${task.id}" type="button" ${status === "Concluida" ? "" : "disabled"}>Reabrir</button>
+                  </div>
+                </article>
+              `).join("") || "<small>Nenhuma tarefa comercial encontrada.</small>"}
+            </div>
+          `}
+        </section>
+      `;
+    }
+
+    function renderCommercialCalendar(rows) {
+      const reference = state.filters.commercialFrom || todayISO;
+      const base = new Date(reference + "T12:00:00");
+      const start = addDays(base.toISOString().slice(0, 10), -base.getDay());
+      const days = Array.from({ length: 35 }, (_, index) => addDays(start, index));
+      return `<div class="commercial-calendar">${days.map(date => {
+        const dayRows = rows.filter(row => row.task.dueDate === date);
+        return `<div class="commercial-day"><strong>${formatDate(date)}</strong>${dayRows.map(({ task, lead, status }) => `<span class="commercial-task-chip ${status === "Atrasada" ? "danger-text" : ""}">${escapeHtml(task.dueTime || "")} ${escapeHtml(task.title)}<br><small>${escapeHtml(lead ? lead.client : "-")}</small></span>`).join("")}</div>`;
+      }).join("")}</div>`;
+    }
+
+    function openCommercialTaskModal(leadId = "") {
+      const modal = document.createElement("div");
+      modal.className = "modal open";
+      modal.innerHTML = `<div class="modal-box"><div class="panel-header"><div><p class="eyebrow">CRM Mirari</p><h2>Nova tarefa comercial</h2></div><button class="ghost" type="button" data-close-commercial-task>Fechar</button></div>
+        <form class="form-box" id="commercial-task-form">
+          <div class="form-grid">
+            <label>Oportunidade <select id="commercial-task-lead">${(state.crm.leads || []).map(lead => option(lead.id, `${lead.client} | ${lead.interest || "Oportunidade"}`, leadId || state.crm.selectedLeadId)).join("")}</select></label>
+            <label>Tarefa <input id="commercial-task-title" required placeholder="Ex: Ligar para retorno da proposta" /></label>
+            <label>Responsavel <select id="commercial-task-owner">${state.users.filter(user => user.active).map(user => option(user.id, user.name, state.sessionUserId || "u1")).join("")}</select></label>
+            <label>Data <input id="commercial-task-date" type="date" value="${todayISO}" required /></label>
+            <label>Horario <input id="commercial-task-time" type="time" value="09:00" /></label>
+            <label>Prioridade <select id="commercial-task-priority">${["Alta", "Media", "Baixa"].map(value => option(value, value, "Media")).join("")}</select></label>
+            <label>Obrigatoria <select id="commercial-task-required">${option("false", "Nao", "false")}${option("true", "Sim", "false")}</select></label>
+            <label>Status <select id="commercial-task-status">${["Pendente", "Concluida"].map(value => option(value, value, "Pendente")).join("")}</select></label>
+          </div>
+          <textarea id="commercial-task-notes" placeholder="Observacoes internas"></textarea>
+          <div class="actions"><button class="secondary" type="button" data-close-commercial-task>Cancelar</button><button class="primary" type="submit">Salvar tarefa</button></div>
+        </form></div>`;
+      document.body.appendChild(modal);
+      modal.querySelectorAll("[data-close-commercial-task]").forEach(button => button.onclick = () => modal.remove());
+      modal.querySelector("#commercial-task-form").onsubmit = event => {
+        event.preventDefault();
+        const task = {
+          id: uid("ct"),
+          leadId: document.getElementById("commercial-task-lead").value,
+          title: document.getElementById("commercial-task-title").value.trim(),
+          ownerId: document.getElementById("commercial-task-owner").value,
+          dueDate: document.getElementById("commercial-task-date").value,
+          dueTime: document.getElementById("commercial-task-time").value || "09:00",
+          priority: document.getElementById("commercial-task-priority").value,
+          status: document.getElementById("commercial-task-status").value,
+          required: document.getElementById("commercial-task-required").value === "true",
+          automatic: false,
+          notes: document.getElementById("commercial-task-notes").value.trim(),
+          createdAt: nowISO(),
+          completedAt: document.getElementById("commercial-task-status").value === "Concluida" ? nowISO() : ""
+        };
+        state.crm.tasks.push(task);
+        const lead = (state.crm.leads || []).find(item => item.id === task.leadId);
+        if (lead) {
+          lead.history.push({ at: nowISO(), userId: currentUser() ? currentUser().id : "", text: `Tarefa comercial adicionada: ${task.title}.` });
+          lead.events.push({ at: nowISO(), type: "commercial_task_created", taskId: task.id, userId: currentUser() ? currentUser().id : "" });
+        }
+        modal.remove();
+        toast("Tarefa comercial criada.");
+        render();
+      };
+    }
+
+    function openCommercialFilterModal() {
+      const modal = document.createElement("div");
+      modal.className = "modal open";
+      modal.innerHTML = `<div class="modal-box"><div class="panel-header"><div><p class="eyebrow">Filtros</p><h2>Tarefas comerciais</h2></div><button class="ghost" type="button" data-close-commercial-filter>Fechar</button></div>
+        <div class="form-box">
+          <div class="grid-3">
+            <label>Colaborador <select id="commercial-owner-filter">${option("all", "Todos", state.filters.commercialOwner)}${state.users.map(user => option(user.id, user.name, state.filters.commercialOwner)).join("")}</select></label>
+            <label>Oportunidade <select id="commercial-opportunity-filter">${option("all", "Todas", state.filters.commercialOpportunity)}${(state.crm.leads || []).map(lead => option(lead.id, lead.client, state.filters.commercialOpportunity)).join("")}</select></label>
+            <label>Status <select id="commercial-status-filter">${["all", "Pendente", "Atrasada", "Concluida"].map(value => option(value, value === "all" ? "Todos" : value, state.filters.commercialStatus)).join("")}</select></label>
+          </div>
+          <div class="grid-3">
+            <label>Prioridade <select id="commercial-priority-filter">${["all", "Alta", "Media", "Baixa"].map(value => option(value, value === "all" ? "Todas" : value, state.filters.commercialPriority)).join("")}</select></label>
+            <label>De <input id="commercial-from-filter" type="date" value="${escapeHtml(state.filters.commercialFrom)}" /></label>
+            <label>Ate <input id="commercial-to-filter" type="date" value="${escapeHtml(state.filters.commercialTo)}" /></label>
+          </div>
+          <div class="actions"><button class="secondary" id="clear-commercial-filters" type="button">Limpar</button><button class="primary" id="apply-commercial-filters" type="button">Aplicar filtros</button></div>
+        </div></div>`;
+      document.body.appendChild(modal);
+      modal.querySelectorAll("[data-close-commercial-filter]").forEach(button => button.onclick = () => modal.remove());
+      modal.querySelector("#apply-commercial-filters").onclick = () => {
+        state.filters.commercialOwner = document.getElementById("commercial-owner-filter").value;
+        state.filters.commercialOpportunity = document.getElementById("commercial-opportunity-filter").value;
+        state.filters.commercialStatus = document.getElementById("commercial-status-filter").value;
+        state.filters.commercialPriority = document.getElementById("commercial-priority-filter").value;
+        state.filters.commercialFrom = document.getElementById("commercial-from-filter").value;
+        state.filters.commercialTo = document.getElementById("commercial-to-filter").value;
+        modal.remove();
+        render();
+      };
+      modal.querySelector("#clear-commercial-filters").onclick = () => {
+        Object.assign(state.filters, { commercialOwner: "all", commercialStatus: "all", commercialPriority: "all", commercialOpportunity: "all", commercialFrom: "", commercialTo: "" });
+        modal.remove();
+        render();
+      };
+    }
+
+    function openCRMCardConfig(leadId) {
+      const lead = (state.crm.leads || []).find(item => item.id === leadId);
+      if (!lead) return;
+      const modal = document.createElement("div");
+      modal.className = "modal open";
+      modal.innerHTML = `<div class="modal-box"><div class="panel-header"><div><p class="eyebrow">Configuracoes do cartao</p><h2>${escapeHtml(lead.client)}</h2></div><button class="ghost" type="button" data-close-card-config>Fechar</button></div>
+        <div class="form-box">
+          <div class="subtask-meta">
+            <span class="pill">Contato: ${escapeHtml(lead.contact || "-")}</span>
+            <span class="pill">Origem: ${escapeHtml(lead.source || "-")}</span>
+            <span class="pill">Probabilidade: ${Number(crmStage(lead.stageId).probability || 0)}%</span>
+            <span class="pill">Entrada: ${formatDate(lead.enteredAt || lead.createdAt)}</span>
+            <span class="pill">Ciclo: ${crmPipelineMetrics(lead).totalCycle} dias</span>
+          </div>
+          <p>${escapeHtml(lead.notes || "Sem observacoes.")}</p>
+          <div class="actions">
+            <button class="primary" id="card-config-expand" type="button">Abrir detalhes</button>
+            <button class="secondary" id="card-config-task" type="button">Nova tarefa</button>
+          </div>
+        </div></div>`;
+      document.body.appendChild(modal);
+      modal.querySelectorAll("[data-close-card-config]").forEach(button => button.onclick = () => modal.remove());
+      modal.querySelector("#card-config-expand").onclick = () => { state.crm.selectedLeadId = lead.id; state.crm.expandedLeadId = lead.id; modal.remove(); render(); };
+      modal.querySelector("#card-config-task").onclick = () => { modal.remove(); openCommercialTaskModal(lead.id); };
+    }
+
     function crmStage(stageId) {
       return (state.crm.stages || []).find(stage => stage.id === stageId) || (state.crm.stages || [])[0] || {};
     }
@@ -2690,6 +2946,7 @@
         lead.lastMovementAt = at;
         lead.events.push({ at, type: "stage_changed", from: oldStageId, to: newStageId, userId: currentUser() ? currentUser().id : "" });
         lead.history.push({ at, userId: currentUser() ? currentUser().id : "", text: `Etapa alterada de ${oldStage.name || "-"} para ${newStage.name || "-"}.` });
+        crmEnsureAutomaticTasks(lead, newStageId, at);
       }
     }
 
@@ -2706,11 +2963,80 @@
       };
     }
 
-    function crmActionState(lead) {
+    function crmTaskStatus(task) {
+      if (!task) return "";
+      if (task.status === "Concluida") return "Concluida";
+      if (task.dueDate < todayISO) return "Atrasada";
+      return "Pendente";
+    }
+
+    function crmTasksForLead(leadId, includeDone = false) {
+      return (state.crm.tasks || [])
+        .filter(task => task.leadId === leadId && (includeDone || task.status !== "Concluida"))
+        .sort((a, b) => `${a.dueDate} ${a.dueTime || ""}`.localeCompare(`${b.dueDate} ${b.dueTime || ""}`));
+    }
+
+    function crmNextTask(lead) {
+      return crmTasksForLead(lead.id).find(task => task.status !== "Concluida") || null;
+    }
+
+    function crmTaskState(lead) {
       if (lead.status !== "Aberta") return "";
-      if (!lead.nextActionText || !lead.nextActionDate || !lead.nextActionOwnerId) return "missing";
-      if (lead.nextActionDate < todayISO) return "late";
+      const task = crmNextTask(lead);
+      if (!task) return "missing";
+      if (crmTaskStatus(task) === "Atrasada") return "late";
       return "ok";
+    }
+
+    function crmEnsureAutomaticTasks(lead, stageId, at = nowISO()) {
+      if (!lead) return;
+      (state.crm.taskTemplates || []).filter(template => template.active !== false && template.stageId === stageId).forEach(template => {
+        const exists = (state.crm.tasks || []).some(task => task.leadId === lead.id && task.templateId === template.id && task.stageId === stageId && task.status !== "Cancelada");
+        if (exists) return;
+        const dueDate = addDays(at.slice(0, 10), Number(template.daysAfterStage || 1));
+        state.crm.tasks.push({
+          id: uid("ct"),
+          leadId: lead.id,
+          stageId,
+          templateId: template.id,
+          title: template.title,
+          ownerId: template.ownerId || lead.ownerId,
+          dueDate,
+          dueTime: template.time || "09:00",
+          priority: template.priority || lead.priority || "Media",
+          status: "Pendente",
+          required: !!template.required,
+          automatic: true,
+          notes: "Tarefa automatica criada pela etapa do funil.",
+          createdAt: at,
+          completedAt: ""
+        });
+        lead.events.push({ at, type: "commercial_task_auto_created", taskTitle: template.title, stageId, userId: currentUser() ? currentUser().id : "" });
+        lead.history.push({ at, userId: currentUser() ? currentUser().id : "", text: `Tarefa comercial automatica criada: ${template.title}.` });
+      });
+    }
+
+    function crmLabelsFromSelection(selectId) {
+      const select = document.getElementById(selectId);
+      if (!select) return [];
+      return [...select.selectedOptions].map(option => {
+        const label = (state.crm.labels || []).find(item => item.id === option.value);
+        return label ? { id: label.id, text: label.name, color: label.color } : null;
+      }).filter(Boolean);
+    }
+
+    function crmLabelOptions(selectedLabels = []) {
+      const selectedIds = selectedLabels.map(label => label.id).filter(Boolean);
+      const selectedNames = selectedLabels.map(label => String(label.text || label.name || "").toLowerCase());
+      return (state.crm.labels || []).map(label => {
+        const selected = selectedIds.includes(label.id) || selectedNames.includes(String(label.name || "").toLowerCase());
+        return `<option value="${escapeHtml(label.id)}" ${selected ? "selected" : ""}>${escapeHtml(label.name)}</option>`;
+      }).join("");
+    }
+
+    function crmMentionedUsers(text) {
+      const lower = String(text || "").toLowerCase();
+      return state.users.filter(user => lower.includes("@" + String(user.name || user.username || "").toLowerCase())).map(user => user.id);
     }
 
     function crmDashboardStats(leads = crmVisibleLeads()) {
@@ -2718,8 +3044,8 @@
       const won = leads.filter(lead => lead.status === "Ganha");
       const totalPipeline = open.reduce((sum, lead) => sum + moneyNumber(lead.value), 0);
       const weightedPipeline = open.reduce((sum, lead) => sum + moneyNumber(lead.value) * (Number(crmStage(lead.stageId).probability || 0) / 100), 0);
-      const missingAction = open.filter(lead => crmActionState(lead) === "missing");
-      const lateAction = open.filter(lead => crmActionState(lead) === "late");
+      const missingAction = open.filter(lead => crmTaskState(lead) === "missing");
+      const lateAction = open.filter(lead => crmTaskState(lead) === "late");
       const avgClose = won.length ? Math.round(won.reduce((sum, lead) => sum + crmPipelineMetrics(lead).totalCycle, 0) / won.length) : 0;
       const stageRows = activeCrmStages().map(stage => {
         const stageLeads = leads.filter(lead => lead.stageId === stage.id);
@@ -2750,24 +3076,24 @@
 
     function crmCard(lead) {
       const stage = crmStage(lead.stageId);
-      const actionState = crmActionState(lead);
-      const actionLabel = actionState === "missing" ? "Sem proxima acao" : actionState === "late" ? "Acao atrasada" : `Proxima acao: ${formatDate(lead.nextActionDate)}`;
+      const taskState = crmTaskState(lead);
+      const nextTask = crmNextTask(lead);
+      const taskLabel = taskState === "missing" ? "Sem proxima tarefa" : taskState === "late" ? "Tarefa atrasada" : `${nextTask.title} | ${formatDate(nextTask.dueDate)} ${nextTask.dueTime || ""}`;
       return `
-        <button class="crm-card ${lead.id === state.crm.selectedLeadId ? "selected" : ""}" type="button" data-crm-lead="${lead.id}">
+        <button class="crm-card ${lead.id === state.crm.selectedLeadId ? "selected" : ""} ${taskState === "missing" ? "crm-card-alert" : ""} ${taskState === "late" ? "crm-card-late" : ""}" type="button" data-crm-lead="${lead.id}">
+          <span class="crm-card-config" data-crm-card-config="${lead.id}" title="Configuracoes">⋯</span>
           <div class="crm-card-top">
             <div>
               <strong>${escapeHtml(lead.client)}</strong>
-              <small>${escapeHtml(lead.interest || "-")}</small>
+              <small>${escapeHtml(lead.interest || "Oportunidade")}</small>
             </div>
-            <span class="pill">${escapeHtml(lead.priority || "Media")}</span>
           </div>
           <div class="subtask-meta">
-            <span class="pill">${escapeHtml(lead.value || "Sem valor")}</span>
+            <span class="pill">${formatMoney(moneyNumber(lead.closedValue || lead.value))}</span>
             <span class="pill">${escapeHtml(userName(lead.ownerId))}</span>
-            <span class="pill">${stage.probability || 0}%</span>
           </div>
           ${lead.labels && lead.labels.length ? `<div class="crm-labels">${lead.labels.map(label => `<span class="crm-label" style="background:${escapeHtml(label.color || "#8b6f47")}">${escapeHtml(label.text)}</span>`).join("")}</div>` : ""}
-          <small class="${actionState === "late" ? "danger-text" : actionState === "missing" ? "warning-text" : ""}">${escapeHtml(actionLabel)}${lead.nextActionText ? ` | ${escapeHtml(lead.nextActionText)}` : ""}</small>
+          <span class="crm-next-task ${taskState === "late" ? "danger-text" : taskState === "missing" ? "warning-text" : ""}">${escapeHtml(taskLabel)}</span>
         </button>
       `;
     }
@@ -2795,8 +3121,8 @@
           <div class="metrics crm-dashboard" style="margin-bottom:12px;">
             <div class="metric"><span>Valor ponderado</span><strong>${formatMoney(stats.weightedPipeline)}</strong></div>
             <div class="metric"><span>Tempo medio fechamento</span><strong>${stats.avgClose} dias</strong></div>
-            <div class="metric"><span>Sem proxima acao</span><strong>${stats.missingAction.length}</strong></div>
-            <div class="metric"><span>Acao vencida</span><strong>${stats.lateAction.length}</strong></div>
+            <div class="metric"><span>Sem proxima tarefa</span><strong>${stats.missingAction.length}</strong></div>
+            <div class="metric"><span>Tarefa vencida</span><strong>${stats.lateAction.length}</strong></div>
           </div>
           <div class="panel soft-panel crm-dashboard-detail" style="margin-bottom:12px;">
             <div class="section-title"><div><p class="eyebrow">Dashboard comercial</p><h2>Indicadores do funil</h2></div><span class="pill">${formatMoney(stats.totalPipeline)}</span></div>
@@ -2832,16 +3158,17 @@
                   <span class="pill">${escapeHtml(crmStage(lead.stageId).name || "-")}</span>
                 </div>
                 <div class="subtask-meta">
-                  <span class="pill">${escapeHtml(lead.closedValue || lead.value || "Sem valor")}</span>
+                  <span class="pill">${formatMoney(moneyNumber(lead.closedValue || lead.value))}</span>
                   <span class="pill">${escapeHtml(userName(lead.ownerId))}</span>
                   <span class="pill">${escapeHtml(lead.status)}</span>
                   <span class="pill">Contato ${formatDate((lead.crmDates && lead.crmDates.firstContact) || lead.createdAt)}</span>
                   <span class="pill">Etapa ${crmPipelineMetrics(lead).inCurrentStage} dias</span>
                   <span class="pill">Sem movimento ${crmPipelineMetrics(lead).withoutMovement} dias</span>
-                  <span class="pill ${crmActionState(lead) === "late" ? "danger-text" : crmActionState(lead) === "missing" ? "warning-text" : ""}">Acao ${formatDate(lead.nextActionDate)}</span>
+                  <span class="pill ${crmTaskState(lead) === "late" ? "danger-text" : crmTaskState(lead) === "missing" ? "warning-text" : ""}">${crmNextTask(lead) ? `Tarefa ${formatDate(crmNextTask(lead).dueDate)}` : "Sem proxima tarefa"}</span>
                 </div>
                 ${lead.labels && lead.labels.length ? `<div class="crm-labels">${lead.labels.map(label => `<span class="crm-label" style="background:${escapeHtml(label.color || "#8b6f47")}">${escapeHtml(label.text)}</span>`).join("")}</div>` : ""}
                 <p>${escapeHtml(lead.notes || "Sem observacoes.")}</p>
+                ${state.crm.expandedLeadId === lead.id ? `
                 <div class="form-grid">
                   <label>Cliente <input id="crm-detail-client" value="${escapeHtml(lead.client || "")}" /></label>
                   <label>Valor estimado <input id="crm-detail-value" value="${escapeHtml(lead.value || "")}" placeholder="R$ 0,00" /></label>
@@ -2852,11 +3179,7 @@
                   <label>Etapa <select id="crm-detail-stage">${activeStages.map(stage => option(stage.id, stage.name, lead.stageId)).join("")}</select></label>
                   <label>Status <select id="crm-detail-status">${["Aberta", "Pausada"].map(value => option(value, value, lead.status)).join("")}</select></label>
                   <label>Responsavel <select id="crm-detail-owner">${state.users.filter(user => user.active).map(user => option(user.id, user.name, lead.ownerId)).join("")}</select></label>
-                  <label>Proxima acao <input id="crm-detail-next-text" value="${escapeHtml(lead.nextActionText || "")}" placeholder="Ex: Ligar para alinhar briefing" /></label>
-                  <label>Data da proxima acao <input id="crm-detail-next" type="date" value="${escapeHtml(lead.nextActionDate || "")}" /></label>
-                  <label>Responsavel pela acao <select id="crm-detail-next-owner">${state.users.filter(user => user.active).map(user => option(user.id, user.name, lead.nextActionOwnerId || lead.ownerId)).join("")}</select></label>
-                  <label>Etiquetas <input id="crm-detail-labels" value="${escapeHtml((lead.labels || []).map(label => label.text).join(", "))}" /></label>
-                  <label>Cor das etiquetas <input id="crm-detail-label-color" type="color" value="${escapeHtml((lead.labels && lead.labels[0] && lead.labels[0].color) || "#8b6f47")}" /></label>
+                  <label>Etiquetas <select id="crm-detail-labels" multiple>${crmLabelOptions(lead.labels || [])}</select></label>
                 </div>
                 <div class="subtask-meta">
                   ${Object.entries(crmDateLabels).filter(([key]) => key !== "firstContact").map(([key, label]) => `<span class="pill">${label}: ${formatDate(lead.crmDates && lead.crmDates[key])}</span>`).join("")}
@@ -2869,19 +3192,31 @@
                 </div>
                 <textarea id="crm-detail-notes" placeholder="Observacoes da oportunidade">${escapeHtml(lead.notes || "")}</textarea>
                 <textarea id="crm-detail-note" placeholder="Adicionar comentario ou registro comercial"></textarea>
+                <div class="task-list">
+                  ${crmTasksForLead(lead.id, true).map(task => `<article class="task-card"><div class="row-between"><strong>${escapeHtml(task.title)}</strong><span class="pill ${crmTaskStatus(task) === "Atrasada" ? "danger-text" : ""}">${escapeHtml(crmTaskStatus(task))}</span></div><div class="subtask-meta"><span class="pill">${escapeHtml(userName(task.ownerId))}</span><span class="pill">${formatDate(task.dueDate)} ${escapeHtml(task.dueTime || "")}</span><span class="pill">${escapeHtml(task.priority)}</span></div></article>`).join("") || "<small>Nenhuma tarefa comercial vinculada.</small>"}
+                </div>
+                <article class="panel soft-panel">
+                  <div class="section-title"><div><p class="eyebrow">Chat interno</p><h2>Comentarios da oportunidade</h2></div></div>
+                  <div class="crm-chat-list">${(lead.chat || []).map(message => `<div class="chat-message"><div class="row-between"><strong>${escapeHtml(userName(message.userId) || message.user || "Equipe")}</strong><small>${formatDateTime(message.at)}</small></div><p>${escapeHtml(message.text)}</p></div>`).join("") || "<small>Sem comentarios internos.</small>"}</div>
+                  <form class="grid-2" id="crm-chat-form"><label>Comentario <input id="crm-chat-message" placeholder="Use @Nome para mencionar um colaborador" required /></label><button class="primary" type="submit">Enviar comentario</button></form>
+                </article>
                 <div class="actions">
                   <button class="primary" id="save-crm-lead" type="button">Salvar alteracoes</button>
+                  <button class="secondary" id="add-crm-task" type="button">Nova tarefa</button>
                   <button class="secondary" id="mark-crm-won" type="button">Negocio fechado</button>
                   <button class="danger" id="mark-crm-lost" type="button">Negocio perdido</button>
                   <button class="danger" id="remove-crm-lead" type="button">Remover</button>
                 </div>
+                ` : `<div class="crm-detail-collapsed"><p class="muted">Detalhes, tarefas, chat e edicao ficam recolhidos para manter o funil limpo.</p><button class="secondary" id="expand-crm-lead" type="button">Expandir</button></div>`}
               </article>
+              ${state.crm.expandedLeadId === lead.id ? `
               <article class="panel soft-panel">
                 <div class="section-title"><div><p class="eyebrow">Historico comercial</p><h2>Eventos</h2></div></div>
                 <div class="history-list">
                   ${(lead.history || []).slice().reverse().map(item => `<div class="history-item"><strong>${formatDateTime(item.at)}</strong><br><small>${escapeHtml(userName(item.userId))}: ${escapeHtml(item.text)}</small></div>`).join("") || "<small>Nenhuma interacao registrada.</small>"}
                 </div>
               </article>
+              ` : ""}
             </div>
           ` : "<p class='muted'>Cadastre ou selecione uma oportunidade para ver detalhes.</p>"}
         </section>
@@ -2946,6 +3281,32 @@
             </div>
           `).join("") || "<small>Nenhuma etapa neste funil.</small>"}
         </div>
+        <form class="form-box" id="crm-label-form">
+          <div class="panel-header"><div><p class="eyebrow">Etiquetas</p><h3>Cadastro ilimitado</h3></div></div>
+          <div class="crm-admin-row">
+            <label>Nome <input id="crm-label-name" placeholder="Ex: Urgente" ${!isAdmin() ? "disabled" : ""} required /></label>
+            <label>Cor <input id="crm-label-color-new" type="color" value="#8b6f47" ${!isAdmin() ? "disabled" : ""} /></label>
+            <button class="primary" ${!isAdmin() ? "disabled" : ""} type="submit">Adicionar etiqueta</button>
+          </div>
+          <div class="stage-list">
+            ${(state.crm.labels || []).map(label => `<div class="stage-admin-card"><div class="crm-admin-row"><label>Nome <input data-crm-label-name="${label.id}" value="${escapeHtml(label.name)}" ${!isAdmin() ? "disabled" : ""} /></label><label>Cor <input data-crm-label-color="${label.id}" type="color" value="${escapeHtml(label.color || "#8b6f47")}" ${!isAdmin() ? "disabled" : ""} /></label><button class="secondary" data-save-crm-label="${label.id}" ${!isAdmin() ? "disabled" : ""} type="button">Salvar</button><button class="danger" data-remove-crm-label="${label.id}" ${!isAdmin() ? "disabled" : ""} type="button">Excluir</button></div></div>`).join("") || "<small>Nenhuma etiqueta cadastrada.</small>"}
+          </div>
+        </form>
+        <form class="form-box" id="crm-task-template-form">
+          <div class="panel-header"><div><p class="eyebrow">Automacoes</p><h3>Tarefas automaticas por etapa</h3></div></div>
+          <div class="crm-admin-row">
+            <label>Etapa <select id="crm-template-stage" ${!isAdmin() ? "disabled" : ""}>${activeStages.map(stage => option(stage.id, stage.name, "")).join("")}</select></label>
+            <label>Tarefa <input id="crm-template-title" placeholder="Ex: Retornar cliente" ${!isAdmin() ? "disabled" : ""} required /></label>
+            <label>Responsavel <select id="crm-template-owner" ${!isAdmin() ? "disabled" : ""}>${state.users.filter(user => user.active).map(user => option(user.id, user.name, state.sessionUserId || "u1")).join("")}</select></label>
+            <label>Dias apos entrada <input id="crm-template-days" type="number" min="0" value="1" ${!isAdmin() ? "disabled" : ""} /></label>
+            <label>Horario <input id="crm-template-time" type="time" value="09:00" ${!isAdmin() ? "disabled" : ""} /></label>
+            <label>Prioridade <select id="crm-template-priority" ${!isAdmin() ? "disabled" : ""}>${["Alta", "Media", "Baixa"].map(value => option(value, value, "Media")).join("")}</select></label>
+            <button class="primary" ${!isAdmin() ? "disabled" : ""} type="submit">Adicionar tarefa</button>
+          </div>
+          <div class="stage-list">
+            ${(state.crm.taskTemplates || []).map(template => `<div class="stage-admin-card"><div class="crm-admin-row"><strong>${escapeHtml(template.title)}</strong><span class="pill">${escapeHtml((crmStage(template.stageId) || {}).name || "-")}</span><span class="pill">${escapeHtml(userName(template.ownerId))}</span><span class="pill">${template.daysAfterStage}d | ${escapeHtml(template.time || "09:00")}</span><button class="danger" data-remove-crm-template="${template.id}" ${!isAdmin() ? "disabled" : ""} type="button">Excluir</button></div></div>`).join("") || "<small>Nenhuma tarefa automatica configurada.</small>"}
+          </div>
+        </form>
       `;
     }
 
@@ -2957,9 +3318,10 @@
       document.getElementById("crm-client-existing").innerHTML = option("", "Criar novo cliente", "") + (state.clients || []).filter(client => client.status !== "archived").map(client => option(client.id, client.name, "")).join("");
       document.getElementById("crm-funnel").innerHTML = funnels.map(funnel => option(funnel.id, funnel.name, state.crm.activeFunnelId)).join("");
       document.getElementById("crm-stage").innerHTML = activeStages.map(stage => option(stage.id, stage.name, activeStages[0] && activeStages[0].id)).join("");
+      document.getElementById("crm-labels").innerHTML = crmLabelOptions([]);
       document.getElementById("crm-first-contact").value = todayISO;
       document.getElementById("crm-next-action-text").value = "";
-      document.getElementById("crm-next-action").value = todayISO;
+      document.getElementById("crm-next-action").value = "";
     }
 
     function crmLabelsFromInput(value, color) {
@@ -3258,6 +3620,7 @@
       if (state.activeTab === "kanban") bindKanbanEvents();
       if (state.activeTab === "tasks") bindTaskEvents();
       if (state.activeTab === "crm") bindCRMEvents();
+      if (state.activeTab === "commercial") bindCommercialTaskEvents();
       if (state.activeTab === "admin") bindAdminEvents();
     }
 
@@ -3466,11 +3829,67 @@
       };
     }
 
+    function bindCommercialTaskEvents() {
+      const toggle = document.getElementById("toggle-commercial-view");
+      if (toggle) toggle.onclick = () => {
+        state.filters.commercialView = state.filters.commercialView === "calendar" ? "list" : "calendar";
+        render();
+      };
+      const openFilter = document.getElementById("open-commercial-filter");
+      if (openFilter) openFilter.onclick = openCommercialFilterModal;
+      const add = document.getElementById("new-commercial-task");
+      if (add) add.onclick = () => openCommercialTaskModal();
+      document.querySelectorAll("[data-complete-commercial-task]").forEach(button => button.onclick = () => {
+        const task = (state.crm.tasks || []).find(item => item.id === button.dataset.completeCommercialTask);
+        if (!task || !confirm("Concluir tarefa comercial?")) return;
+        task.status = "Concluida";
+        task.completedAt = nowISO();
+        toast("Tarefa comercial concluida.");
+        render();
+      });
+      document.querySelectorAll("[data-reopen-commercial-task]").forEach(button => button.onclick = () => {
+        const task = (state.crm.tasks || []).find(item => item.id === button.dataset.reopenCommercialTask);
+        if (!task) return;
+        task.status = "Pendente";
+        task.completedAt = "";
+        toast("Tarefa comercial reaberta.");
+        render();
+      });
+    }
+
     function bindCRMEvents() {
       document.querySelectorAll("[data-crm-lead]").forEach(button => button.onclick = () => {
         state.crm.selectedLeadId = button.dataset.crmLead;
         render();
       });
+      document.querySelectorAll("[data-crm-card-config]").forEach(button => button.onclick = event => {
+        event.stopPropagation();
+        openCRMCardConfig(button.dataset.crmCardConfig);
+      });
+      const expandLead = document.getElementById("expand-crm-lead");
+      if (expandLead) expandLead.onclick = () => {
+        const lead = selectedLead();
+        state.crm.expandedLeadId = lead ? lead.id : "";
+        render();
+      };
+      const addTask = document.getElementById("add-crm-task");
+      if (addTask) addTask.onclick = () => openCommercialTaskModal(state.crm.selectedLeadId);
+      const chatForm = document.getElementById("crm-chat-form");
+      if (chatForm) chatForm.onsubmit = event => {
+        event.preventDefault();
+        const lead = selectedLead();
+        const input = document.getElementById("crm-chat-message");
+        const text = input.value.trim();
+        if (!lead || !text) return;
+        const at = nowISO();
+        const mentions = crmMentionedUsers(text);
+        lead.chat = lead.chat || [];
+        lead.chat.unshift({ id: uid("cc"), at, userId: currentUser() ? currentUser().id : "", text, mentions });
+        lead.history.push({ at, userId: currentUser() ? currentUser().id : "", text: `Comentario interno adicionado${mentions.length ? " com mencao" : ""}.` });
+        mentions.forEach(userId => state.crm.chatNotifications.push({ id: uid("cn"), leadId: lead.id, userId, at, read: false, text }));
+        toast(mentions.length ? "Comentario enviado e mencao registrada." : "Comentario enviado.");
+        render();
+      };
       const activeFunnel = document.getElementById("crm-active-funnel");
       if (activeFunnel) activeFunnel.onchange = () => {
         state.crm.activeFunnelId = activeFunnel.value;
@@ -3505,17 +3924,12 @@
       };
       if (form) form.onsubmit = event => {
         event.preventDefault();
-        const labelColor = document.getElementById("crm-label-color").value || "#8b6f47";
         const selectedClient = (state.clients || []).find(client => client.id === document.getElementById("crm-client-existing").value);
         const clientName = (selectedClient ? selectedClient.name : document.getElementById("crm-client").value.trim());
         const firstContactDate = document.getElementById("crm-first-contact").value || todayISO;
         const nextActionText = document.getElementById("crm-next-action-text").value.trim();
         const nextActionDate = document.getElementById("crm-next-action").value;
         const nextActionOwnerId = document.getElementById("crm-next-action-owner").value || document.getElementById("crm-owner").value;
-        if (!nextActionText || !nextActionDate || !nextActionOwnerId) {
-          toast("Informe proxima acao, data e responsavel.");
-          return;
-        }
         const crmClient = selectedClient || crmFindOrCreateClient(clientName, { contact: document.getElementById("crm-contact").value.trim(), source: "CRM" });
         const selectedStageId = document.getElementById("crm-stage").value;
         const createdAt = nowISO();
@@ -3529,13 +3943,13 @@
           funnelId: document.getElementById("crm-funnel").value || state.crm.activeFunnelId,
           stageId: document.getElementById("crm-stage").value,
           ownerId: document.getElementById("crm-owner").value,
-          value: document.getElementById("crm-value").value.trim(),
-          labels: crmLabelsFromInput(document.getElementById("crm-labels").value, labelColor),
+          value: document.getElementById("crm-value").value.trim() ? formatMoney(moneyNumber(document.getElementById("crm-value").value)) : "",
+          labels: crmLabelsFromSelection("crm-labels"),
           priority: document.getElementById("crm-priority").value,
           status: "Aberta",
-          nextActionText,
-          nextActionDate,
-          nextActionOwnerId,
+          nextActionText: "",
+          nextActionDate: "",
+          nextActionOwnerId: "",
           notes: document.getElementById("crm-notes").value.trim(),
           createdAt: todayISO,
           enteredAt: firstContactDate,
@@ -3548,6 +3962,9 @@
         };
         crmTouchStageAutomation(lead, "", lead.stageId, createdAt);
         state.crm.leads.push(lead);
+        if (nextActionText && nextActionDate && nextActionOwnerId) {
+          state.crm.tasks.push({ id: uid("ct"), leadId: lead.id, title: nextActionText, ownerId: nextActionOwnerId, dueDate: nextActionDate, dueTime: "09:00", priority: lead.priority, status: "Pendente", required: false, automatic: false, notes: "Tarefa inicial da oportunidade.", createdAt, completedAt: "" });
+        }
         state.crm.selectedLeadId = lead.id;
         state.crm.activeFunnelId = lead.funnelId;
         closeCRMLeadModal();
@@ -3568,9 +3985,7 @@
           value: lead.value || "",
           notes: lead.notes || "",
           firstContact: (lead.crmDates && lead.crmDates.firstContact) || lead.createdAt || "",
-          nextActionText: lead.nextActionText || "",
-          nextActionDate: lead.nextActionDate || "",
-          nextActionOwnerId: lead.nextActionOwnerId || ""
+          labels: (lead.labels || []).map(label => label.text).join(", ")
         };
         const targetStageId = document.getElementById("crm-detail-stage").value;
         const targetStage = crmStage(targetStageId);
@@ -3582,19 +3997,12 @@
           closeCRMAsLost();
           return;
         }
-        const nextActionText = document.getElementById("crm-detail-next-text").value.trim();
-        const nextActionDate = document.getElementById("crm-detail-next").value;
-        const nextActionOwnerId = document.getElementById("crm-detail-next-owner").value;
-        if ((document.getElementById("crm-detail-status").value || lead.status) === "Aberta" && (!nextActionText || !nextActionDate || !nextActionOwnerId)) {
-          toast("Oportunidades abertas precisam de proxima acao, data e responsavel.");
-          return;
-        }
         lead.stageId = targetStageId;
         lead.client = document.getElementById("crm-detail-client").value.trim() || lead.client;
         lead.contact = document.getElementById("crm-detail-contact").value.trim();
         lead.source = document.getElementById("crm-detail-source").value.trim();
         lead.interest = document.getElementById("crm-detail-interest").value.trim();
-        lead.value = document.getElementById("crm-detail-value").value.trim();
+        lead.value = document.getElementById("crm-detail-value").value.trim() ? formatMoney(moneyNumber(document.getElementById("crm-detail-value").value)) : "";
         lead.notes = document.getElementById("crm-detail-notes").value.trim();
         lead.crmDates = lead.crmDates || {};
         lead.crmDates.firstContact = document.getElementById("crm-detail-first-contact").value || lead.crmDates.firstContact || lead.createdAt || todayISO;
@@ -3602,16 +4010,13 @@
         lead.clientId = linkedClient.id;
         lead.status = document.getElementById("crm-detail-status").value;
         lead.ownerId = document.getElementById("crm-detail-owner").value;
-        lead.nextActionText = nextActionText;
-        lead.nextActionDate = nextActionDate;
-        lead.nextActionOwnerId = nextActionOwnerId;
-        lead.labels = crmLabelsFromInput(document.getElementById("crm-detail-labels").value, document.getElementById("crm-detail-label-color").value);
+        lead.labels = crmLabelsFromSelection("crm-detail-labels");
         lead.updatedAt = todayISO;
         const note = document.getElementById("crm-detail-note").value.trim();
         if (oldStage !== lead.stageId) {
           crmTouchStageAutomation(lead, oldStage, lead.stageId);
         }
-        const commercialNow = { ...lead, firstContact: (lead.crmDates && lead.crmDates.firstContact) || "" };
+        const commercialNow = { ...lead, firstContact: (lead.crmDates && lead.crmDates.firstContact) || "", labels: (lead.labels || []).map(label => label.text).join(", ") };
         const commercialChanged = Object.entries(oldCommercial).filter(([key, value]) => value !== (commercialNow[key] || "")).map(([key]) => key);
         if (commercialChanged.length) {
           lead.events.push({ at: nowISO(), type: "commercial_updated", fields: commercialChanged, userId: currentUser() ? currentUser().id : "" });
@@ -3701,6 +4106,58 @@
       bindCRMStageDragEvents();
       document.querySelectorAll("[data-remove-crm-stage]").forEach(button => button.onclick = () => {
         removeCRMStage(button.dataset.removeCrmStage);
+      });
+      const labelForm = document.getElementById("crm-label-form");
+      if (labelForm) labelForm.onsubmit = event => {
+        event.preventDefault();
+        const name = document.getElementById("crm-label-name").value.trim();
+        if (!name) return;
+        state.crm.labels.push({ id: uid("cl"), name, color: document.getElementById("crm-label-color-new").value || "#8b6f47" });
+        toast("Etiqueta criada.");
+        render();
+      };
+      document.querySelectorAll("[data-save-crm-label]").forEach(button => button.onclick = () => {
+        const label = (state.crm.labels || []).find(item => item.id === button.dataset.saveCrmLabel);
+        if (!label) return;
+        const oldName = label.name;
+        label.name = document.querySelector(`[data-crm-label-name="${label.id}"]`).value.trim() || label.name;
+        label.color = document.querySelector(`[data-crm-label-color="${label.id}"]`).value || label.color;
+        (state.crm.leads || []).forEach(lead => (lead.labels || []).forEach(item => {
+          if (item.id === label.id || item.text === oldName) Object.assign(item, { id: label.id, text: label.name, color: label.color });
+        }));
+        toast("Etiqueta salva.");
+        render();
+      });
+      document.querySelectorAll("[data-remove-crm-label]").forEach(button => button.onclick = () => {
+        const id = button.dataset.removeCrmLabel;
+        if (!confirm("Excluir etiqueta e remover das oportunidades?")) return;
+        state.crm.labels = (state.crm.labels || []).filter(label => label.id !== id);
+        (state.crm.leads || []).forEach(lead => lead.labels = (lead.labels || []).filter(label => label.id !== id));
+        toast("Etiqueta excluida.");
+        render();
+      });
+      const templateForm = document.getElementById("crm-task-template-form");
+      if (templateForm) templateForm.onsubmit = event => {
+        event.preventDefault();
+        state.crm.taskTemplates.push({
+          id: uid("ctt"),
+          stageId: document.getElementById("crm-template-stage").value,
+          title: document.getElementById("crm-template-title").value.trim(),
+          ownerId: document.getElementById("crm-template-owner").value,
+          daysAfterStage: Number(document.getElementById("crm-template-days").value || 0),
+          time: document.getElementById("crm-template-time").value || "09:00",
+          priority: document.getElementById("crm-template-priority").value,
+          required: true,
+          active: true
+        });
+        toast("Tarefa automatica configurada.");
+        render();
+      };
+      document.querySelectorAll("[data-remove-crm-template]").forEach(button => button.onclick = () => {
+        if (!confirm("Excluir modelo de tarefa automatica?")) return;
+        state.crm.taskTemplates = (state.crm.taskTemplates || []).filter(template => template.id !== button.dataset.removeCrmTemplate);
+        toast("Modelo removido.");
+        render();
       });
     }
 
@@ -4452,8 +4909,8 @@
     initializeApp();
   </script>
   <!-- Script classico para que o MVP tambem carregue ao abrir este HTML diretamente. -->
-  <script src="./assets/saas-core.js?v=20260730-crm-clientes"></script>
-  <script src="./assets/saas-extension.js?v=20260730-crm-clientes"></script>
+  <script src="./assets/saas-core.js?v=20260730-crm-tarefas"></script>
+  <script src="./assets/saas-extension.js?v=20260730-crm-tarefas"></script>
 </body>
 </html>
 
