@@ -1,0 +1,14 @@
+node_modules/
+.DS_Store
+*.log
+backups/
+*.zip
+
+# Nunca versionar chaves administrativas.
+.env
+.env.*
+
+# A anon public key do Supabase pode ser usada no navegador, mas mantenha
+# service_role e tokens de deploy sempre fora do repositorio.
+supabase-service-role*.js
+service-role*.txt
