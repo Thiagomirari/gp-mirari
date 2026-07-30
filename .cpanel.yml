@@ -1,0 +1,9 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/miraricom/gp.mirari.com.br/
+    - /bin/mkdir -p $DEPLOYPATH
+    - /bin/cp -R assets $DEPLOYPATH
+    - /bin/cp -R docs $DEPLOYPATH
+    - /bin/cp index.html $DEPLOYPATH
+    - /bin/cp README.md $DEPLOYPATH
