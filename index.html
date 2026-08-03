@@ -307,6 +307,7 @@
     .commercial-calendar { display: grid; grid-template-columns: repeat(7, minmax(130px, 1fr)); gap: 8px; overflow-x: auto; }
     .commercial-day { min-height: 112px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
     .commercial-task-chip { display: block; margin-top: 7px; padding: 7px; border-radius: 8px; background: #f7f2ed; color: var(--text); font-size: .72rem; }
+    .crm-task-template-row { display: grid; grid-template-columns: 1.2fr 1.4fr 1fr .7fr .8fr .8fr .8fr auto auto; gap: 8px; align-items: end; }
     .crm-chat-list { display: grid; gap: 10px; max-height: 260px; overflow: auto; }
     .crm-admin-row { display: grid; grid-template-columns: minmax(150px, 1.2fr) minmax(92px, .7fr) 76px auto; gap: 8px; align-items: end; }
     .crm-admin-row-sortable { grid-template-columns: 34px minmax(150px, 1.2fr) minmax(92px, .7fr) 76px auto; }
@@ -1068,8 +1069,8 @@
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./supabase-config.js?v=20260730-crm-secoes"></script>
-  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260730-crm-secoes" />
+  <script src="./supabase-config.js?v=20260730-crm-tarefas-obrigatorias"></script>
+  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260730-crm-tarefas-obrigatorias" />
 </head>
 <body>
   <main class="app-shell">
@@ -1536,7 +1537,7 @@
         task.ownerId = task.ownerId || "";
         task.dueDate = task.dueDate || todayISO;
         task.dueTime = task.dueTime || "09:00";
-        task.required = !!task.required;
+        task.required = task.automatic ? task.required !== false : false;
         task.automatic = !!task.automatic;
         task.createdAt = task.createdAt || nowISO();
       });
@@ -1544,6 +1545,7 @@
         template.daysAfterStage = Number(template.daysAfterStage || 1);
         template.time = template.time || "09:00";
         template.priority = template.priority || "Media";
+        template.required = template.required !== false;
         template.active = template.active !== false;
       });
       next.history = next.history || [];
@@ -2728,6 +2730,8 @@
                   <div class="actions">
                     <button class="primary" data-complete-commercial-task="${task.id}" type="button" ${status === "Concluida" ? "disabled" : ""}>Concluir</button>
                     <button class="secondary" data-reopen-commercial-task="${task.id}" type="button" ${status === "Concluida" ? "" : "disabled"}>Reabrir</button>
+                    <button class="secondary" data-edit-commercial-task="${task.id}" type="button">Editar</button>
+                    <button class="danger" data-remove-commercial-task="${task.id}" type="button">Excluir</button>
                   </div>
                 </article>
               `).join("") || "<small>Nenhuma tarefa comercial encontrada.</small>"}
@@ -2748,30 +2752,37 @@
       }).join("")}</div>`;
     }
 
-    function openCommercialTaskModal(leadId = "") {
+    function openCommercialTaskModal(leadId = "", taskId = "") {
+      const currentTask = (state.crm.tasks || []).find(task => task.id === taskId);
       const modal = document.createElement("div");
       modal.className = "modal open";
-      modal.innerHTML = `<div class="modal-box"><div class="panel-header"><div><p class="eyebrow">CRM Mirari</p><h2>Nova tarefa comercial</h2></div><button class="ghost" type="button" data-close-commercial-task>Fechar</button></div>
+      modal.innerHTML = `<div class="modal-box"><div class="panel-header"><div><p class="eyebrow">CRM Mirari</p><h2>${currentTask ? "Editar tarefa comercial" : "Nova tarefa comercial"}</h2></div><button class="ghost" type="button" data-close-commercial-task>Fechar</button></div>
         <form class="form-box" id="commercial-task-form">
           <div class="form-grid">
-            <label>Oportunidade <select id="commercial-task-lead">${(state.crm.leads || []).map(lead => option(lead.id, `${lead.client} | ${lead.interest || "Oportunidade"}`, leadId || state.crm.selectedLeadId)).join("")}</select></label>
-            <label>Tarefa <input id="commercial-task-title" required placeholder="Ex: Ligar para retorno da proposta" /></label>
-            <label>Responsavel <select id="commercial-task-owner">${state.users.filter(user => user.active).map(user => option(user.id, user.name, state.sessionUserId || "u1")).join("")}</select></label>
-            <label>Data <input id="commercial-task-date" type="date" value="${todayISO}" required /></label>
-            <label>Horario <input id="commercial-task-time" type="time" value="09:00" /></label>
-            <label>Prioridade <select id="commercial-task-priority">${["Alta", "Media", "Baixa"].map(value => option(value, value, "Media")).join("")}</select></label>
-            <label>Obrigatoria <select id="commercial-task-required">${option("false", "Nao", "false")}${option("true", "Sim", "false")}</select></label>
-            <label>Status <select id="commercial-task-status">${["Pendente", "Concluida"].map(value => option(value, value, "Pendente")).join("")}</select></label>
+            <label>Oportunidade <select id="commercial-task-lead">${(state.crm.leads || []).map(lead => option(lead.id, `${lead.client} | ${lead.interest || "Oportunidade"}`, currentTask ? currentTask.leadId : (leadId || state.crm.selectedLeadId))).join("")}</select></label>
+            <label>Tarefa <input id="commercial-task-title" required placeholder="Ex: Ligar para retorno da proposta" value="${escapeHtml(currentTask ? currentTask.title : "")}" /></label>
+            <label>Responsavel <select id="commercial-task-owner">${state.users.filter(user => user.active).map(user => option(user.id, user.name, currentTask ? currentTask.ownerId : (state.sessionUserId || "u1"))).join("")}</select></label>
+            <label>Data <input id="commercial-task-date" type="date" value="${escapeHtml(currentTask ? currentTask.dueDate : todayISO)}" required /></label>
+            <label>Horario <input id="commercial-task-time" type="time" value="${escapeHtml(currentTask ? (currentTask.dueTime || "09:00") : "09:00")}" /></label>
+            <label>Prioridade <select id="commercial-task-priority">${["Alta", "Media", "Baixa"].map(value => option(value, value, currentTask ? currentTask.priority : "Media")).join("")}</select></label>
+            <label>Status <select id="commercial-task-status">${["Pendente", "Concluida"].map(value => option(value, value, currentTask ? currentTask.status : "Pendente")).join("")}</select></label>
           </div>
-          <textarea id="commercial-task-notes" placeholder="Observacoes internas"></textarea>
-          <div class="actions"><button class="secondary" type="button" data-close-commercial-task>Cancelar</button><button class="primary" type="submit">Salvar tarefa</button></div>
+          <p class="muted">Tarefas manuais nao bloqueiam mudanca de etapa. Apenas tarefas automaticas obrigatorias configuradas pelo ADM bloqueiam o funil.</p>
+          <textarea id="commercial-task-notes" placeholder="Observacoes internas">${escapeHtml(currentTask ? currentTask.notes : "")}</textarea>
+          <div class="actions"><button class="secondary" type="button" data-close-commercial-task>Cancelar</button><button class="primary" type="submit">${currentTask ? "Salvar tarefa" : "Criar tarefa"}</button></div>
         </form></div>`;
       document.body.appendChild(modal);
       modal.querySelectorAll("[data-close-commercial-task]").forEach(button => button.onclick = () => modal.remove());
       modal.querySelector("#commercial-task-form").onsubmit = event => {
         event.preventDefault();
-        const task = {
+        const task = currentTask || {
           id: uid("ct"),
+          createdAt: nowISO(),
+          completedAt: "",
+          automatic: false,
+          required: false
+        };
+        Object.assign(task, {
           leadId: document.getElementById("commercial-task-lead").value,
           title: document.getElementById("commercial-task-title").value.trim(),
           ownerId: document.getElementById("commercial-task-owner").value,
@@ -2779,20 +2790,19 @@
           dueTime: document.getElementById("commercial-task-time").value || "09:00",
           priority: document.getElementById("commercial-task-priority").value,
           status: document.getElementById("commercial-task-status").value,
-          required: document.getElementById("commercial-task-required").value === "true",
-          automatic: false,
           notes: document.getElementById("commercial-task-notes").value.trim(),
-          createdAt: nowISO(),
+          updatedAt: nowISO(),
           completedAt: document.getElementById("commercial-task-status").value === "Concluida" ? nowISO() : ""
-        };
-        state.crm.tasks.push(task);
+        });
+        task.required = task.automatic ? !!task.required : false;
+        if (!currentTask) state.crm.tasks.push(task);
         const lead = (state.crm.leads || []).find(item => item.id === task.leadId);
         if (lead) {
-          lead.history.push({ at: nowISO(), userId: currentUser() ? currentUser().id : "", text: `Tarefa comercial adicionada: ${task.title}.` });
-          lead.events.push({ at: nowISO(), type: "commercial_task_created", taskId: task.id, userId: currentUser() ? currentUser().id : "" });
+          lead.history.push({ at: nowISO(), userId: currentUser() ? currentUser().id : "", text: `Tarefa comercial ${currentTask ? "atualizada" : "adicionada"}: ${task.title}.` });
+          lead.events.push({ at: nowISO(), type: currentTask ? "commercial_task_updated" : "commercial_task_created", taskId: task.id, userId: currentUser() ? currentUser().id : "" });
         }
         modal.remove();
-        toast("Tarefa comercial criada.");
+        toast(currentTask ? "Tarefa comercial atualizada." : "Tarefa comercial criada.");
         render();
       };
     }
@@ -3017,6 +3027,27 @@
       if (!task) return "missing";
       if (crmTaskStatus(task) === "Atrasada") return "late";
       return "ok";
+    }
+
+    function crmRequiredPendingTasks(lead) {
+      if (!lead) return [];
+      return (state.crm.tasks || []).filter(task => task.leadId === lead.id && task.stageId === lead.stageId && task.automatic && task.required && task.status !== "Concluida");
+    }
+
+    function crmCanLeaveCurrentStage(lead) {
+      const pending = crmRequiredPendingTasks(lead);
+      if (!pending.length) return true;
+      toast(`Conclua as tarefas obrigatorias antes de avancar: ${pending.map(task => task.title).join(", ")}.`);
+      return false;
+    }
+
+    function crmMoveLeadStage(lead, targetStageId, at = nowISO()) {
+      if (!lead || lead.stageId === targetStageId) return true;
+      if (!crmCanLeaveCurrentStage(lead)) return false;
+      const oldStage = lead.stageId;
+      lead.stageId = targetStageId;
+      crmTouchStageAutomation(lead, oldStage, lead.stageId, at);
+      return true;
     }
 
     function crmEnsureAutomaticTasks(lead, stageId, at = nowISO()) {
@@ -3282,7 +3313,7 @@
               <article class="panel soft-panel" style="grid-column:1/-1">
                 <div class="section-title"><div><p class="eyebrow">Tarefas comerciais</p><h2>Agenda da oportunidade</h2></div><button class="secondary" id="add-crm-task-bottom" type="button">Nova tarefa</button></div>
                 <div class="task-list">
-                  ${crmTasksForLead(lead.id, true).map(task => `<article class="task-card"><div class="row-between"><strong>${escapeHtml(task.title)}</strong><span class="pill ${crmTaskStatus(task) === "Atrasada" ? "danger-text" : ""}">${escapeHtml(crmTaskStatus(task))}</span></div><div class="subtask-meta"><span class="pill">${escapeHtml(userName(task.ownerId))}</span><span class="pill">${formatDate(task.dueDate)} ${escapeHtml(task.dueTime || "")}</span><span class="pill">${escapeHtml(task.priority)}</span></div></article>`).join("") || "<small>Nenhuma tarefa comercial vinculada.</small>"}
+                  ${crmTasksForLead(lead.id, true).map(task => `<article class="task-card"><div class="row-between"><strong>${escapeHtml(task.title)}</strong><span class="pill ${crmTaskStatus(task) === "Atrasada" ? "danger-text" : ""}">${escapeHtml(crmTaskStatus(task))}</span></div><div class="subtask-meta"><span class="pill">${escapeHtml(userName(task.ownerId))}</span><span class="pill">${formatDate(task.dueDate)} ${escapeHtml(task.dueTime || "")}</span><span class="pill">${escapeHtml(task.priority)}</span><span class="pill">${task.automatic && task.required ? "Obrigatoria" : task.automatic ? "Automatica" : "Manual"}</span></div><div class="actions"><button class="primary" data-complete-commercial-task="${task.id}" type="button" ${crmTaskStatus(task) === "Concluida" ? "disabled" : ""}>Concluir</button><button class="secondary" data-edit-commercial-task="${task.id}" type="button">Editar</button><button class="danger" data-remove-commercial-task="${task.id}" type="button">Excluir</button></div></article>`).join("") || "<small>Nenhuma tarefa comercial vinculada.</small>"}
                 </div>
               </article>
               <article class="panel soft-panel" style="grid-column:1/-1">
@@ -3373,6 +3404,7 @@
         </form>
         <form class="form-box" id="crm-task-template-form">
           <div class="panel-header"><div><p class="eyebrow">Automacoes</p><h3>Tarefas automaticas por etapa</h3></div></div>
+          <p class="muted">Modelos marcados como obrigatorios geram tarefas automaticas que bloqueiam a mudanca de etapa ate serem concluidas. Tarefas manuais nao bloqueiam o funil.</p>
           <div class="crm-admin-row">
             <label>Etapa <select id="crm-template-stage" ${!isAdmin() ? "disabled" : ""}>${activeStages.map(stage => option(stage.id, stage.name, "")).join("")}</select></label>
             <label>Tarefa <input id="crm-template-title" placeholder="Ex: Retornar cliente" ${!isAdmin() ? "disabled" : ""} required /></label>
@@ -3380,10 +3412,11 @@
             <label>Dias apos entrada <input id="crm-template-days" type="number" min="0" value="1" ${!isAdmin() ? "disabled" : ""} /></label>
             <label>Horario <input id="crm-template-time" type="time" value="09:00" ${!isAdmin() ? "disabled" : ""} /></label>
             <label>Prioridade <select id="crm-template-priority" ${!isAdmin() ? "disabled" : ""}>${["Alta", "Media", "Baixa"].map(value => option(value, value, "Media")).join("")}</select></label>
+            <label>Obrigatoria <select id="crm-template-required" ${!isAdmin() ? "disabled" : ""}>${option("true", "Sim, bloqueia etapa", "true")}${option("false", "Nao, apenas cria tarefa", "true")}</select></label>
             <button class="primary" ${!isAdmin() ? "disabled" : ""} type="submit">Adicionar tarefa</button>
           </div>
           <div class="stage-list">
-            ${(state.crm.taskTemplates || []).map(template => `<div class="stage-admin-card"><div class="crm-admin-row"><strong>${escapeHtml(template.title)}</strong><span class="pill">${escapeHtml((crmStage(template.stageId) || {}).name || "-")}</span><span class="pill">${escapeHtml(userName(template.ownerId))}</span><span class="pill">${template.daysAfterStage}d | ${escapeHtml(template.time || "09:00")}</span><button class="danger" data-remove-crm-template="${template.id}" ${!isAdmin() ? "disabled" : ""} type="button">Excluir</button></div></div>`).join("") || "<small>Nenhuma tarefa automatica configurada.</small>"}
+            ${(state.crm.taskTemplates || []).map(template => `<div class="stage-admin-card"><div class="crm-task-template-row"><label>Etapa <select data-crm-template-stage="${template.id}" ${!isAdmin() ? "disabled" : ""}>${activeStages.map(stage => option(stage.id, stage.name, template.stageId)).join("")}</select></label><label>Tarefa <input data-crm-template-title="${template.id}" value="${escapeHtml(template.title)}" ${!isAdmin() ? "disabled" : ""} /></label><label>Responsavel <select data-crm-template-owner="${template.id}" ${!isAdmin() ? "disabled" : ""}>${state.users.filter(user => user.active).map(user => option(user.id, user.name, template.ownerId)).join("")}</select></label><label>Dias <input data-crm-template-days="${template.id}" type="number" min="0" value="${Number(template.daysAfterStage || 0)}" ${!isAdmin() ? "disabled" : ""} /></label><label>Horario <input data-crm-template-time="${template.id}" type="time" value="${escapeHtml(template.time || "09:00")}" ${!isAdmin() ? "disabled" : ""} /></label><label>Prioridade <select data-crm-template-priority="${template.id}" ${!isAdmin() ? "disabled" : ""}>${["Alta", "Media", "Baixa"].map(value => option(value, value, template.priority || "Media")).join("")}</select></label><label>Obrigatoria <select data-crm-template-required="${template.id}" ${!isAdmin() ? "disabled" : ""}>${option("true", "Sim", String(template.required !== false))}${option("false", "Nao", String(template.required !== false))}</select></label><button class="secondary" data-save-crm-template="${template.id}" ${!isAdmin() ? "disabled" : ""} type="button">Salvar</button><button class="danger" data-remove-crm-template="${template.id}" ${!isAdmin() ? "disabled" : ""} type="button">Excluir</button></div></div>`).join("") || "<small>Nenhuma tarefa automatica configurada.</small>"}
           </div>
         </form>
       `;
@@ -3935,6 +3968,20 @@
         toast("Tarefa comercial reaberta.");
         render();
       });
+      document.querySelectorAll("[data-edit-commercial-task]").forEach(button => button.onclick = () => {
+        const task = (state.crm.tasks || []).find(item => item.id === button.dataset.editCommercialTask);
+        if (!task) return;
+        openCommercialTaskModal(task.leadId, task.id);
+      });
+      document.querySelectorAll("[data-remove-commercial-task]").forEach(button => button.onclick = () => {
+        const task = (state.crm.tasks || []).find(item => item.id === button.dataset.removeCommercialTask);
+        if (!task || !confirm("Excluir esta tarefa comercial?")) return;
+        state.crm.tasks = (state.crm.tasks || []).filter(item => item.id !== task.id);
+        const lead = (state.crm.leads || []).find(item => item.id === task.leadId);
+        if (lead) lead.history.push({ at: nowISO(), userId: currentUser() ? currentUser().id : "", text: `Tarefa comercial excluida: ${task.title}.` });
+        toast("Tarefa comercial excluida.");
+        render();
+      });
     }
 
     function bindCRMEvents() {
@@ -4116,6 +4163,7 @@
           closeCRMAsLost();
           return;
         }
+        if (oldStage !== targetStageId && !crmCanLeaveCurrentStage(lead)) return;
         lead.stageId = targetStageId;
         lead.client = document.getElementById("crm-detail-client").value.trim() || lead.client;
         lead.contact = document.getElementById("crm-detail-contact").value.trim();
@@ -4134,9 +4182,7 @@
         lead.labels = crmLabelsFromSelection("crm-detail-labels");
         lead.updatedAt = todayISO;
         const note = document.getElementById("crm-detail-note").value.trim();
-        if (oldStage !== lead.stageId) {
-          crmTouchStageAutomation(lead, oldStage, lead.stageId);
-        }
+        if (oldStage !== lead.stageId) crmTouchStageAutomation(lead, oldStage, lead.stageId);
         const commercialNow = { ...lead, firstContact: (lead.crmDates && lead.crmDates.firstContact) || "", specifierId: lead.specifierId || "", labels: (lead.labels || []).map(label => label.text).join(", ") };
         const commercialChanged = Object.entries(oldCommercial).filter(([key, value]) => value !== (commercialNow[key] || "")).map(([key]) => key);
         if (commercialChanged.length) {
@@ -4255,12 +4301,25 @@
           daysAfterStage: Number(document.getElementById("crm-template-days").value || 0),
           time: document.getElementById("crm-template-time").value || "09:00",
           priority: document.getElementById("crm-template-priority").value,
-          required: true,
+          required: document.getElementById("crm-template-required").value === "true",
           active: true
         });
         toast("Tarefa automatica configurada.");
         render();
       };
+      document.querySelectorAll("[data-save-crm-template]").forEach(button => button.onclick = () => {
+        const template = (state.crm.taskTemplates || []).find(item => item.id === button.dataset.saveCrmTemplate);
+        if (!template) return;
+        template.stageId = document.querySelector(`[data-crm-template-stage="${template.id}"]`).value;
+        template.title = document.querySelector(`[data-crm-template-title="${template.id}"]`).value.trim() || template.title;
+        template.ownerId = document.querySelector(`[data-crm-template-owner="${template.id}"]`).value;
+        template.daysAfterStage = Number(document.querySelector(`[data-crm-template-days="${template.id}"]`).value || 0);
+        template.time = document.querySelector(`[data-crm-template-time="${template.id}"]`).value || "09:00";
+        template.priority = document.querySelector(`[data-crm-template-priority="${template.id}"]`).value;
+        template.required = document.querySelector(`[data-crm-template-required="${template.id}"]`).value === "true";
+        toast("Tarefa automatica salva.");
+        render();
+      });
       document.querySelectorAll("[data-remove-crm-template]").forEach(button => button.onclick = () => {
         if (!confirm("Excluir modelo de tarefa automatica?")) return;
         state.crm.taskTemplates = (state.crm.taskTemplates || []).filter(template => template.id !== button.dataset.removeCrmTemplate);
@@ -4317,6 +4376,7 @@
         alert("Esta oportunidade ja gerou um projeto.");
         return;
       }
+      if (!crmCanLeaveCurrentStage(lead)) return;
       const closedValue = prompt("Informe o valor fechado:", lead.closedValue || lead.value || "");
       if (!closedValue) return;
       const oldStage = lead.stageId;
@@ -4398,6 +4458,7 @@
         alert("Selecione um motivo padronizado para a perda.");
         return;
       }
+      if (!crmCanLeaveCurrentStage(lead)) return;
       if (!confirm("Confirmar negocio perdido?")) return;
       const oldStage = lead.stageId;
       const at = nowISO();
@@ -5017,8 +5078,8 @@
     initializeApp();
   </script>
   <!-- Script classico para que o MVP tambem carregue ao abrir este HTML diretamente. -->
-  <script src="./assets/saas-core.js?v=20260730-crm-secoes"></script>
-  <script src="./assets/saas-extension.js?v=20260730-crm-secoes"></script>
+  <script src="./assets/saas-core.js?v=20260730-crm-tarefas-obrigatorias"></script>
+  <script src="./assets/saas-extension.js?v=20260730-crm-tarefas-obrigatorias"></script>
 </body>
 </html>
 
