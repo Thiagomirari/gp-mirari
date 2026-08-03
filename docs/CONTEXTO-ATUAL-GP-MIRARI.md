@@ -1,6 +1,63 @@
 # Contexto Atual GP Mirari
 
-Atualizado em: 2026-07-30
+Atualizado em: 2026-08-03
+
+## Checkpoint Oficial - 2026-08-03
+
+Este checkpoint registra o estado confirmado do GP Mirari ate o commit atual. Ele serve como ponto seguro de retomada para as proximas evolucoes, sem alterar banco de dados, autenticacao, integracoes ou dados existentes.
+
+Estado do repositorio:
+
+```text
+Versao oficial: outputs/gp-mirari-deploy
+Branch: main
+Commit: 6dcd42e - Configura tarefas obrigatorias no CRM
+Repositorio: https://github.com/Thiagomirari/gp-mirari
+```
+
+Validacoes confirmadas:
+
+- `tests/validate-release.mjs` aprovado.
+- `tests/finance.test.mjs` aprovado.
+- Diretorio Git limpo apos o commit.
+- Nenhum SQL remoto executado neste checkpoint.
+- Nenhuma alteracao feita no banco, autenticacao ou configuracao de deploy.
+
+Ultimo ciclo de arquivos alterados:
+
+- `index.html`
+- `tests/validate-release.mjs`
+
+Estado funcional confirmado:
+
+- CRM com funil comercial, oportunidades, etiquetas editaveis e historico.
+- Clientes e propostas vinculadas as oportunidades.
+- Tarefas comerciais separadas das tarefas de projetos.
+- Criacao, edicao, conclusao e exclusao de tarefas comerciais.
+- Tarefas automaticas configuraveis por etapa do funil.
+- Tarefas automaticas obrigatorias bloqueiam o avanco de etapa ate a conclusao.
+- Tarefas manuais nao bloqueiam o avanco de etapa.
+- Modelos de tarefas podem ser configurados na area administrativa do CRM.
+- Oportunidade, propostas, tarefas, chat e historico aparecem em secoes separadas.
+- Projetos, calendario, Kanban, propostas e formacao de preco permanecem preservados.
+- Persistencia compartilhada mantida via Supabase e `gp_app_settings/app_state`.
+
+Pendencias e riscos para a proxima retomada:
+
+- Validar visualmente o fluxo completo no navegador depois do deploy.
+- Revisar login com Google, incluindo redirect URLs e controle de usuarios autorizados.
+- Evoluir a base de clientes e especificadores.
+- Concluir a edicao completa de oportunidades.
+- Implementar versionamento interno de propostas.
+- Implementar selecao de ambientes para PDF e formacao de preco.
+- Revisar o desconto global em propostas.
+- Avaliar a migracao futura do estado JSON para tabelas relacionais.
+
+Proximo ponto recomendado:
+
+1. Confirmar o deploy em `https://gp.mirari.com.br`.
+2. Testar CRM, tarefas comerciais, propostas e permissao de usuarios.
+3. Retomar as pendencias pelo arquivo `docs/REGISTRO-DE-ATUALIZACOES-FUTURAS.md`.
 
 Este documento consolida o estado operacional do GP Mirari para facilitar retomadas futuras no Codex, reduzir dependencia do historico da conversa e preservar decisoes importantes do projeto.
 
