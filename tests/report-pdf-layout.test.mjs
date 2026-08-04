@@ -10,5 +10,8 @@ for (const marker of ["Relatorio executivo", "Visao consolidada", "Periodo anali
 assert.match(source, /data\.summary\.soldValue/, "O valor vendido precisa permanecer no PDF.");
 assert.match(source, /data\.summary\.conversion/, "A conversao precisa permanecer no PDF.");
 assert.match(source, /data\.partners/, "Os parceiros precisam permanecer no PDF.");
+assert.match(source, /\["all", "Todo o periodo"\]/, "O preset Todo o periodo precisa estar disponivel em Relatorios.");
+assert.match(source, /preset === "all"[^\n]*start: "", end: ""/, "Todo o periodo precisa remover os limites de data.");
+assert.match(source, /if \(!filters\.start && !filters\.end\) return true/, "O filtro sem datas precisa incluir todo o historico.");
 
 console.log("report-pdf-layout.test.mjs: ok");
