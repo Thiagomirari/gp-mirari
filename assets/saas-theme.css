@@ -209,3 +209,57 @@
 @media (max-width:1500px) { .report-global-filters { grid-template-columns:1fr; }.report-global-filter-actions { justify-content:flex-end; }.report-finance-strip { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:860px) { .report-global-filter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.report-alert-strip { grid-template-columns:1fr; }.report-detail-drawer { align-items:start; }.report-line-chart { min-width:620px; }.report-evolution-section .report-panel { overflow-x:auto; } }
 @media (max-width:560px) { .report-global-filter-grid,.report-finance-strip { grid-template-columns:1fr; }.report-global-filter-actions { display:grid; grid-template-columns:1fr 1fr; }.report-global-filter-actions .saas-button { width:100%; }.report-detail-drawer { display:grid; }.report-detail-drawer .saas-button { width:100%; }.report-alert-strip > div { grid-template-columns:auto minmax(0,1fr); } }
+
+/* CRM v5: modern commercial workspace, scoped to the CRM tab. */
+.crm-saas-workspace { display:grid; gap:18px; padding:0 !important; border:0 !important; background:transparent !important; box-shadow:none !important; }
+.crm-saas-workspace * { box-sizing:border-box; }
+.crm-saas-header { align-items:flex-end; margin:0; padding:4px 2px 0; }
+.crm-saas-header h2 { margin:0; color:#2F2F2F; font-size:28px; line-height:1.1; }
+.crm-saas-subtitle { display:block; margin-top:7px; color:#6D6A67; font-size:14px; }
+.crm-saas-header-actions { display:flex; align-items:flex-end; gap:8px; }
+.crm-saas-header-actions > button { min-height:40px; border-radius:8px; }
+.crm-saas-funnel-select { display:grid; gap:5px; min-width:220px !important; color:#8B8585; font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+.crm-saas-funnel-select select { min-height:40px; padding:0 34px 0 11px; border:1px solid #DED8D1; border-radius:8px; background:#fff; color:#2F2F2F; font-size:12px; font-weight:750; text-transform:none; transition:border-color .15s,box-shadow .15s; }
+.crm-saas-funnel-select select:hover { border-color:#D8AA7F; }.crm-saas-funnel-select select:focus-visible { outline:0; border-color:#D8AA7F; box-shadow:0 0 0 3px rgba(216,170,127,.22); }
+.crm-saas-kpis { grid-template-columns:repeat(4,minmax(0,1fr)) !important; gap:10px !important; margin:0 !important; }
+.crm-saas-kpi { position:relative; display:grid !important; align-content:start; gap:0; min-height:116px; padding:16px !important; overflow:hidden; border:1px solid #EAE6E1 !important; border-radius:10px !important; background:#fff !important; box-shadow:0 7px 18px rgba(47,47,47,.025); }
+.crm-saas-kpi::after { position:absolute; right:0; bottom:0; left:0; height:3px; background:#D8AA7F; content:""; }
+.crm-saas-kpi span { color:#6D6A67 !important; font-size:11px !important; font-weight:750; }
+.crm-saas-kpi strong { margin-top:8px; color:#2F2F2F !important; font-size:22px !important; letter-spacing:0; }
+.crm-saas-kpi small { display:block; margin-top:7px; color:#8B8585; font-size:10px; line-height:1.35; }
+.crm-saas-kpi.cycle::after { background:#5E7484; }.crm-saas-kpi.attention::after { background:#C48A00; }.crm-saas-kpi.overdue::after { background:#C62828; }
+.crm-saas-insight { display:grid; grid-template-columns:minmax(220px,.36fr) minmax(0,1fr); align-items:center; gap:18px; margin:0 !important; padding:15px 17px !important; border:1px solid #EAE6E1 !important; border-radius:10px !important; background:#2F2F2F !important; color:#fff; box-shadow:0 10px 26px rgba(47,47,47,.08); }
+.crm-saas-insight .section-title { margin:0; }.crm-saas-insight .eyebrow { color:#C8C2BD; }.crm-saas-insight h2 { color:#fff !important; font-size:15px; }.crm-saas-insight .section-title > .pill { border:0; background:#D8AA7F; color:#2F2F2F; font-weight:850; }
+.crm-saas-stage-insights { justify-content:flex-end; gap:6px; }
+.crm-saas-stage-insights .pill { min-height:28px; padding:0 10px; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.07); color:#F7F7F5; font-size:10px; }
+.crm-saas-board { gap:10px !important; margin:0; padding:2px 2px 16px !important; scrollbar-width:thin; scrollbar-color:#D8AA7F #F0ECE8; }
+.crm-saas-board::-webkit-scrollbar { height:8px; }.crm-saas-board::-webkit-scrollbar-track { border-radius:99px; background:#F0ECE8; }.crm-saas-board::-webkit-scrollbar-thumb { border-radius:99px; background:#D8AA7F; }
+.crm-saas-column { flex-basis:272px !important; width:272px !important; overflow:hidden; border:1px solid #EAE6E1 !important; border-radius:10px !important; background:#F7F7F5 !important; box-shadow:0 7px 18px rgba(47,47,47,.025); }
+.crm-saas-column-header { position:relative; min-height:68px !important; padding:12px 13px !important; overflow:hidden; }
+.crm-saas-column-header::after { position:absolute; inset:0; background:linear-gradient(90deg,rgba(47,47,47,.08),transparent 70%); pointer-events:none; content:""; }
+.crm-saas-column-header > * { position:relative; z-index:1; }.crm-saas-column-header .crm-stage-total { justify-items:end; }.crm-saas-column-header .crm-stage-total strong { font-size:12px; }.crm-saas-column-header .crm-stage-total small { font-size:9px; }
+.crm-saas-column-body { align-content:start; gap:8px !important; min-height:190px !important; padding:9px !important; }
+.crm-saas-card { min-height:126px; padding:12px !important; border:1px solid #EAE6E1 !important; border-radius:9px !important; background:#fff !important; box-shadow:0 4px 12px rgba(47,47,47,.025); }
+.crm-saas-card:hover { transform:translateY(-2px) !important; border-color:#D8AA7F !important; box-shadow:0 10px 24px rgba(47,47,47,.07) !important; }
+.crm-saas-card.selected { border-color:#D8AA7F !important; background:#FFF9F4 !important; box-shadow:0 0 0 2px rgba(216,170,127,.2),0 8px 20px rgba(47,47,47,.05) !important; }
+.crm-saas-card.crm-card-alert { box-shadow:inset 3px 0 0 #C48A00,0 4px 12px rgba(47,47,47,.025); }.crm-saas-card.crm-card-late { box-shadow:inset 3px 0 0 #C62828,0 4px 12px rgba(47,47,47,.025); }
+.crm-saas-card .crm-card-top { display:grid; grid-template-columns:32px minmax(0,1fr); align-items:center; gap:9px; padding-right:28px; }
+.crm-card-avatar { display:grid; place-items:center; width:32px; height:32px; border-radius:50%; background:#F2ECE6; color:#765D46; font-size:10px; font-weight:850; }
+.crm-card-identity { display:grid; min-width:0; gap:2px; }.crm-card-identity strong,.crm-card-identity small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }.crm-card-identity strong { color:#2F2F2F; font-size:12px !important; }.crm-card-identity small { color:#8B8585; font-size:10px; }
+.crm-saas-card .crm-card-config { top:10px; right:10px; display:grid; place-items:center; width:26px; height:26px; border-color:#EAE6E1; border-radius:7px; background:#FCFCFB; opacity:.72; transition:opacity .15s,border-color .15s,background .15s; }.crm-saas-card:hover .crm-card-config { opacity:1; }.crm-saas-card .crm-card-config:hover { border-color:#D8AA7F; background:#F2ECE6; }
+.crm-saas-card .subtask-meta { gap:5px; }.crm-saas-card .pill { min-height:22px; padding:0 7px; border-color:#EAE6E1; background:#FCFCFB; color:#6D6A67; font-size:9px; }
+.crm-saas-card .crm-next-task { margin-top:2px; padding-top:7px; border-top:1px solid #F1EEEA; font-size:10px; line-height:1.35; }
+.crm-saas-card .crm-label { min-height:18px; padding:0 6px; font-size:8px; }
+.crm-saas-empty-stage { display:grid; place-items:center; min-height:116px; padding:14px; border:1px dashed #DED8D1; border-radius:8px; color:#8B8585; font-size:10px; text-align:center; }
+.crm-saas-detail-grid { display:grid; gap:12px; margin-top:0 !important; padding-top:2px; }
+.crm-saas-selected,.crm-saas-subsection { margin:0; padding:18px !important; border:1px solid #EAE6E1 !important; border-radius:10px !important; background:#fff !important; box-shadow:0 7px 18px rgba(47,47,47,.025); }
+.crm-saas-selected { border-left:4px solid #D8AA7F !important; }.crm-saas-selected:hover { transform:none !important; box-shadow:0 7px 18px rgba(47,47,47,.025) !important; }
+.crm-saas-selected .section-title,.crm-saas-subsection .section-title { margin-bottom:12px; }.crm-saas-selected .section-title h2,.crm-saas-subsection .section-title h2 { font-size:17px; }
+.crm-saas-selected > p { margin:10px 0 0; color:#6D6A67; font-size:12px; }.crm-saas-selected .crm-expand-toggle { width:32px; min-width:32px; height:32px; min-height:32px; overflow:hidden; padding:0; color:transparent; }
+.crm-saas-selected .crm-expand-toggle::before { display:grid; place-items:center; color:#6D6A67; font-size:15px; content:"⌄"; transition:transform .18s; }.crm-saas-selected.expanded .crm-expand-toggle::before { transform:rotate(180deg); }
+.crm-saas-subsection { position:relative; padding-left:21px !important; }.crm-saas-subsection::before { position:absolute; inset:18px auto 18px 0; width:3px; border-radius:0 3px 3px 0; background:#D8AA7F; content:""; }.crm-saas-chat::before { background:#5E7484; }.crm-saas-history::before { background:#8B8585; }
+.crm-saas-subsection .task-card,.crm-saas-subsection .chat-message,.crm-saas-subsection .history-item { border-color:#EAE6E1; background:#FCFCFB; }
+@media (max-width:1500px) { .crm-saas-header { display:grid; align-items:start; }.crm-saas-header-actions { justify-content:flex-start !important; width:100%; }.crm-saas-insight { grid-template-columns:1fr; }.crm-saas-stage-insights { justify-content:flex-start; } }
+@media (max-width:1100px) { .crm-saas-kpis { grid-template-columns:repeat(2,minmax(0,1fr)) !important; } }
+@media (max-width:860px) { .crm-saas-header-actions { display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr)); }.crm-saas-funnel-select { grid-column:1/-1; width:100%; min-width:0 !important; }.crm-saas-header-actions > button { width:100%; }.crm-saas-column { flex-basis:min(82vw,272px) !important; width:min(82vw,272px) !important; }.crm-saas-selected,.crm-saas-subsection { padding:15px !important; }.crm-saas-subsection { padding-left:18px !important; } }
+@media (max-width:560px) { .crm-saas-header h2 { font-size:24px; }.crm-saas-subtitle { font-size:12px; }.crm-saas-header-actions { grid-template-columns:1fr 1fr !important; }.crm-saas-funnel-select,.crm-saas-header-actions .primary { grid-column:1/-1; }.crm-saas-kpis { grid-template-columns:1fr !important; }.crm-saas-insight { padding:14px !important; }.crm-saas-stage-insights { flex-wrap:nowrap; overflow-x:auto; padding-bottom:3px; }.crm-saas-stage-insights .pill { flex:0 0 auto; }.crm-saas-selected .section-title { align-items:flex-start; }.crm-saas-selected .actions { justify-content:flex-end; } }

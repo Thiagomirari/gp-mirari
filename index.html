@@ -1070,7 +1070,7 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./supabase-config.js?v=20260730-crm-tarefas-obrigatorias"></script>
-  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260804-reporting-analytics" />
+  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260804-crm-analytics" />
 </head>
 <body>
   <main class="app-shell">
@@ -3187,11 +3187,13 @@
       const taskState = crmTaskState(lead);
       const nextTask = crmNextTask(lead);
       const taskLabel = taskState === "missing" ? "Sem proxima tarefa" : taskState === "late" ? "Tarefa atrasada" : `${nextTask.title} | ${formatDate(nextTask.dueDate)} ${nextTask.dueTime || ""}`;
+      const initials = String(lead.client || "?").split(/\s+/).slice(0, 2).map(part => part.charAt(0)).join("").toUpperCase();
       return `
-        <button class="crm-card ${lead.id === state.crm.selectedLeadId ? "selected" : ""} ${taskState === "missing" ? "crm-card-alert" : ""} ${taskState === "late" ? "crm-card-late" : ""}" type="button" data-crm-lead="${lead.id}">
+        <button class="crm-card crm-saas-card ${lead.id === state.crm.selectedLeadId ? "selected" : ""} ${taskState === "missing" ? "crm-card-alert" : ""} ${taskState === "late" ? "crm-card-late" : ""}" type="button" data-crm-lead="${lead.id}">
           <span class="crm-card-config" data-crm-card-config="${lead.id}" title="Configuracoes">⋯</span>
           <div class="crm-card-top">
-            <div>
+            <span class="crm-card-avatar">${escapeHtml(initials)}</span>
+            <div class="crm-card-identity">
               <strong>${escapeHtml(lead.client)}</strong>
               <small>${escapeHtml(lead.interest || "Oportunidade")}</small>
             </div>
@@ -3213,54 +3215,55 @@
       const activeFunnel = activeCrmFunnel();
       const stats = crmDashboardStats(visible);
       document.getElementById("tab-crm").innerHTML = `
-        <section class="panel">
-          <div class="crm-toolbar">
+        <section class="panel crm-saas-workspace">
+          <div class="crm-toolbar crm-saas-header">
             <div>
               <p class="eyebrow">CRM Mirari</p>
               <h2>Funil comercial</h2>
+              <span class="crm-saas-subtitle">Acompanhe oportunidades, tarefas e o ritmo de cada negociacao.</span>
             </div>
-            <div class="actions">
-              <label>Funil <select id="crm-active-funnel">${(state.crm.funnels || []).filter(funnel => funnel.active !== false).map(funnel => option(funnel.id, funnel.name, activeFunnel.id)).join("")}</select></label>
+            <div class="actions crm-saas-header-actions">
+              <label class="crm-saas-funnel-select">Funil <select id="crm-active-funnel">${(state.crm.funnels || []).filter(funnel => funnel.active !== false).map(funnel => option(funnel.id, funnel.name, activeFunnel.id)).join("")}</select></label>
               <button class="secondary" id="open-crm-filter" type="button">Filtros</button>
               <button class="secondary" id="open-crm-settings" type="button">Configurar funil</button>
               <button class="primary" id="open-crm-lead" type="button">Nova oportunidade</button>
             </div>
           </div>
-          <div class="metrics crm-dashboard" style="margin-bottom:12px;">
-            <div class="metric"><span>Valor ponderado</span><strong>${formatMoney(stats.weightedPipeline)}</strong></div>
-            <div class="metric"><span>Tempo medio fechamento</span><strong>${stats.avgClose} dias</strong></div>
-            <div class="metric"><span>Sem proxima tarefa</span><strong>${stats.missingAction.length}</strong></div>
-            <div class="metric"><span>Tarefa vencida</span><strong>${stats.lateAction.length}</strong></div>
+          <div class="metrics crm-dashboard crm-saas-kpis" style="margin-bottom:12px;">
+            <div class="metric crm-saas-kpi pipeline"><span>Valor ponderado</span><strong>${formatMoney(stats.weightedPipeline)}</strong><small>${stats.open.length} oportunidade(s) aberta(s)</small></div>
+            <div class="metric crm-saas-kpi cycle"><span>Tempo medio fechamento</span><strong>${stats.avgClose} dias</strong><small>Ciclo das vendas concluidas</small></div>
+            <div class="metric crm-saas-kpi attention"><span>Sem proxima tarefa</span><strong>${stats.missingAction.length}</strong><small>Precisam de acompanhamento</small></div>
+            <div class="metric crm-saas-kpi overdue"><span>Tarefas vencidas</span><strong>${stats.lateAction.length}</strong><small>Compromissos em atraso</small></div>
           </div>
-          <div class="panel soft-panel crm-dashboard-detail" style="margin-bottom:12px;">
+          <div class="panel soft-panel crm-dashboard-detail crm-saas-insight" style="margin-bottom:12px;">
             <div class="section-title"><div><p class="eyebrow">Dashboard comercial</p><h2>Indicadores do funil</h2></div><span class="pill">${formatMoney(stats.totalPipeline)}</span></div>
-            <div class="subtask-meta">
+            <div class="subtask-meta crm-saas-stage-insights">
               ${stats.stageRows.map(row => `<span class="pill">${escapeHtml(row.stage.name)}: ${row.avgDays} dias | ${row.conversion}%</span>`).join("")}
             </div>
           </div>
-          <div class="crm-board">
+          <div class="crm-board crm-saas-board">
             <div class="crm-stage-insert"><button type="button" title="Adicionar etapa" data-add-crm-stage-after="start">+</button></div>
             ${activeStages.map(stage => {
               const leads = visible.filter(item => item.stageId === stage.id);
               const total = leads.reduce((sum, item) => sum + moneyNumber(item.closedValue || item.value), 0);
               return `
-                <section class="crm-column">
-                  <div class="crm-column-header" style="background:${escapeHtml(stage.color)}; color:#fffdf8;">
+                <section class="crm-column crm-saas-column">
+                  <div class="crm-column-header crm-saas-column-header" style="background:${escapeHtml(stage.color)}; color:#fffdf8;">
                     <button class="crm-stage-name" type="button" title="Editar nome da etapa" data-quick-edit-crm-stage="${stage.id}">${escapeHtml(stage.name)}</button>
                     <div class="crm-stage-head-actions">
                       <span class="crm-stage-total"><strong>${formatMoney(total)}</strong><small>${leads.length} oportunidades</small></span>
                       <button class="crm-stage-delete" type="button" title="Remover etapa sem apagar oportunidades" data-quick-remove-crm-stage="${stage.id}">×</button>
                     </div>
                   </div>
-                  <div class="crm-column-body">${leads.map(crmCard).join("") || "<small>Nenhuma oportunidade.</small>"}</div>
+                  <div class="crm-column-body crm-saas-column-body">${leads.map(crmCard).join("") || "<small class='crm-saas-empty-stage'>Nenhuma oportunidade.</small>"}</div>
                 </section>
                 <div class="crm-stage-insert"><button type="button" title="Adicionar etapa" data-add-crm-stage-after="${stage.id}">+</button></div>
               `;
             }).join("")}
           </div>
           ${lead ? `
-            <div class="detail-grid" style="margin-top:12px;">
-              <article class="panel soft-panel crm-opportunity-card ${state.crm.expandedLeadId === lead.id ? "expanded" : ""}" data-toggle-crm-lead="${lead.id}" style="grid-column:1/-1">
+            <div class="detail-grid crm-saas-detail-grid" style="margin-top:12px;">
+              <article class="panel soft-panel crm-opportunity-card crm-saas-selected ${state.crm.expandedLeadId === lead.id ? "expanded" : ""}" data-toggle-crm-lead="${lead.id}" style="grid-column:1/-1">
                 <div class="section-title">
                   <div><p class="eyebrow">Oportunidade selecionada</p><h2>${escapeHtml(lead.client)}</h2></div>
                   <div class="actions"><span class="pill">${escapeHtml(crmStage(lead.stageId).name || "-")}</span><button class="crm-expand-toggle" id="toggle-crm-lead" type="button" title="${state.crm.expandedLeadId === lead.id ? "Recolher" : "Abrir"}">${state.crm.expandedLeadId === lead.id ? "Recolher" : "Abrir"}</button></div>
@@ -3322,18 +3325,18 @@
                 </div>
                 ` : ""}
               </article>
-              <article class="panel soft-panel" style="grid-column:1/-1">
+              <article class="panel soft-panel crm-saas-subsection crm-saas-tasks" style="grid-column:1/-1">
                 <div class="section-title"><div><p class="eyebrow">Tarefas comerciais</p><h2>Agenda da oportunidade</h2></div><button class="secondary" id="add-crm-task-bottom" type="button">Nova tarefa</button></div>
                 <div class="task-list">
                   ${crmTasksForLead(lead.id, true).map(task => `<article class="task-card"><div class="row-between"><strong>${escapeHtml(task.title)}</strong><span class="pill ${crmTaskStatus(task) === "Atrasada" ? "danger-text" : ""}">${escapeHtml(crmTaskStatus(task))}</span></div><div class="subtask-meta"><span class="pill">${escapeHtml(userName(task.ownerId))}</span><span class="pill">${formatDate(task.dueDate)} ${escapeHtml(task.dueTime || "")}</span><span class="pill">${escapeHtml(task.priority)}</span><span class="pill">${task.automatic && task.required ? "Obrigatoria" : task.automatic ? "Automatica" : "Manual"}</span></div><div class="actions"><button class="primary" data-complete-commercial-task="${task.id}" type="button" ${crmTaskStatus(task) === "Concluida" ? "disabled" : ""}>Concluir</button><button class="secondary" data-edit-commercial-task="${task.id}" type="button">Editar</button><button class="danger" data-remove-commercial-task="${task.id}" type="button">Excluir</button></div></article>`).join("") || "<small>Nenhuma tarefa comercial vinculada.</small>"}
                 </div>
               </article>
-              <article class="panel soft-panel" style="grid-column:1/-1">
+              <article class="panel soft-panel crm-saas-subsection crm-saas-chat" style="grid-column:1/-1">
                 <div class="section-title"><div><p class="eyebrow">Chat interno</p><h2>Comentarios da oportunidade</h2></div></div>
                 <div class="crm-chat-list">${(lead.chat || []).map(message => `<div class="chat-message"><div class="row-between"><strong>${escapeHtml(userName(message.userId) || message.user || "Equipe")}</strong><small>${formatDateTime(message.at)}</small></div><p>${escapeHtml(message.text)}</p></div>`).join("") || "<small>Sem comentarios internos.</small>"}</div>
                 <form class="grid-2" id="crm-chat-form"><label>Comentario <input id="crm-chat-message" placeholder="Use @Nome para mencionar um colaborador" required /></label><button class="primary" type="submit">Enviar comentario</button></form>
               </article>
-              <article class="panel soft-panel" style="grid-column:1/-1">
+              <article class="panel soft-panel crm-saas-subsection crm-saas-history" style="grid-column:1/-1">
                 <div class="section-title"><div><p class="eyebrow">Historico comercial</p><h2>Eventos</h2></div></div>
                 <div class="history-list">
                   ${(lead.history || []).slice().reverse().map(item => `<div class="history-item"><strong>${formatDateTime(item.at)}</strong><br><small>${escapeHtml(userName(item.userId))}: ${escapeHtml(item.text)}</small></div>`).join("") || "<small>Nenhuma interacao registrada.</small>"}
