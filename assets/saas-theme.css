@@ -159,3 +159,53 @@
 @media (max-width:1500px) { .reporting-header { justify-content:flex-end; padding:0 2px; }.reporting-header > div:first-child { display:none; }.reporting-kpis { grid-template-columns:repeat(3,minmax(0,1fr)); }.reporting-grid.marketing { grid-template-columns:repeat(2,minmax(0,1fr)); }.report-side-kpi { grid-column:1/-1; }.reporting-grid.productivity { grid-template-columns:1fr; }.report-partner-panel { min-height:260px; } }
 @media (max-width:860px) { .reporting-header,.reporting-section-head { display:grid; align-items:start; }.reporting-actions { width:100%; }.reporting-filterbar { grid-template-columns:1fr; }.reporting-presets { justify-content:flex-start; }.reporting-grid.marketing,.reporting-grid.commercial { grid-template-columns:1fr; }.reporting-section-filters { width:100%; }.report-select { flex:1 1 170px; }.reporting-custom-dates { grid-template-columns:1fr 1fr; }.reporting-custom-dates .saas-button { grid-column:1/-1; }.reporting-future-grid { grid-template-columns:1fr; } }
 @media (max-width:560px) { .reporting-header h2 { font-size:24px; }.reporting-kpis,.reporting-partner-kpis { grid-template-columns:1fr; }.reporting-actions .saas-button { flex:1; }.reporting-filterbar,.report-panel,.report-side-kpi,.reporting-future { padding:14px; }.reporting-presets { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); width:100%; }.reporting-presets button { padding:0 6px; }.reporting-custom-dates { grid-template-columns:1fr; }.report-donut-layout { grid-template-columns:1fr; justify-items:center; }.report-legend { width:100%; }.report-funnel-row { grid-template-columns:minmax(100px,.8fr) minmax(90px,1.1fr); }.report-funnel-meta { grid-column:1/-1; justify-items:start; padding-left:30px; }.reporting-section-head > div:first-child { align-items:start; }.report-future-badge { justify-self:start; } }
+
+/* Reports v5: analytical CRM controls and interactive executive overview. */
+.report-global-filters { grid-column:1/-1; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:end; padding-top:14px; border-top:1px solid #EAE6E1; }
+.report-global-filter-grid { display:grid; grid-template-columns:repeat(4,minmax(145px,1fr)); gap:9px; }
+.report-global-select { display:grid; gap:5px; min-width:0; color:#8B8585; font-size:10px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; }
+.report-global-select select { width:100%; min-height:38px; padding:0 30px 0 10px; border:1px solid #DED8D1; border-radius:8px; background:#FCFCFB; color:#2F2F2F; font:inherit; font-size:12px; font-weight:700; text-transform:none; transition:border-color .15s,box-shadow .15s,background .15s; }
+.report-global-select select:hover { border-color:#D8AA7F; background:#fff; }
+.report-global-select select:focus-visible { outline:0; border-color:#D8AA7F; box-shadow:0 0 0 3px rgba(216,170,127,.22); }
+.report-global-filter-actions { display:flex; gap:8px; }
+.report-alert-strip { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+.report-alert-strip > div { position:relative; display:grid; grid-template-columns:auto minmax(0,1fr); gap:3px 10px; min-height:74px; padding:13px 14px 13px 17px; overflow:hidden; border:1px solid #EAE6E1; border-radius:9px; background:#fff; }
+.report-alert-strip > div::before { position:absolute; inset:0 auto 0 0; width:4px; content:""; }
+.report-alert-strip span { grid-row:1/3; align-self:center; display:grid; place-items:center; width:34px; height:34px; border-radius:8px; background:#F2ECE6; color:#6D6A67; font-size:9px; font-weight:850; text-transform:uppercase; }
+.report-alert-strip strong { align-self:end; color:#2F2F2F; font-size:12px; }
+.report-alert-strip small { color:#8B8585; font-size:10px; }
+.report-alert-strip .danger::before { background:#C62828; }.report-alert-strip .danger span { background:#FDECEC; color:#C62828; }
+.report-alert-strip .warning::before { background:#C48A00; }.report-alert-strip .warning span { background:#FFF5DC; color:#966700; }
+.report-alert-strip .info::before { background:#1565C0; }.report-alert-strip .info span { background:#EAF2FC; color:#1565C0; }
+.report-metric.is-interactive { cursor:pointer; transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease; }
+.report-metric.is-interactive:hover { transform:translateY(-2px); border-color:#D8AA7F; box-shadow:0 12px 28px rgba(47,47,47,.07); }
+.report-metric.is-interactive:focus-visible { outline:3px solid rgba(216,170,127,.3); outline-offset:2px; }
+.report-detail-drawer { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:15px 17px; border:1px solid #D8AA7F; border-radius:9px; background:#FFF9F4; animation:saas-fade .16s ease-out; }
+.report-detail-drawer[hidden] { display:none; }
+.report-detail-drawer > div { display:grid; gap:3px; }
+.report-detail-drawer span { color:#8B8585; font-size:9px; font-weight:850; letter-spacing:.06em; }
+.report-detail-drawer strong { color:#2F2F2F; font-size:14px; }
+.report-detail-drawer p { margin:0; color:#6D6A67; font-size:11px; }
+.report-evolution-section .report-panel { padding-bottom:12px; }
+.report-line-legend { display:flex; justify-content:flex-end; gap:16px; margin:-4px 4px 5px; color:#6D6A67; font-size:10px; font-weight:750; }
+.report-line-legend span { display:flex; align-items:center; gap:6px; }
+.report-line-legend i { width:8px; height:8px; border-radius:50%; background:#D8AA7F; }.report-line-legend span:nth-child(2) i { background:#5E7484; }
+.report-line-chart { display:block; width:100%; height:auto; min-height:180px; overflow:visible; }
+.report-line-chart .axis { stroke:#EAE6E1; stroke-width:1; }
+.report-line-chart polyline { fill:none; stroke-width:3; stroke-linecap:round; stroke-linejoin:round; }
+.report-line-chart .leads { stroke:#D8AA7F; }.report-line-chart .sold { stroke:#5E7484; }
+.report-line-chart circle { stroke:#fff; stroke-width:2; cursor:help; transition:r .15s ease; }
+.report-line-chart circle:hover { r:6; }.report-line-chart .lead-point { fill:#D8AA7F; }.report-line-chart .sold-point { fill:#5E7484; }
+.report-line-chart text { fill:#8B8585; font-size:9px; }
+.report-finance-strip { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+.report-finance-strip .report-metric { min-height:104px; }
+.report-attendant { display:flex; align-items:center; gap:9px; min-width:150px; }
+.report-attendant > span { display:grid; place-items:center; flex:0 0 30px; width:30px; height:30px; border-radius:50%; background:#F2ECE6; color:#765D46; font-size:10px; font-weight:850; }
+.report-attendant strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.report-goal { display:grid; grid-template-columns:minmax(70px,1fr) 34px; align-items:center; gap:7px; min-width:120px; }
+.report-goal i { display:block; height:7px; overflow:hidden; border-radius:99px; background:#EAE6E1; }
+.report-goal b { display:block; height:100%; border-radius:inherit; background:#6F8A7B; }
+.report-goal small { color:#6D6A67; font-size:10px; font-weight:800; text-align:right; }
+@media (max-width:1500px) { .report-global-filters { grid-template-columns:1fr; }.report-global-filter-actions { justify-content:flex-end; }.report-finance-strip { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:860px) { .report-global-filter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.report-alert-strip { grid-template-columns:1fr; }.report-detail-drawer { align-items:start; }.report-line-chart { min-width:620px; }.report-evolution-section .report-panel { overflow-x:auto; } }
+@media (max-width:560px) { .report-global-filter-grid,.report-finance-strip { grid-template-columns:1fr; }.report-global-filter-actions { display:grid; grid-template-columns:1fr 1fr; }.report-global-filter-actions .saas-button { width:100%; }.report-detail-drawer { display:grid; }.report-detail-drawer .saas-button { width:100%; }.report-alert-strip > div { grid-template-columns:auto minmax(0,1fr); } }

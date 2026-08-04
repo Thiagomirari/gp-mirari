@@ -56,8 +56,19 @@
     return start && end ? Math.max(0, Math.round((new Date(`${dateOnly(end)}T12:00:00`) - new Date(`${dateOnly(start)}T12:00:00`)) / 86400000)) : 0;
   }
 
+  const reportUser = (id) => (state.users || []).find((user) => user.id === id) || {};
+
+  function matchesGlobalFilters(lead) {
+    const global = window.reportGlobalFilters || {};
+    if (global.team && global.team !== "all" && String(reportUser(lead.ownerId).role || "Sem equipe") !== global.team) return false;
+    if (global.owner && global.owner !== "all" && lead.ownerId !== global.owner) return false;
+    if (global.stage && global.stage !== "all" && lead.stageId !== global.stage) return false;
+    if (global.source && global.source !== "all" && String(lead.source || "Nao informado") !== global.source) return false;
+    return true;
+  }
+
   function dataFor(filters) {
-    const all = state.crm?.leads || [];
+    const all = (state.crm?.leads || []).filter(matchesGlobalFilters);
     const scoped = all.filter((lead) => inRange(firstContact(lead), filters));
     const sold = all.filter((lead) => isWon(lead) && inRange(lead.crmDates?.closed || lead.updatedAt || firstContact(lead), filters));
     const lost = all.filter((lead) => isLost(lead) && inRange(lead.crmDates?.lost || lead.updatedAt || firstContact(lead), filters));
@@ -110,6 +121,56 @@
     return `<div class="report-ranked-bars">${rows.slice(0, 5).map((row, index) => `<div><span>${index + 1}</span><section><header><strong>${esc(row.name)}</strong><small>${money(row.sales)}</small></header><i><b style="width:${Math.max(4, Math.round(row.sales / max * 100))}%"></b></i></section><em>RT ${money(row.rt)}</em></div>`).join("")}</div>`;
   }
 
+  function taskMetrics(data, filters) {
+    const leadIds = new Set(data.scoped.map((lead) => lead.id));
+    const tasks = (state.crm?.tasks || []).filter((task) => {
+      if (!leadIds.has(task.leadId) || task.status === "Cancelada") return false;
+      return inRange(task.dueDate || task.createdAt, filters) || inRange(task.completedAt, filters);
+    });
+    const completed = tasks.filter((task) => task.status === "Concluida" || task.completedAt);
+    const pending = tasks.filter((task) => task.status !== "Concluida" && !task.completedAt);
+    const today = iso(new Date());
+    const overdue = pending.filter((task) => dateOnly(task.dueDate) && dateOnly(task.dueDate) < today);
+    const onTime = completed.filter((task) => !task.dueDate || dateOnly(task.completedAt) <= dateOnly(task.dueDate));
+    const openLeads = data.scoped.filter((lead) => !isWon(lead) && !isLost(lead));
+    const withNextTask = new Set(pending.map((task) => task.leadId));
+    const withoutTask = openLeads.filter((lead) => !withNextTask.has(lead.id));
+    return { tasks, completed, pending, overdue, openLeads, withoutTask, sla: completed.length ? Math.round(onTime.length / completed.length * 100) : null };
+  }
+
+  function timelineRows(data, filters) {
+    const start = new Date(`${filters.start}T12:00:00`);
+    const end = new Date(`${filters.end}T12:00:00`);
+    const totalDays = Math.max(1, Math.round((end - start) / 86400000) + 1);
+    const step = Math.max(1, Math.ceil(totalDays / 8));
+    const rows = [];
+    for (let cursor = new Date(start); cursor <= end; cursor.setDate(cursor.getDate() + step)) {
+      const bucketStart = iso(cursor);
+      const bucketEndDate = new Date(cursor); bucketEndDate.setDate(bucketEndDate.getDate() + step - 1);
+      const bucketEnd = iso(bucketEndDate > end ? end : bucketEndDate);
+      rows.push({ label: dateBR(bucketStart).slice(0, 5), leads: data.scoped.filter((lead) => { const date = firstContact(lead); return date >= bucketStart && date <= bucketEnd; }).length, sold: data.sold.filter((lead) => { const date = dateOnly(lead.crmDates?.closed || lead.updatedAt); return date >= bucketStart && date <= bucketEnd; }).length });
+    }
+    return rows.slice(0, 9);
+  }
+
+  function lineChart(rows) {
+    if (!rows.length || !rows.some((row) => row.leads || row.sold)) return emptyChart("Sem movimentacao suficiente para o periodo.");
+    const width = 620; const height = 190; const inset = 24;
+    const max = Math.max(1, ...rows.flatMap((row) => [row.leads, row.sold]));
+    const point = (value, index) => ({ x: inset + index * ((width - inset * 2) / Math.max(1, rows.length - 1)), y: height - inset - value / max * (height - inset * 2) });
+    const leads = rows.map((row, index) => point(row.leads, index));
+    const sold = rows.map((row, index) => point(row.sold, index));
+    return `<div class="report-line-legend"><span><i></i>Leads</span><span><i></i>Vendas</span></div><svg class="report-line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Evolucao de leads e vendas"><line x1="${inset}" y1="${height - inset}" x2="${width - inset}" y2="${height - inset}" class="axis"/><polyline points="${leads.map((item) => `${item.x},${item.y}`).join(" ")}" class="leads"/><polyline points="${sold.map((item) => `${item.x},${item.y}`).join(" ")}" class="sold"/>${leads.map((item, index) => `<circle cx="${item.x}" cy="${item.y}" r="4" class="lead-point"><title>${esc(rows[index].label)}: ${rows[index].leads} lead(s)</title></circle>`).join("")}${sold.map((item, index) => `<circle cx="${item.x}" cy="${item.y}" r="4" class="sold-point"><title>${esc(rows[index].label)}: ${rows[index].sold} venda(s)</title></circle>`).join("")}${rows.map((row, index) => `<text x="${point(0, index).x}" y="184" text-anchor="middle">${esc(row.label)}</text>`).join("")}</svg>`;
+  }
+
+  function globalSelect(id, label, options, selected, allLabel) {
+    return `<label class="report-global-select"><span>${esc(label)}</span><select id="${id}"><option value="all">${esc(allLabel)}</option>${options.map((option) => `<option value="${esc(option.value)}" ${option.value === selected ? "selected" : ""}>${esc(option.label)}</option>`).join("")}</select></label>`;
+  }
+
+  function operationalMetric(id, tone, label, value, detail, mark) {
+    return `<article class="report-metric report-metric-${tone} is-interactive" tabindex="0" role="button" data-report-detail="${id}" aria-label="Detalhar ${esc(label)}"><span class="report-metric-mark">${esc(mark)}</span><div><p>${esc(label)}</p><strong>${esc(value)}</strong><small>${esc(detail)}</small></div></article>`;
+  }
+
   function printReport(data, filters) {
     const popup = window.open("", "_blank", "width=980,height=760");
     if (!popup) return;
@@ -131,8 +192,11 @@
     if (!target || state.activeTab !== "reports") return;
     let filters = window.reportFilters;
     if (!filters?.start || !filters?.end) { filters = periodFor("month"); window.reportFilters = filters; }
-    const local = window.reportBlockFilters || {};
+    const local = {};
     const data = dataFor(filters);
+    const global = window.reportGlobalFilters || {};
+    const operations = taskMetrics(data, filters);
+    const timeline = timelineRows(data, filters);
     const commercialLeads = local.stage && local.stage !== "all" ? data.scoped.filter((lead) => stageFor(lead).id === local.stage) : data.scoped;
     const commercialSold = local.stage && local.stage !== "all" ? data.sold.filter((lead) => stageFor(lead).id === local.stage) : data.sold;
     const commercialProposals = local.stage && local.stage !== "all" ? data.proposals.filter((proposal) => commercialLeads.some((lead) => lead.id === (proposal.crmOpportunityRef || proposal.leadId || proposal.opportunityId))) : data.proposals;
@@ -153,9 +217,51 @@
     const commercialFilter = select("report-commercial-stage", "Etapa", data.stages.map((row) => ({ value: row.id, label: row.name })), local.stage, "Todas as etapas");
     const teamFilter = select("report-team-owner", "Responsavel", data.team.map((row) => ({ value: row.id, label: row.name })), local.owner, "Toda a equipe");
     const partnerFilter = select("report-partner", "Especificador", data.partners.map((row) => ({ value: row.id, label: row.name })), local.partner, "Todos os especificadores");
+    const allUsers = (state.users || []).filter((user) => user.active !== false);
+    const teamOptions = [...new Set(allUsers.map((user) => String(user.role || "Sem equipe")))].sort().map((role) => ({ value: role, label: role }));
+    const ownerOptions = allUsers.map((user) => ({ value: user.id, label: user.name }));
+    const sourceOptions = [...new Set((state.crm?.leads || []).map((lead) => String(lead.source || "Nao informado")))].sort().map((source) => ({ value: source, label: source }));
+    const stageOptions = activeStages().map((stage) => ({ value: stage.id, label: stage.name }));
 
     target.innerHTML = `<main class="reporting-workspace"><header class="reporting-header"><div><p>INTELIGENCIA COMERCIAL</p><h2>Relatorios e KPIs</h2><span>Uma visao executiva do CRM, propostas e parcerias.</span></div><div class="reporting-actions"><button class="saas-button" id="report-pdf" type="button">Gerar PDF</button><button class="saas-button primary" id="reports-refresh" type="button">Atualizar</button></div></header><section class="reporting-filterbar"><div class="reporting-date"><span>Periodo analisado</span><strong>${dateBR(filters.start)} - ${dateBR(filters.end)}</strong></div><div class="reporting-presets">${presets.map(([id, label]) => `<button class="${filters.preset === id ? "is-active" : ""}" data-report-preset="${id}" type="button">${label}</button>`).join("")}</div>${custom ? `<div class="reporting-custom-dates"><label>Inicio<input id="report-start" type="date" value="${esc(filters.start)}"></label><label>Fim<input id="report-end" type="date" value="${esc(filters.end)}"></label><button class="saas-button primary" id="reports-apply-period" type="button">Aplicar</button></div>` : ""}</section><section class="reporting-kpis">${metric("leads", "Total de leads", data.summary.leads, data.summary.mom === null ? "Sem comparativo anterior" : `${data.summary.mom >= 0 ? "+" : ""}${data.summary.mom.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% vs. mes anterior`, "#")}${metric("pipeline", "Valor no funil", money(openPipeline), `${commercialLeads.length} oportunidade(s) no periodo`, "R$")}${metric("ticket", "Ticket medio do funil", money(commercialFunnelTicket), "Media dos cartoes no funil", "TM")}${metric("proposal", "Ticket medio de orcamentos", money(commercialProposalTicket), `${commercialProposals.length} proposta(s)`, "OR")}${metric("sold", "Valor vendido", money(commercialSoldValue), `${commercialSold.length} venda(s) fechada(s)`, "R$")}${metric("conversion", "Conversao comercial", `${commercialConversion}%`, `${data.lost.length} negocio(s) perdido(s)`, "%")}</section><section class="reporting-section"><header class="reporting-section-head"><div><span>01</span><div><p>MARKETING</p><h3>Atracao e topo de funil</h3></div></div>${marketingFilter}</header><div class="reporting-grid marketing"><article class="report-panel">${panelHead("ORIGEM", "Leads por canal", "Distribuicao das oportunidades no periodo.")}${donutChart(marketingRows)}</article><article class="report-panel">${panelHead("VOLUME", "Canais de aquisicao", "Comparativo visual de entrada de leads.")}${channelBars(marketingRows)}</article><article class="report-side-kpi"><span>Qualificacao</span><strong>${data.summary.qualification}%</strong><p>Leads que avancaram para briefing, medicao ou etapa posterior.</p><i><b style="width:${data.summary.qualification}%"></b></i></article></div></section><section class="reporting-section"><header class="reporting-section-head"><div><span>02</span><div><p>COMERCIAL</p><h3>Desempenho e funil de vendas</h3></div></div>${commercialFilter}</header><div class="reporting-grid commercial"><article class="report-panel report-panel-wide">${panelHead("PIPELINE", "Funil de vendas", "Quantidade de oportunidades e valor por etapa.")}${funnel(commercialStages)}</article><article class="report-panel report-closing-panel">${panelHead("FECHAMENTO", "Indicadores de venda", "Leitura rapida do periodo filtrado.")}<div class="report-closing-list"><div><span>Ticket medio vendido</span><strong>${money(commercialTicket)}</strong></div><div><span>Tempo medio de fechamento</span><strong>${data.summary.closeDays} dias</strong></div><div><span>Negocios perdidos</span><strong>${data.lost.length}</strong></div></div></article></div><article class="report-panel report-table-panel">${panelHead("CANAIS", "Performance por canal", "Leads, vendas, conversao e ticket medio.")}<div class="report-table-scroll"><table class="report-table"><thead><tr><th>Canal</th><th>Leads</th><th>Vendas</th><th>Conversao</th><th>Ticket medio</th></tr></thead><tbody>${channelRows(commercialLeads).map((row) => `<tr><td><span class="report-table-dot"></span><strong>${esc(row.name)}</strong></td><td>${row.leads}</td><td>${row.won}</td><td><span class="report-percent">${row.leads ? Math.round(row.won / row.leads * 100) : 0}%</span></td><td>${row.won ? money(row.value / row.won) : "-"}</td></tr>`).join("") || '<tr><td colspan="5" class="report-table-empty">Nenhum canal para o filtro selecionado.</td></tr>'}</tbody></table></div></article></section><section class="reporting-section"><header class="reporting-section-head"><div><span>03</span><div><p>EQUIPE E PARCERIAS</p><h3>Produtividade comercial</h3></div></div><div class="reporting-section-filters">${teamFilter}${partnerFilter}</div></header><div class="reporting-grid productivity"><article class="report-panel report-team-panel">${panelHead("EQUIPE", "Performance por projetista ou consultor", "Revisoes serao alimentadas pelos projetos relacionais futuramente.")}<div class="report-table-scroll"><table class="report-table"><thead><tr><th>Responsavel</th><th>Apresentados</th><th>Vendidos</th><th>Conversao</th><th>Ticket medio</th><th>Revisoes</th></tr></thead><tbody>${teamRows.map((row) => `<tr><td><strong>${esc(row.name)}</strong></td><td>${row.presented}</td><td>${row.sold}</td><td><span class="report-percent">${row.conversion}%</span></td><td>${money(row.ticket)}</td><td>${row.revisions}</td></tr>`).join("") || '<tr><td colspan="6" class="report-table-empty">Nenhum responsavel com atividade no periodo.</td></tr>'}</tbody></table></div></article><article class="report-panel report-partner-panel">${panelHead("TOP 5", "Arquitetos e especificadores", "Vendido e RT estimada no periodo.")}${rankedBars(partnerRows)}</article></div><div class="reporting-partner-kpis">${metric("partner", "Vendas por parcerias", money(partnerRows.reduce((sum, row) => sum + row.sales, 0)), "Especificadores vinculados", "R$")}${metric("rt", "RT / comissao estimada", money(partnerRows.reduce((sum, row) => sum + row.rt, 0)), "Analises de preco salvas", "RT")}</div></section><section class="reporting-section reporting-future"><header class="reporting-section-head"><div><span>04</span><div><p>PREPARACAO FUTURA</p><h3>Operacao, qualidade e pos-venda</h3></div></div><span class="report-future-badge">Aguardando dados operacionais</span></header><div class="reporting-future-grid"><div><span>Assistencia tecnica / avarias</span><strong>-</strong><small>Chamados por projeto vendido</small></div><div><span>Lead time de entrega e montagem</span><strong>-</strong><small>Fechamento ate montagem concluida</small></div><div><span>NPS / satisfacao</span><strong>-</strong><small>Pesquisa apos a montagem</small></div></div></section><footer class="reporting-source">Fonte: CRM, propostas, usuarios e especificadores. Atualizado conforme os filtros selecionados.</footer></main>`;
 
+    const filterbar = target.querySelector(".reporting-filterbar");
+    filterbar?.insertAdjacentHTML("beforeend", `<div class="report-global-filters"><div class="report-global-filter-grid">${globalSelect("report-global-team", "Equipe", teamOptions, global.team, "Todas as equipes")}${globalSelect("report-global-owner", "Atendente", ownerOptions, global.owner, "Todos os atendentes")}${globalSelect("report-global-stage", "Status", stageOptions, global.stage, "Todos os status")}${globalSelect("report-global-source", "Origem", sourceOptions, global.source, "Todas as origens")}</div><div class="report-global-filter-actions"><button class="saas-button" id="report-clear-filters" type="button">Limpar</button><button class="saas-button primary" id="report-apply-filters" type="button">Aplicar filtros</button></div></div>`);
+    target.querySelectorAll(".reporting-section-head > .report-select, .reporting-section-filters").forEach((element) => element.remove());
+
+    const executiveKpis = target.querySelector(".reporting-kpis");
+    if (executiveKpis) executiveKpis.innerHTML = `${operationalMetric("leads", "leads", "Total de leads", data.summary.leads, data.summary.mom === null ? "Sem comparativo anterior" : `${data.summary.mom >= 0 ? "+" : ""}${data.summary.mom.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% vs. periodo anterior`, "#")}${operationalMetric("pending", "proposal", "Tarefas pendentes", operations.pending.length, `${operations.overdue.length} atrasada(s)`, "TP")}${operationalMetric("progress", "ticket", "Em andamento", operations.openLeads.length, "Oportunidades abertas", "EA")}${operationalMetric("completed", "sold", "Tarefas concluidas", operations.completed.length, "No periodo selecionado", "OK")}${operationalMetric("sla", "pipeline", "SLA de tarefas", operations.sla === null ? "-" : `${operations.sla}%`, operations.sla === null ? "Sem tarefas concluidas com prazo" : "Concluidas dentro do prazo", "SL")}${operationalMetric("conversion", "conversion", "Conversao comercial", `${commercialConversion}%`, `${commercialSold.length} venda(s) fechada(s)`, "%")}`;
+
+    if (operations.overdue.length || operations.withoutTask.length || (data.summary.mom !== null && data.summary.mom < 0)) {
+      filterbar?.insertAdjacentHTML("afterend", `<section class="report-alert-strip" aria-label="Pontos de atencao">${operations.overdue.length ? `<div class="danger"><span>Prazo</span><strong>${operations.overdue.length} tarefa(s) atrasada(s)</strong><small>Requer acompanhamento comercial.</small></div>` : ""}${operations.withoutTask.length ? `<div class="warning"><span>Agenda</span><strong>${operations.withoutTask.length} oportunidade(s) sem tarefa</strong><small>Sem proximo compromisso pendente.</small></div>` : ""}${data.summary.mom !== null && data.summary.mom < 0 ? `<div class="info"><span>Tendencia</span><strong>${Math.abs(data.summary.mom).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% menos leads</strong><small>Comparacao com o periodo anterior.</small></div>` : ""}</section>`);
+    }
+
+    executiveKpis?.insertAdjacentHTML("afterend", `<section class="report-detail-drawer" id="report-detail-drawer" hidden></section>`);
+    const sections = target.querySelectorAll(".reporting-section");
+    const marketingSection = sections.length ? sections[0] : null;
+    marketingSection?.insertAdjacentHTML("afterend", `<section class="reporting-section report-evolution-section"><header class="reporting-section-head"><div><span>+</span><div><p>EVOLUCAO</p><h3>Movimentacao no periodo</h3></div></div></header><article class="report-panel">${panelHead("TENDENCIA", "Leads e vendas ao longo do tempo", "Passe o mouse sobre os pontos para visualizar os valores.")}${lineChart(timeline)}</article></section>`);
+    const commercialSection = sections.length > 1 ? sections[1] : null;
+    commercialSection?.querySelector(".reporting-grid.commercial")?.insertAdjacentHTML("beforebegin", `<div class="report-finance-strip">${metric("ticket", "Ticket medio do funil", money(commercialFunnelTicket), `${commercialLeads.length} oportunidade(s)`, "TM")}${metric("proposal", "Ticket medio de orcamentos", money(commercialProposalTicket), `${commercialProposals.length} proposta(s)`, "OR")}${metric("sold", "Ticket medio vendido", money(commercialTicket), `${commercialSold.length} venda(s)`, "TV")}${metric("pipeline", "Valor vendido", money(commercialSoldValue), "Fechamentos do periodo", "R$")}</div>`);
+
+    const teamTable = target.querySelector(".report-team-panel .report-table-scroll");
+    if (teamTable) teamTable.innerHTML = `<table class="report-table report-attendant-table"><thead><tr><th>Atendente</th><th>Apresentados</th><th>Vendidos</th><th>Conversao</th><th>Ticket medio</th><th>Meta visual</th></tr></thead><tbody>${teamRows.map((row) => { const initials = String(row.name || "?").split(/\s+/).slice(0, 2).map((part) => part.charAt(0)).join("").toUpperCase(); return `<tr><td><div class="report-attendant"><span>${esc(initials)}</span><strong>${esc(row.name)}</strong></div></td><td>${row.presented}</td><td>${row.sold}</td><td><span class="report-percent">${row.conversion}%</span></td><td>${money(row.ticket)}</td><td><div class="report-goal"><i><b style="width:${Math.min(100, row.conversion)}%"></b></i><small>${row.conversion}%</small></div></td></tr>`; }).join("") || '<tr><td colspan="6" class="report-table-empty">Nenhum atendente com atividade no periodo.</td></tr>'}</tbody></table>`;
+
+    const detailMessages = {
+      leads: ["Total de leads", `${data.summary.leads} oportunidade(s) entraram no periodo selecionado.`],
+      pending: ["Tarefas pendentes", `${operations.pending.length} pendente(s), sendo ${operations.overdue.length} atrasada(s).`],
+      progress: ["Em andamento", `${operations.openLeads.length} oportunidade(s) permanecem abertas no funil.`],
+      completed: ["Tarefas concluidas", `${operations.completed.length} tarefa(s) foram concluidas dentro do filtro.`],
+      sla: ["SLA de tarefas", operations.sla === null ? "Ainda nao existe base concluida suficiente para calcular o SLA." : `${operations.sla}% das tarefas concluidas respeitaram o prazo cadastrado.`],
+      conversion: ["Conversao comercial", `${commercialSold.length} de ${commercialLeads.length} oportunidade(s) resultaram em venda.`]
+    };
+    target.querySelectorAll("[data-report-detail]").forEach((item) => {
+      const open = () => { const detail = detailMessages[item.dataset.reportDetail]; const drawer = $("report-detail-drawer"); if (!drawer || !detail) return; drawer.hidden = false; drawer.innerHTML = `<div><span>DETALHAMENTO</span><strong>${esc(detail[0])}</strong><p>${esc(detail[1])}</p></div><button class="saas-button" id="report-close-detail" type="button">Fechar</button>`; $("report-close-detail").onclick = () => { drawer.hidden = true; }; };
+      item.onclick = open;
+      item.onkeydown = (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); } };
+    });
+
+    $("report-apply-filters")?.addEventListener("click", () => { window.reportGlobalFilters = { team: $("report-global-team").value, owner: $("report-global-owner").value, stage: $("report-global-stage").value, source: $("report-global-source").value }; refreshApp(); });
+    $("report-clear-filters")?.addEventListener("click", () => { window.reportGlobalFilters = {}; refreshApp(); });
     document.querySelectorAll("[data-report-preset]").forEach((button) => button.onclick = () => { window.reportFilters = button.dataset.reportPreset === "custom" ? { ...filters, preset: "custom" } : periodFor(button.dataset.reportPreset); refreshApp(); });
     $("reports-apply-period")?.addEventListener("click", () => { window.reportFilters = { preset: "custom", start: $("report-start").value || filters.start, end: $("report-end").value || filters.end }; refreshApp(); });
     $("reports-refresh").onclick = refreshApp;
