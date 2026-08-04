@@ -29,7 +29,13 @@ Deno.serve(async (request) => {
   const path = String(body.path || "summary");
   if (!allowedPaths.has(path)) return json({ error: "unsupported_path" }, 400);
   const filters = body.filters && typeof body.filters === "object" ? body.filters : {};
-  const organizationId = String(body.organizationId || filters.organizationId || "");
+  let organizationId = String(body.organizationId || filters.organizationId || "");
+  const organizationSlug = String(body.organizationSlug || filters.organizationSlug || "").trim().toLowerCase();
+  if (!organizationId && organizationSlug) {
+    const { data: organization, error: organizationError } = await db.from("gp_v2_organizations").select("id").eq("slug", organizationSlug).maybeSingle();
+    if (organizationError) return json({ error: organizationError.message }, 400);
+    organizationId = String(organization?.id || "");
+  }
   if (!organizationId) return json({ error: "organization_required" }, 400);
   const { data: membership, error: membershipError } = await db.from("gp_v2_memberships").select("role,status").eq("organization_id", organizationId).eq("user_id", auth.user.id).maybeSingle();
   if (membershipError || membership?.status !== "active") return json({ error: "active_membership_required" }, 403);
