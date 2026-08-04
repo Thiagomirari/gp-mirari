@@ -78,6 +78,13 @@
 .crm-optional-fields { grid-column: 1 / -1; padding: 2px 0; }.crm-optional-fields summary { color: var(--saas-muted); cursor: pointer; font-weight: 750; font-size: 13px; }.crm-optional-grid { margin-top: 12px; }
 [hidden] { display: none !important; }
 .saas-notice { padding: 11px 13px; border: 1px solid #ead7c5; background: #fff9f3; color: #6c5947; border-radius: 8px; font-size: 13px; }
+.saas-report-grid { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 12px; }
+.saas-report-kpi { display: grid; gap: 6px; min-height: 116px; padding: 16px; border: 1px solid var(--saas-line); border-radius: 10px; background: #fff; }
+.saas-report-kpi span { color: var(--saas-muted); font-size: 12px; font-weight: 750; }.saas-report-kpi strong { color: var(--saas-ink); font-size: 22px; }.saas-report-kpi small { color: var(--saas-muted); font-size: 11px; }
+.saas-report-columns { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(0,.9fr); gap: 16px; }.saas-report-columns > section:last-of-type { grid-column: 1/-1; }
+.saas-report-source { color: var(--saas-muted); font-size: 11px; margin: 0; }
+@media (max-width: 1100px) { .saas-report-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+@media (max-width: 760px) { .saas-report-grid,.saas-report-columns { grid-template-columns: 1fr; }.saas-report-columns > section:last-of-type { grid-column: auto; }.reports-filter-row { grid-template-columns: 1fr; } }
 .saas-crm-action { margin-left: 8px; }
 @keyframes saas-fade { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 980px) { .saas-proposal-layout { grid-template-columns: 1fr; }.saas-proposal-summary { position: static; }.saas-line-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }.saas-line-name-field { grid-column: 1/-1; }.saas-payment-option { grid-template-columns: 1fr 120px 120px; }.cash-entry-splits-grid { grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); }.payment-option-result { grid-column: 1/-1; text-align: left; }.saas-rate-grid { grid-template-columns: repeat(3,minmax(90px,1fr)); }.saas-composition-row { grid-template-columns: repeat(2,minmax(0,1fr)); }.saas-pricing-grid { grid-template-columns: 1fr; }.saas-pricing-summary { position: static; }.saas-contributor-config { grid-template-columns: repeat(2,minmax(0,1fr)); } }
