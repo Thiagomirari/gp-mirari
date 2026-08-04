@@ -3204,6 +3204,7 @@
       const month = now.getMonth();
       const day = now.getDate();
       const localISO = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+      if (preset === "all") return { start: "", end: "" };
       if (preset === "last_30") return { start: localISO(new Date(year, month, day - 29)), end: localISO(now) };
       if (preset === "quarter") {
         const firstMonth = Math.floor(month / 3) * 3;
@@ -3212,6 +3213,17 @@
       if (preset === "year") return { start: `${year}-01-01`, end: `${year}-12-31` };
       if (preset === "last_12") return { start: localISO(new Date(year - 1, month, day + 1)), end: localISO(now) };
       return { start: localISO(new Date(year, month, 1)), end: localISO(new Date(year, month + 1, 0)) };
+    }
+
+    function crmAppliedPeriodLabel() {
+      const preset = state.filters.crmPeriodPreset || "all";
+      const labels = { all: "Todo o periodo", month: "Este mes", last_30: "Ultimos 30 dias", quarter: "Trimestre", year: "Este ano", last_12: "Ultimos 12 meses", custom: "Periodo selecionado" };
+      const from = state.filters.crmFrom || "";
+      const to = state.filters.crmTo || "";
+      if (!from && !to) return labels[preset] || labels.all;
+      const formatPeriodDate = value => new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(value + "T12:00:00"));
+      const interval = from && to ? `${formatPeriodDate(from)} a ${formatPeriodDate(to)}` : from ? `a partir de ${formatPeriodDate(from)}` : `ate ${formatPeriodDate(to)}`;
+      return `${labels[preset] || labels.custom}: ${interval}`;
     }
 
     function crmVisibleLeads() {
@@ -3274,7 +3286,10 @@
             </div>
             <div class="actions crm-saas-header-actions">
               <label class="crm-saas-funnel-select">Funil <select id="crm-active-funnel">${(state.crm.funnels || []).filter(funnel => funnel.active !== false).map(funnel => option(funnel.id, funnel.name, activeFunnel.id)).join("")}</select></label>
-              <button class="secondary" id="open-crm-filter" type="button">Filtros</button>
+              <div class="crm-filter-control">
+                <button class="secondary" id="open-crm-filter" type="button">Filtros</button>
+                <span class="crm-active-period">${escapeHtml(crmAppliedPeriodLabel())}</span>
+              </div>
               <button class="secondary" id="open-crm-settings" type="button">Configurar funil</button>
               <button class="primary" id="open-crm-lead" type="button">Nova oportunidade</button>
             </div>
@@ -3405,7 +3420,7 @@
       const filterBox = document.getElementById("crm-filter-fields");
       if (!filterBox) return;
       const preset = state.filters.crmPeriodPreset || "all";
-      const presets = [["month", "Este mes"], ["last_30", "Ultimos 30 dias"], ["quarter", "Trimestre"], ["year", "Este ano"], ["last_12", "Ultimos 12 meses"], ["custom", "Selecionar periodo"]];
+      const presets = [["all", "Todo o periodo"], ["month", "Este mes"], ["last_30", "Ultimos 30 dias"], ["quarter", "Trimestre"], ["year", "Este ano"], ["last_12", "Ultimos 12 meses"], ["custom", "Selecionar periodo"]];
       filterBox.innerHTML = `
         <div class="crm-filter-period" data-crm-period-draft="${escapeHtml(preset)}">
           <span>Periodo de entrada</span>
