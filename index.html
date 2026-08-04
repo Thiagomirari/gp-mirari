@@ -2192,6 +2192,18 @@
     }
 
     function renderMetrics() {
+      if (window.GPMirariReports?.dashboardMetrics) {
+        const report = window.GPMirariReports.dashboardMetrics();
+        document.getElementById("metric-active-label").textContent = "Leads no periodo";
+        document.getElementById("metric-late-label").textContent = "Valor no funil";
+        document.getElementById("metric-due-label").textContent = "Valor vendido";
+        document.getElementById("metric-progress-label").textContent = "Conversao comercial";
+        document.getElementById("metric-active").textContent = report.leads;
+        document.getElementById("metric-late").textContent = formatMoney(report.pipeline);
+        document.getElementById("metric-due").textContent = formatMoney(report.sold);
+        document.getElementById("metric-progress").textContent = report.conversion + "%";
+        return;
+      }
       if (state.activeTab === "crm") {
         const leads = state.crm.leads || [];
         const visible = crmVisibleLeads();
@@ -5080,7 +5092,7 @@
   <!-- Script classico para que o MVP tambem carregue ao abrir este HTML diretamente. -->
   <script src="./assets/saas-core.js?v=20260730-crm-tarefas-obrigatorias"></script>
   <script src="./assets/saas-extension.js?v=20260730-crm-tarefas-obrigatorias"></script>
-  <script src="./assets/reports-v2.js?v=20260803-relatorios-kpis"></script>
+  <script src="./assets/reports-v3.js?v=20260803-relatorios-comerciais"></script>
 </body>
 </html>
 
