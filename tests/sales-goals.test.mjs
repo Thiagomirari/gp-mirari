@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
 const reports = readFileSync(new URL("../assets/reports-v4.js", import.meta.url), "utf8");
+const commercial = readFileSync(new URL("../assets/saas-extension.js", import.meta.url), "utf8");
 
 for (const marker of ["salesGoals", "Meta anual de faturamento", "Meta de faturamento", "salesGoalForRange", "sales-goal-form"]) {
   assert.match(html, new RegExp(marker), `Fundacao de metas ausente: ${marker}`);
@@ -24,5 +25,7 @@ assert.match(html, /modalValue\.oninput = \(\) => formatCurrencyWhileTyping\(mod
 assert.match(html, /detailValue\.oninput = \(\) => formatCurrencyWhileTyping\(detailValue\)/, "A oportunidade selecionada precisa formatar o valor durante a digitacao.");
 assert.match(html, /id="crm-value"[^>]*oninput="formatCurrencyWhileTyping\(this\)"/, "A nova oportunidade precisa ter mascara imediata no campo.");
 assert.match(html, /id="crm-detail-value"[^>]*oninput="formatCurrencyWhileTyping\(this\)"/, "A oportunidade selecionada precisa ter mascara imediata no campo.");
+assert.match(commercial, /applyCurrencyMask/, "As propostas precisam reutilizar a mascara monetaria do sistema.");
+assert.match(commercial, /\.line-base,\.composition-cost,\.payment-entry-value,\.cash-split-value,#pricing-purchase-extra,#pricing-freight,#pricing-assembly/, "Todos os campos monetarios de propostas precisam estar cobertos pela mascara.");
 
 console.log("sales-goals.test.mjs: ok");
