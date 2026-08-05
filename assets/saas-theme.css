@@ -253,7 +253,7 @@
 .crm-saas-card .crm-card-config { top:10px; right:10px; display:grid; place-items:center; width:26px; height:26px; border-color:#EAE6E1; border-radius:7px; background:#FCFCFB; opacity:.72; transition:opacity .15s,border-color .15s,background .15s; }.crm-saas-card:hover .crm-card-config { opacity:1; }.crm-saas-card .crm-card-config:hover { border-color:#D8AA7F; background:#F2ECE6; }
 .crm-saas-card .subtask-meta { gap:5px; }.crm-saas-card .pill { min-height:22px; padding:0 7px; border-color:#EAE6E1; background:#FCFCFB; color:#6D6A67; font-size:9px; }
 .crm-saas-card .crm-next-task { margin-top:2px; padding-top:7px; border-top:1px solid #F1EEEA; font-size:10px; line-height:1.35; }
-.crm-saas-card .crm-card-specifier { color:#8B8585; font-size:10px; }
+.crm-saas-card .crm-card-specifier { display:inline-flex; width:max-content; max-width:100%; margin-top:3px; padding:2px 6px; border:1px solid #E6C8AB; border-radius:5px; background:#FFF7EF; color:#765D46; font-size:10px; font-weight:750; }
 .crm-saas-card .crm-label { min-height:18px; padding:0 6px; font-size:8px; }
 .crm-saas-empty-stage { display:grid; place-items:center; min-height:116px; padding:14px; border:1px dashed #DED8D1; border-radius:8px; color:#8B8585; font-size:10px; text-align:center; }
 .crm-saas-detail-grid { display:grid; gap:12px; margin-top:0 !important; padding-top:2px; }

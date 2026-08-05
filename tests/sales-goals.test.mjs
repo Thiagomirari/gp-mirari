@@ -29,6 +29,7 @@ const theme = readFileSync(new URL("../assets/saas-theme.css", import.meta.url),
 assert.match(theme, /\.crm-filter-control \{ position:relative;/, "O controle de filtro do CRM precisa manter o periodo posicionado sem deslocar o botao.");
 assert.match(theme, /\.crm-active-period \{ position:absolute;/, "O periodo aplicado do CRM precisa ficar abaixo do botao sem alterar seu alinhamento.");
 assert.match(html, /crm-card-specifier/, "Os cartoes do CRM precisam exibir o especificador quando houver vinculo.");
+assert.doesNotMatch(html, /crm-card-specifier[^<]*>Especificador:/, "O cartao do CRM nao deve repetir o rotulo antes do nome do especificador.");
 assert.match(html, /id="crm-detail-value"[^>]*oninput="formatCurrencyWhileTyping\(this\)"/, "A oportunidade selecionada precisa manter sua mascara monetaria.");
 assert.match(commercial, /applyCurrencyMask/, "As propostas precisam reutilizar a mascara monetaria do sistema.");
 assert.match(commercial, /\.line-base,\.composition-cost,\.payment-entry-value,\.cash-split-value,#pricing-purchase-extra,#pricing-freight,#pricing-assembly/, "Todos os campos monetarios de propostas precisam estar cobertos pela mascara.");
