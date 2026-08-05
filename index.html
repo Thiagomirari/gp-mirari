@@ -152,7 +152,7 @@
 
     .metrics {
       display: grid;
-      grid-template-columns: repeat(4, minmax(105px, 1fr));
+      grid-template-columns: repeat(5, minmax(105px, 1fr));
       gap: 8px;
       margin-bottom: 12px;
     }
@@ -168,6 +168,13 @@
     .metric span, .metric strong { display: block; }
     .metric span { color: var(--muted); font-size: .78rem; }
     .metric strong { margin-top: 5px; font-size: 1.35rem; color: var(--ink); }
+    .metric small { display: block; margin-top: 5px; color: var(--muted); font-size: .68rem; line-height: 1.35; }
+    .metric-goal { border-color: rgba(216,170,127,.66); background: #fffaf6; }
+    .sales-goal-form { display: grid; grid-template-columns: 150px minmax(180px,280px) auto; align-items: end; gap: 12px; }
+    .sales-goal-list { display: grid; gap: 8px; margin-top: 14px; }
+    .sales-goal-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: #fcfcfb; }
+    .sales-goal-row div { display: grid; gap: 3px; }
+    .sales-goal-row small { color: var(--muted); font-size: .76rem; }
 
     .layout {
       display: grid;
@@ -646,6 +653,7 @@
     @media (max-width: 1120px) {
       .layout { grid-template-columns: 1fr; }
       .metrics, .alert-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .sales-goal-form { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 760px) {
@@ -1070,7 +1078,7 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./supabase-config.js?v=20260730-crm-tarefas-obrigatorias"></script>
-  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260804-crm-filters-dnd" />
+  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260805-sales-goals" />
 </head>
 <body>
   <main class="app-shell">
@@ -1108,6 +1116,7 @@
       <article class="metric"><span id="metric-late-label">Tarefas atrasadas</span><strong id="metric-late">0</strong></article>
       <article class="metric"><span id="metric-due-label">Proximas do prazo</span><strong id="metric-due">0</strong></article>
       <article class="metric"><span id="metric-progress-label">Avanco medio</span><strong id="metric-progress">0%</strong></article>
+      <article class="metric metric-goal"><span id="metric-goal-label">Meta de faturamento</span><strong id="metric-goal">Nao cadastrada</strong><small id="metric-goal-detail">Configure na Administracao</small></article>
     </section>
 
     <section id="tab-crm" class="tab-view"></section>
@@ -1347,6 +1356,7 @@
       adminEditingSubstage: null,
       adminSubstageDraft: null,
       viewedStageIndexByProject: {},
+      salesGoals: [],
       filters: { query: "", calendarView: "timeline", calendarStage: "all", calendarOwner: "all", calendarStatus: "all", calendarPriority: "all", from: "", to: "", taskProject: "all", taskOwner: "all", taskStatus: "all", taskFrom: "", taskTo: "", crmQuery: "", crmStage: "all", crmOwner: "all", crmStatus: "all", crmFrom: "", crmTo: "", crmPeriodPreset: "all", commercialView: "list", commercialOwner: "all", commercialStatus: "all", commercialPriority: "all", commercialOpportunity: "all", commercialFrom: "", commercialTo: "" },
       users: [
         { id: "u1", name: "Administrador", username: "ADM", password: "12345", mustChangePassword: true, sessionVersion: 1, role: "Gestor ADM", permission: "ADM", active: true },
@@ -1579,6 +1589,7 @@
       next.adminEditingSubstage = next.adminEditingSubstage || null;
       next.adminSubstageDraft = next.adminSubstageDraft || null;
       next.viewedStageIndexByProject = next.viewedStageIndexByProject || {};
+      next.salesGoals = Array.isArray(next.salesGoals) ? next.salesGoals.map(goal => ({ year: Number(goal.year) || new Date().getFullYear(), annualRevenue: Math.max(0, Number(goal.annualRevenue) || 0), updatedAt: goal.updatedAt || "" })) : [];
       return next;
     }
 
@@ -2196,6 +2207,8 @@
       if (state.activeTab === "crm") {
         const visible = crmVisibleLeads();
         const stats = crmDashboardStats(visible);
+        const goal = salesGoalForRange(crmGoalFilters());
+        const sold = stats.won.reduce((sum, lead) => sum + moneyNumber(lead.closedValue || lead.value), 0);
         document.getElementById("metric-active-label").textContent = "Oportunidades abertas";
         document.getElementById("metric-late-label").textContent = "Valor no funil";
         document.getElementById("metric-due-label").textContent = "Sem proxima tarefa";
@@ -2204,6 +2217,7 @@
         document.getElementById("metric-late").textContent = formatMoney(stats.totalPipeline);
         document.getElementById("metric-due").textContent = stats.missingAction.length;
         document.getElementById("metric-progress").textContent = stats.lateAction.length;
+        setGoalMetric(goal, sold);
         return;
       }
       if (window.GPMirariReports?.dashboardMetrics) {
@@ -2216,6 +2230,7 @@
         document.getElementById("metric-late").textContent = formatMoney(report.pipeline);
         document.getElementById("metric-due").textContent = formatMoney(report.sold);
         document.getElementById("metric-progress").textContent = report.conversion + "%";
+        setGoalMetric(salesGoalForRange(report.filters), report.sold);
         return;
       }
       const al = alerts();
@@ -2229,6 +2244,42 @@
       document.getElementById("metric-late").textContent = al.late.length;
       document.getElementById("metric-due").textContent = al.due.length;
       document.getElementById("metric-progress").textContent = avg + "%";
+      setGoalMetric(salesGoalForRange({ preset: "month", start: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`, end: todayISO }), 0);
+    }
+
+    function crmGoalFilters() {
+      const preset = state.filters.crmPeriodPreset || "all";
+      if (preset === "all") return { preset, start: "", end: "" };
+      return { preset, start: state.filters.crmFrom || "", end: state.filters.crmTo || "" };
+    }
+
+    function salesGoalForRange(filters = {}) {
+      const goals = state.salesGoals || [];
+      const start = String(filters.start || "").slice(0, 10);
+      const end = String(filters.end || "").slice(0, 10);
+      if (!goals.length) return { target: 0, configured: false, label: "Meta nao cadastrada" };
+      if (!start && !end) return { target: goals.reduce((sum, goal) => sum + Number(goal.annualRevenue || 0), 0), configured: true, label: "Meta do historico configurado" };
+      const rangeStart = new Date(`${start || end}T12:00:00`);
+      const rangeEnd = new Date(`${end || start}T12:00:00`);
+      const target = goals.reduce((sum, goal) => {
+        const year = Number(goal.year);
+        const yearStart = new Date(`${year}-01-01T12:00:00`);
+        const yearEnd = new Date(`${year}-12-31T12:00:00`);
+        const overlapStart = rangeStart > yearStart ? rangeStart : yearStart;
+        const overlapEnd = rangeEnd < yearEnd ? rangeEnd : yearEnd;
+        if (overlapStart > overlapEnd) return sum;
+        const days = Math.round((overlapEnd - overlapStart) / 86400000) + 1;
+        const yearDays = Math.round((yearEnd - yearStart) / 86400000) + 1;
+        return sum + Number(goal.annualRevenue || 0) * days / yearDays;
+      }, 0);
+      return { target, configured: target > 0, label: "Meta proporcional ao periodo" };
+    }
+
+    function setGoalMetric(goal, actual) {
+      const percent = goal.target ? Math.round(Number(actual || 0) / goal.target * 100) : 0;
+      document.getElementById("metric-goal-label").textContent = "Meta de faturamento";
+      document.getElementById("metric-goal").textContent = goal.configured ? formatMoney(goal.target) : "Nao cadastrada";
+      document.getElementById("metric-goal-detail").textContent = goal.configured ? `${percent}% atingido | ${goal.label}` : "Configure na Administracao";
     }
 
     function renderAlertsStrip() {
@@ -3183,7 +3234,7 @@
 
     function crmDashboardStats(leads = crmVisibleLeads()) {
       const open = leads.filter(lead => lead.status === "Aberta");
-      const won = leads.filter(lead => lead.status === "Ganha");
+      const won = leads.filter(lead => lead.status === "Ganha" || crmStage(lead.stageId).closedType === "won" || Number(crmStage(lead.stageId).probability || 0) === 100);
       const totalPipeline = open.reduce((sum, lead) => sum + moneyNumber(lead.value), 0);
       const weightedPipeline = open.reduce((sum, lead) => sum + moneyNumber(lead.value) * (Number(crmStage(lead.stageId).probability || 0) / 100), 0);
       const missingAction = open.filter(lead => crmTaskState(lead) === "missing");
@@ -3570,6 +3621,16 @@
               </div>
             </article>
           </div>
+
+          <article class="panel card sales-goals-admin">
+            <div class="panel-header"><div><p class="eyebrow">Metas comerciais</p><h3>Meta anual de faturamento</h3><small class="muted">Cadastre uma meta por ano. O sistema calcula automaticamente as referências semestral, trimestral e mensal.</small></div></div>
+            <form id="sales-goal-form" class="form-box sales-goal-form">
+              <label>Ano <input id="sales-goal-year" type="number" min="2020" max="2100" value="${new Date().getFullYear()}" ${locked ? "disabled" : ""} required /></label>
+              <label>Meta anual (R$) <input id="sales-goal-annual" type="number" min="0" step="0.01" placeholder="Ex.: 1200000" ${locked ? "disabled" : ""} required /></label>
+              <button class="primary" ${locked ? "disabled" : ""} type="submit">Salvar meta</button>
+            </form>
+            <div class="sales-goal-list">${(state.salesGoals || []).sort((a, b) => b.year - a.year).map(goal => `<div class="sales-goal-row"><div><strong>${goal.year}</strong><small>Anual ${formatMoney(goal.annualRevenue)} | Semestral ${formatMoney(goal.annualRevenue / 2)} | Trimestral ${formatMoney(goal.annualRevenue / 4)} | Mensal ${formatMoney(goal.annualRevenue / 12)}</small></div><button class="danger" data-remove-sales-goal="${goal.year}" ${locked ? "disabled" : ""} type="button">Excluir</button></div>`).join("") || "<small class=\"muted\">Nenhuma meta anual cadastrada.</small>"}</div>
+          </article>
 
           <article class="panel card">
             <div class="panel-header">
@@ -4909,6 +4970,29 @@
         toast("Usuario removido.");
         render();
       });
+      const salesGoalForm = document.getElementById("sales-goal-form");
+      if (salesGoalForm) salesGoalForm.onsubmit = event => {
+        event.preventDefault();
+        const year = Number(document.getElementById("sales-goal-year").value);
+        const annualRevenue = Number(document.getElementById("sales-goal-annual").value);
+        if (!Number.isInteger(year) || annualRevenue < 0 || !Number.isFinite(annualRevenue)) {
+          toast("Informe um ano e uma meta anual validos.");
+          return;
+        }
+        const goal = { year, annualRevenue, updatedAt: nowISO() };
+        const existing = state.salesGoals.findIndex(item => Number(item.year) === year);
+        if (existing >= 0) state.salesGoals.splice(existing, 1, goal);
+        else state.salesGoals.push(goal);
+        toast("Meta anual salva.");
+        render();
+      };
+      document.querySelectorAll("[data-remove-sales-goal]").forEach(button => button.onclick = () => {
+        const year = Number(button.dataset.removeSalesGoal);
+        if (!confirm(`Excluir a meta anual de ${year}?`)) return;
+        state.salesGoals = state.salesGoals.filter(goal => Number(goal.year) !== year);
+        toast("Meta anual excluida.");
+        render();
+      });
       document.getElementById("add-stage").onclick = () => { const id = uid("stage"); state.stages.push({ id, name: "Nova etapa", defaultOwnerId: state.sessionUserId || "u1", defaultDays: 1, minDays: 0, blocksAdvance: true, color: "#316fa6", active: true, substages: [] }); state.adminOpenStageId = id; render(); };
       document.querySelectorAll("[data-open-stage]").forEach(button => button.onclick = () => {
         if (state.adminEditingStageId && state.adminEditingStageId !== button.dataset.openStage) {
@@ -5249,7 +5333,7 @@
   <!-- Script classico para que o MVP tambem carregue ao abrir este HTML diretamente. -->
   <script src="./assets/saas-core.js?v=20260730-crm-tarefas-obrigatorias"></script>
   <script src="./assets/saas-extension.js?v=20260804-proposal-pdf-saas"></script>
-  <script src="./assets/reports-v4.js?v=20260804-reporting-pdf-saas"></script>
+  <script src="./assets/reports-v4.js?v=20260805-sales-goals"></script>
 </body>
 </html>
 

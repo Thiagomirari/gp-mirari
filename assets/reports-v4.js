@@ -26,6 +26,39 @@
   const firstContact = (lead) => dateOnly(lead.crmDates?.firstContact || lead.firstContactDate || lead.createdAt || lead.enteredAt);
   const inRange = (value, filters) => { const date = dateOnly(value); if (!date) return false; if (!filters.start && !filters.end) return true; return (!filters.start || date >= filters.start) && (!filters.end || date <= filters.end); };
   const periodLabel = (filters) => !filters?.start && !filters?.end ? "Todo o periodo" : `${dateBR(filters.start)} - ${dateBR(filters.end)}`;
+  const goalRecords = () => (state.salesGoals || []).filter((goal) => Number(goal.annualRevenue) > 0);
+
+  function salesGoalSummary(filters = {}) {
+    const records = goalRecords();
+    const startText = dateOnly(filters.start);
+    const endText = dateOnly(filters.end);
+    const reference = new Date(`${endText || startText || iso(new Date())}T12:00:00`);
+    const referenceYear = reference.getFullYear();
+    const annual = Number(records.find((goal) => Number(goal.year) === referenceYear)?.annualRevenue || 0);
+    if (!startText && !endText) return { configured: records.length > 0, target: records.reduce((sum, goal) => sum + Number(goal.annualRevenue || 0), 0), annual, reference, label: "Meta do historico configurado" };
+    const start = new Date(`${startText || endText}T12:00:00`);
+    const end = new Date(`${endText || startText}T12:00:00`);
+    const target = records.reduce((sum, goal) => {
+      const year = Number(goal.year); const yearStart = new Date(`${year}-01-01T12:00:00`); const yearEnd = new Date(`${year}-12-31T12:00:00`);
+      const overlapStart = start > yearStart ? start : yearStart; const overlapEnd = end < yearEnd ? end : yearEnd;
+      if (overlapStart > overlapEnd) return sum;
+      const overlapDays = Math.round((overlapEnd - overlapStart) / 86400000) + 1;
+      const yearDays = Math.round((yearEnd - yearStart) / 86400000) + 1;
+      return sum + Number(goal.annualRevenue || 0) * overlapDays / yearDays;
+    }, 0);
+    return { configured: target > 0, target, annual, reference, label: "Meta proporcional ao periodo" };
+  }
+
+  function goalDashboard(data, filters) {
+    const goal = salesGoalSummary(filters);
+    const actual = Number(data.summary.soldValue || 0);
+    const attainment = goal.target ? Math.round(actual / goal.target * 100) : 0;
+    const month = goal.reference.getMonth() + 1;
+    const semester = month <= 6 ? 1 : 2;
+    const quarter = Math.ceil(month / 3);
+    const goalCard = (label, value, detail) => `<article><span>${esc(label)}</span><strong>${value ? money(value) : "-"}</strong><small>${esc(detail)}</small></article>`;
+    return `<section class="reporting-goals"><header class="reporting-section-head"><div><span>+</span><div><p>METAS COMERCIAIS</p><h3>Faturamento e atingimento</h3></div></div><span class="report-goal-period">${esc(periodLabel(filters))}</span></header><div class="report-goals-grid"><article class="report-goal-highlight"><span>Meta do periodo</span><strong>${goal.configured ? money(goal.target) : "Meta nao cadastrada"}</strong><small>${goal.configured ? `${attainment}% atingido | vendido ${money(actual)}` : "Cadastre a meta anual na Administracao."}</small><i><b style="width:${Math.min(100, attainment)}%"></b></i></article><div class="report-goal-reference">${goalCard(`Anual ${goal.reference.getFullYear()}`, goal.annual, "Meta cadastrada")}${goalCard(`Semestre ${semester}`, goal.annual / 2, "Referencia automatica")}${goalCard(`Trimestre ${quarter}`, goal.annual / 4, "Referencia automatica")}${goalCard("Mes", goal.annual / 12, "Referencia automatica")}</div></div></section>`;
+  }
   const stageName = (lead) => String(stageFor(lead).name || "").toLowerCase();
   const isWon = (lead) => { const stage = stageFor(lead); return ["Ganha", "Ganho", "Fechada"].includes(String(lead.status || "")) || stage.closedType === "won" || Number(stage.probability || 0) === 100 || /fechad|ganh|vendid/.test(stageName(lead)); };
   const isLost = (lead) => { const stage = stageFor(lead); return ["Perdida", "Perdido"].includes(String(lead.status || "")) || stage.closedType === "lost" || /perdid/.test(stageName(lead)); };
@@ -248,6 +281,8 @@
 
     const executiveKpis = target.querySelector(".reporting-kpis");
     if (executiveKpis) executiveKpis.innerHTML = `${operationalMetric("leads", "leads", "Total de leads", data.summary.leads, data.summary.mom === null ? "Sem comparativo anterior" : `${data.summary.mom >= 0 ? "+" : ""}${data.summary.mom.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% vs. periodo anterior`, "#")}${operationalMetric("pending", "proposal", "Tarefas pendentes", operations.pending.length, `${operations.overdue.length} atrasada(s)`, "TP")}${operationalMetric("progress", "ticket", "Em andamento", operations.openLeads.length, "Oportunidades abertas", "EA")}${operationalMetric("completed", "sold", "Tarefas concluidas", operations.completed.length, "No periodo selecionado", "OK")}${operationalMetric("sla", "pipeline", "SLA de tarefas", operations.sla === null ? "-" : `${operations.sla}%`, operations.sla === null ? "Sem tarefas concluidas com prazo" : "Concluidas dentro do prazo", "SL")}${operationalMetric("conversion", "conversion", "Conversao comercial", `${commercialConversion}%`, `${commercialSold.length} venda(s) fechada(s)`, "%")}`;
+
+    executiveKpis?.insertAdjacentHTML("afterend", goalDashboard(data, filters));
 
     if (operations.overdue.length || operations.withoutTask.length || (data.summary.mom !== null && data.summary.mom < 0)) {
       filterbar?.insertAdjacentHTML("afterend", `<section class="report-alert-strip" aria-label="Pontos de atencao">${operations.overdue.length ? `<div class="danger"><span>Prazo</span><strong>${operations.overdue.length} tarefa(s) atrasada(s)</strong><small>Requer acompanhamento comercial.</small></div>` : ""}${operations.withoutTask.length ? `<div class="warning"><span>Agenda</span><strong>${operations.withoutTask.length} oportunidade(s) sem tarefa</strong><small>Sem proximo compromisso pendente.</small></div>` : ""}${data.summary.mom !== null && data.summary.mom < 0 ? `<div class="info"><span>Tendencia</span><strong>${Math.abs(data.summary.mom).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% menos leads</strong><small>Comparacao com o periodo anterior.</small></div>` : ""}</section>`);
