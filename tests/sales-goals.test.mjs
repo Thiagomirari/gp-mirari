@@ -27,5 +27,7 @@ assert.match(html, /id="crm-value"[^>]*oninput="formatCurrencyWhileTyping\(this\
 assert.match(html, /id="crm-detail-value"[^>]*oninput="formatCurrencyWhileTyping\(this\)"/, "A oportunidade selecionada precisa ter mascara imediata no campo.");
 assert.match(commercial, /applyCurrencyMask/, "As propostas precisam reutilizar a mascara monetaria do sistema.");
 assert.match(commercial, /\.line-base,\.composition-cost,\.payment-entry-value,\.cash-split-value,#pricing-purchase-extra,#pricing-freight,#pricing-assembly/, "Todos os campos monetarios de propostas precisam estar cobertos pela mascara.");
+assert.match(commercial, /formatPercentWhileTyping/, "Os percentuais das condicoes de pagamento precisam aceitar formatacao durante a digitacao.");
+assert.match(commercial, /decimalInputNumber/, "Os percentuais das condicoes de pagamento precisam ser convertidos com virgula decimal.");
 
 console.log("sales-goals.test.mjs: ok");
