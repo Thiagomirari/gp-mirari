@@ -1277,7 +1277,7 @@
           <label>Contato <input id="crm-contact" placeholder="Telefone, WhatsApp ou e-mail" /></label>
           <label>Origem <input id="crm-source" placeholder="Instagram, indicacao, arquiteto..." /></label>
           <label>Interesse <input id="crm-interest" placeholder="Ambientes, tipo de projeto..." /></label>
-          <label>Valor estimado <input id="crm-value" placeholder="R$ 0,00" /></label>
+          <label>Valor estimado <input id="crm-value" inputmode="decimal" placeholder="R$ 0,00" /></label>
           <label>Etiquetas <select id="crm-labels" multiple></select></label>
           <label>Prioridade <select id="crm-priority"><option>Alta</option><option selected>Media</option><option>Baixa</option></select></label>
           <label>Responsavel <select id="crm-owner"></select></label>
@@ -3415,7 +3415,7 @@
                 ${state.crm.expandedLeadId === lead.id ? `
                 <div class="form-grid">
                   <label>Cliente <input id="crm-detail-client" value="${escapeHtml(lead.client || "")}" /></label>
-                  <label>Valor estimado <input id="crm-detail-value" value="${escapeHtml(lead.value || "")}" placeholder="R$ 0,00" /></label>
+                  <label>Valor estimado <input id="crm-detail-value" inputmode="decimal" value="${escapeHtml(lead.value || "")}" placeholder="R$ 0,00" /></label>
                   <label>Contato <input id="crm-detail-contact" value="${escapeHtml(lead.contact || "")}" /></label>
                   <label>Origem <input id="crm-detail-source" value="${escapeHtml(lead.source || "")}" /></label>
                   <label>Interesse <input id="crm-detail-interest" value="${escapeHtml(lead.interest || "")}" /></label>
@@ -4243,9 +4243,15 @@
       const addTaskBottom = document.getElementById("add-crm-task-bottom");
       if (addTaskBottom) addTaskBottom.onclick = () => openCommercialTaskModal(state.crm.selectedLeadId);
       const detailValue = document.getElementById("crm-detail-value");
-      if (detailValue) detailValue.onblur = () => formatMoneyInputValue(detailValue);
+      if (detailValue) {
+        detailValue.oninput = () => formatCurrencyWhileTyping(detailValue);
+        detailValue.onblur = () => formatMoneyInputValue(detailValue);
+      }
       const modalValue = document.getElementById("crm-value");
-      if (modalValue) modalValue.onblur = () => formatMoneyInputValue(modalValue);
+      if (modalValue) {
+        modalValue.oninput = () => formatCurrencyWhileTyping(modalValue);
+        modalValue.onblur = () => formatMoneyInputValue(modalValue);
+      }
       const inlineLabel = document.getElementById("crm-inline-add-label");
       if (inlineLabel) inlineLabel.onclick = () => {
         const name = document.getElementById("crm-inline-label-name").value.trim();

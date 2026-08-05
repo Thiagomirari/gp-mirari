@@ -18,5 +18,9 @@ assert.match(html, /id="refresh-app-button"/, "O cabecalho precisa oferecer atua
 assert.match(html, /app_refresh/, "A atualizacao forcada precisa usar um parametro de cache-busting.");
 assert.match(html, /formatCurrencyWhileTyping/, "A meta anual precisa formatar moeda durante a digitacao.");
 assert.match(html, /moneyNumber\(document\.getElementById\("sales-goal-annual"\)\.value\)/, "A meta anual formatada precisa ser convertida corretamente ao salvar.");
+assert.match(html, /id="crm-value" inputmode="decimal"/, "O valor da nova oportunidade precisa usar entrada monetaria.");
+assert.match(html, /id="crm-detail-value" inputmode="decimal"/, "O valor da oportunidade selecionada precisa usar entrada monetaria.");
+assert.match(html, /modalValue\.oninput = \(\) => formatCurrencyWhileTyping\(modalValue\)/, "A nova oportunidade precisa formatar o valor durante a digitacao.");
+assert.match(html, /detailValue\.oninput = \(\) => formatCurrencyWhileTyping\(detailValue\)/, "A oportunidade selecionada precisa formatar o valor durante a digitacao.");
 
 console.log("sales-goals.test.mjs: ok");
