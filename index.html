@@ -1078,7 +1078,7 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./supabase-config.js?v=20260730-crm-tarefas-obrigatorias"></script>
-  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260805-commercial-task-context" />
+  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260805-commercial-task-persist" />
 </head>
 <body>
   <main class="app-shell">
@@ -2840,7 +2840,7 @@
         </form></div>`;
       document.body.appendChild(modal);
       modal.querySelectorAll("[data-close-commercial-task]").forEach(button => button.onclick = () => modal.remove());
-      modal.querySelector("#commercial-task-form").onsubmit = event => {
+      modal.querySelector("#commercial-task-form").onsubmit = async event => {
         event.preventDefault();
         const task = currentTask || {
           id: uid("ct"),
@@ -2869,6 +2869,7 @@
           lead.events.push({ at: nowISO(), type: currentTask ? "commercial_task_updated" : "commercial_task_created", taskId: task.id, userId: currentUser() ? currentUser().id : "" });
         }
         modal.remove();
+        await persistCommercialTaskMutation();
         toast(currentTask ? "Tarefa comercial atualizada." : "Tarefa comercial criada.");
         renderAfterCommercialTaskChange();
       };
@@ -4115,6 +4116,18 @@
       if (preserveCRMContext) window.requestAnimationFrame(() => window.scrollTo(0, scrollTop));
     }
 
+    async function persistCommercialTaskMutation() {
+      if (typeof saveState === "function") saveState();
+      if (typeof saveStateToCloudStrict === "function" && typeof cloudSyncEnabled !== "undefined" && cloudSyncEnabled) {
+        try {
+          await saveStateToCloudStrict();
+        } catch (error) {
+          console.warn("Falha ao persistir tarefa comercial:", error);
+          toast("A tarefa foi alterada localmente, mas nao foi sincronizada.");
+        }
+      }
+    }
+
     function bindCommercialTaskEvents() {
       const toggle = document.getElementById("toggle-commercial-view");
       if (toggle) toggle.onclick = () => {
@@ -4125,19 +4138,21 @@
       if (openFilter) openFilter.onclick = openCommercialFilterModal;
       const add = document.getElementById("new-commercial-task");
       if (add) add.onclick = () => openCommercialTaskModal();
-      document.querySelectorAll("[data-complete-commercial-task]").forEach(button => button.onclick = () => {
+      document.querySelectorAll("[data-complete-commercial-task]").forEach(button => button.onclick = async () => {
         const task = (state.crm.tasks || []).find(item => item.id === button.dataset.completeCommercialTask);
         if (!task || !confirm("Concluir tarefa comercial?")) return;
         task.status = "Concluida";
         task.completedAt = nowISO();
+        await persistCommercialTaskMutation();
         toast("Tarefa comercial concluida.");
         renderAfterCommercialTaskChange();
       });
-      document.querySelectorAll("[data-reopen-commercial-task]").forEach(button => button.onclick = () => {
+      document.querySelectorAll("[data-reopen-commercial-task]").forEach(button => button.onclick = async () => {
         const task = (state.crm.tasks || []).find(item => item.id === button.dataset.reopenCommercialTask);
         if (!task) return;
         task.status = "Pendente";
         task.completedAt = "";
+        await persistCommercialTaskMutation();
         toast("Tarefa comercial reaberta.");
         renderAfterCommercialTaskChange();
       });
@@ -4146,12 +4161,13 @@
         if (!task) return;
         openCommercialTaskModal(task.leadId, task.id);
       });
-      document.querySelectorAll("[data-remove-commercial-task]").forEach(button => button.onclick = () => {
+      document.querySelectorAll("[data-remove-commercial-task]").forEach(button => button.onclick = async () => {
         const task = (state.crm.tasks || []).find(item => item.id === button.dataset.removeCommercialTask);
         if (!task || !confirm("Excluir esta tarefa comercial?")) return;
         state.crm.tasks = (state.crm.tasks || []).filter(item => item.id !== task.id);
         const lead = (state.crm.leads || []).find(item => item.id === task.leadId);
         if (lead) lead.history.push({ at: nowISO(), userId: currentUser() ? currentUser().id : "", text: `Tarefa comercial excluida: ${task.title}.` });
+        await persistCommercialTaskMutation();
         toast("Tarefa comercial excluida.");
         renderAfterCommercialTaskChange();
       });
@@ -5368,7 +5384,7 @@
   </script>
   <!-- Script classico para que o MVP tambem carregue ao abrir este HTML diretamente. -->
   <script src="./assets/saas-core.js?v=20260805-proposal-dashboard-fix"></script>
-  <script src="./assets/saas-extension.js?v=20260805-commercial-task-context"></script>
+  <script src="./assets/saas-extension.js?v=20260805-commercial-task-persist"></script>
   <script src="./assets/reports-v4.js?v=20260805-currency-live"></script>
 </body>
 </html>
