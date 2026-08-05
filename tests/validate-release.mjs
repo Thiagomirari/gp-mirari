@@ -25,6 +25,7 @@ assert.match(index, /crmCanLeaveCurrentStage/);
 assert.match(index, /Conclua as tarefas obrigatorias antes de avancar/);
 assert.match(index, /data-edit-commercial-task/);
 assert.match(index, /data-remove-commercial-task/);
+assert.match(index, /addTaskBottom[\s\S]*bindCommercialTaskEvents\(\)/, "As tarefas comerciais do detalhe do CRM precisam reutilizar os eventos de concluir, editar e excluir.");
 assert.match(index, /data-save-crm-template/);
 assert.match(index, /crm-task-template-row/);
 assert.match(index, /Tarefas manuais nao bloqueiam/);

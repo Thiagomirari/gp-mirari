@@ -4243,6 +4243,7 @@
       if (addTask) addTask.onclick = () => openCommercialTaskModal(state.crm.selectedLeadId);
       const addTaskBottom = document.getElementById("add-crm-task-bottom");
       if (addTaskBottom) addTaskBottom.onclick = () => openCommercialTaskModal(state.crm.selectedLeadId);
+      bindCommercialTaskEvents();
       const detailValue = document.getElementById("crm-detail-value");
       if (detailValue) {
         detailValue.oninput = () => formatCurrencyWhileTyping(detailValue);
