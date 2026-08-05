@@ -9,7 +9,8 @@ for (const marker of ["Solucao sob medida", "Investimento total", "Ambientes e v
 
 assert.match(source, /lowestPaymentCents/, "O PDF deve destacar o menor valor entre as condicoes selecionadas.");
 assert.match(source, /Menor valor entre as condicoes selecionadas/, "O destaque do investimento deve identificar a menor condicao selecionada.");
-assert.match(source, /<title>\$\{esc\(proposal\.number\|\|"Proposta Mirari"\)\} v\$\{proposal\.version\|\|1\}<\/title>/, "O nome do PDF deve incluir a versao da proposta.");
+assert.match(source, /const pdfTitle=\`\$\{proposal\.number\|\|"Proposta Mirari"\} v\$\{proposal\.version\|\|1\}\`;/, "O nome do PDF deve incluir a versao da proposta.");
+assert.match(source, /popup\.document\.title=pdfTitle/, "O titulo da janela de impressao deve incluir a versao da proposta.");
 assert.match(source, /paymentDiscount\(option,highestPaymentCents\)/, "O PDF deve preservar os descontos das condicoes de pagamento.");
 assert.match(source, /Markup e RT/, "A tela deve manter a orientacao de que markup e RT nao aparecem no PDF.");
 
