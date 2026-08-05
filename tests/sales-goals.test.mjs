@@ -25,6 +25,9 @@ assert.match(html, /modalValue\.oninput = \(\) => formatCurrencyWhileTyping\(mod
 assert.match(html, /detailValue\.oninput = \(\) => formatCurrencyWhileTyping\(detailValue\)/, "A oportunidade selecionada precisa formatar o valor durante a digitacao.");
 assert.match(html, /id="crm-value"[^>]*oninput="formatCurrencyWhileTyping\(this\)"/, "A nova oportunidade precisa ter mascara imediata no campo.");
 assert.match(html, /id="crm-detail-value"[^>]*oninput="formatCurrencyWhileTyping\(this\)"/, "A oportunidade selecionada precisa ter mascara imediata no campo.");
+const theme = readFileSync(new URL("../assets/saas-theme.css", import.meta.url), "utf8");
+assert.match(theme, /\.crm-filter-control \{ position:relative;/, "O controle de filtro do CRM precisa manter o periodo posicionado sem deslocar o botao.");
+assert.match(theme, /\.crm-active-period \{ position:absolute;/, "O periodo aplicado do CRM precisa ficar abaixo do botao sem alterar seu alinhamento.");
 assert.match(commercial, /applyCurrencyMask/, "As propostas precisam reutilizar a mascara monetaria do sistema.");
 assert.match(commercial, /\.line-base,\.composition-cost,\.payment-entry-value,\.cash-split-value,#pricing-purchase-extra,#pricing-freight,#pricing-assembly/, "Todos os campos monetarios de propostas precisam estar cobertos pela mascara.");
 assert.match(commercial, /formatPercentWhileTyping/, "Os percentuais das condicoes de pagamento precisam aceitar formatacao durante a digitacao.");
