@@ -1078,7 +1078,7 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./supabase-config.js?v=20260730-crm-tarefas-obrigatorias"></script>
-  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260805-commercial-task-persist" />
+  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260805-commercial-task-delete-fix" />
 </head>
 <body>
   <main class="app-shell">
@@ -4166,7 +4166,15 @@
         if (!task || !confirm("Excluir esta tarefa comercial?")) return;
         state.crm.tasks = (state.crm.tasks || []).filter(item => item.id !== task.id);
         const lead = (state.crm.leads || []).find(item => item.id === task.leadId);
-        if (lead) lead.history.push({ at: nowISO(), userId: currentUser() ? currentUser().id : "", text: `Tarefa comercial excluida: ${task.title}.` });
+        if (lead) {
+          if (task.legacyNextActionFor === lead.id) {
+            lead.nextActionDate = "";
+            lead.nextActionText = "";
+            lead.nextAction = "";
+            lead.nextActionOwnerId = "";
+          }
+          lead.history.push({ at: nowISO(), userId: currentUser() ? currentUser().id : "", text: `Tarefa comercial excluida: ${task.title}.` });
+        }
         await persistCommercialTaskMutation();
         toast("Tarefa comercial excluida.");
         renderAfterCommercialTaskChange();
@@ -5384,7 +5392,7 @@
   </script>
   <!-- Script classico para que o MVP tambem carregue ao abrir este HTML diretamente. -->
   <script src="./assets/saas-core.js?v=20260805-proposal-dashboard-fix"></script>
-  <script src="./assets/saas-extension.js?v=20260805-commercial-task-persist"></script>
+  <script src="./assets/saas-extension.js?v=20260805-commercial-task-delete-fix"></script>
   <script src="./assets/reports-v4.js?v=20260805-currency-live"></script>
 </body>
 </html>
