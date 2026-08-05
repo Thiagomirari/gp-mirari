@@ -339,14 +339,28 @@
     target.innerHTML=`<main class="saas-module proposal-workspace"><div class="saas-module-head"><div><p class="saas-eyebrow">Comercial</p><h2>Propostas</h2><p>Visao comercial das propostas, validade e andamento de cada negociacao.</p></div><div class="saas-actions"><button class="saas-button" id="proposal-filter" type="button">Filtros</button><button class="saas-button primary" id="new-proposal" type="button">Nova proposta</button></div></div><section class="proposal-period-summary"><span>Periodo aplicado</span><strong>${esc(periodLabel)}</strong>${range.from||range.to?`<small>${formatDate(range.from)} - ${formatDate(range.to)}</small>`:""}</section><section class="proposal-kpi-grid">${metric("Abertas",open,"Dentro da validade","positive")}${metric("Vencidas",expired,"Exigem follow-up","danger")}${metric("Aprovadas",approved,"Aprovadas ou avancadas","approval")}${metric("Criadas no total",filtered,"No recorte aplicado","total")}</section><section class="proposal-expiry-panel ${expiredAlerts.length?"":"empty"}"><div><p class="saas-eyebrow">Follow-up de validade</p><h3>${expiredAlerts.length?`${expiredAlerts.length} proposta${expiredAlerts.length===1?"":"s"} vencida${expiredAlerts.length===1?"":"s"}`:"Nenhuma proposta vencida"}</h3><p>${expiredAlerts.length?"Revise a validade com o cliente e atualize o orcamento quando necessario.":"As propostas abertas estao dentro da validade cadastrada."}</p></div>${expiredAlerts.length?`<div class="proposal-expiry-list">${expiredAlerts.slice(0,4).map((proposal)=>`<button type="button" data-open-expired-proposal="${proposal.id}"><strong>${esc(proposal.number)} v${proposal.version||1}</strong><span>${esc(clientName(proposal.clientId))} | venceu em ${formatDate(proposal.validUntil)}</span></button>`).join("")}${expiredAlerts.length>4?`<small>+ ${expiredAlerts.length-4} proposta(s) vencida(s)</small>`:""}</div>`:""}</section><div class="saas-filter-row proposal-filter-row" id="proposal-filters" hidden><label class="saas-field"><span>Periodo</span><select class="saas-select" id="proposal-period"><option value="all" ${filters.period==="all"?"selected":""}>Todo o periodo</option><option value="month" ${filters.period==="month"?"selected":""}>Este mes</option><option value="last30" ${filters.period==="last30"?"selected":""}>Ultimos 30 dias</option><option value="year" ${filters.period==="year"?"selected":""}>Este ano</option><option value="last12" ${filters.period==="last12"?"selected":""}>Ultimos 12 meses</option><option value="custom" ${filters.period==="custom"?"selected":""}>Selecionar periodo</option></select></label><label class="saas-field"><span>Situacao</span><select class="saas-select" id="proposal-status">${statusOptions}</select></label><label class="saas-field"><span>Cliente</span><select class="saas-select" id="proposal-client-filter"><option value="all">Todos os clientes</option>${(state.clients||[]).filter((client)=>client.status!=="archived").map((client)=>`<option value="${client.id}" ${filters.clientId===client.id?"selected":""}>${esc(client.name)}</option>`).join("")}</select></label><label class="saas-field"><span>Oportunidade</span><select class="saas-select" id="proposal-opportunity-filter"><option value="all">Todas as oportunidades</option>${leads().map((lead)=>`<option value="${lead.id}" ${filters.opportunityId===lead.id?"selected":""}>${esc(lead.client)}${lead.interest?` | ${esc(lead.interest)}`:""}</option>`).join("")}</select></label><div class="proposal-custom-dates" id="proposal-custom-dates" ${filters.period==="custom"?"":"hidden"}><label class="saas-field"><span>De</span><input class="saas-input" id="proposal-from" type="date" value="${esc(filters.from||"")}"></label><label class="saas-field"><span>Ate</span><input class="saas-input" id="proposal-to" type="date" value="${esc(filters.to||"")}"></label></div><div class="saas-actions proposal-filter-actions"><button class="saas-button" id="clear-proposal-filter" type="button">Limpar</button><button class="saas-button primary" id="apply-proposal-filter" type="button">Aplicar filtros</button></div></div><div class="saas-table-wrap"><table class="saas-table"><thead><tr><th>Proposta</th><th>Cliente</th><th>Criada em</th><th>Validade</th><th>Valor final</th><th>Status</th><th></th></tr></thead><tbody>${filtered.map((proposal)=>{const versions=(state.proposals||[]).filter((item)=>(item.groupId||item.id)===(proposal.groupId||proposal.id)&&!item.archivedAt);const expiredLabel=proposalIsExpired(proposal)?" | Vencida":"";return `<tr><td><strong>${esc(proposal.number)}</strong><span class="saas-subline">${esc(proposal.name||"Sem nome")} | ${versions.length} versao${versions.length===1?"":"es"} | atual v${proposal.version||1}</span></td><td>${esc(clientName(proposal.clientId))}</td><td>${formatDate(proposalDateKey(proposal.createdAt||proposal.updatedAt))}</td><td>${formatDate(proposal.validUntil)}</td><td>${core().money(proposalValue(proposal))}</td><td><span class="saas-badge ${proposalBadgeClass(proposal)}">${esc(core().statusText[proposal.status]||proposal.status)}${expiredLabel}</span></td><td><button class="saas-button" data-proposal="${proposal.id}" type="button">Abrir</button></td></tr>`;}).join("")||'<tr><td colspan="7" class="saas-empty">Nenhuma proposta encontrada para este filtro.</td></tr>'}</tbody></table></div></main>`;
     target.querySelector(".proposal-kpi-grid")?.remove();
     const expiryPanel=target.querySelector(".proposal-expiry-panel");
-    if(expiryPanel&&expiredAlerts.length){
+    const hasProposalFilters=filters.period!=="all"||filters.status!=="all"||filters.clientId!=="all"||filters.opportunityId!=="all"||Boolean(filters.from)||Boolean(filters.to);
+    if(expiryPanel&&(expiredAlerts.length||hasProposalFilters)){
       const expiryCopy=expiryPanel.firstElementChild;
-      const expiryAction=document.createElement("button");
-      expiryAction.className="saas-button primary proposal-expiry-action";
-      expiryAction.id="view-expired-proposals";
-      expiryAction.type="button";
-      expiryAction.textContent="Verificar vencidas";
-      expiryPanel.replaceChildren(expiryCopy,expiryAction);
+      const expiryActions=document.createElement("div");
+      expiryActions.className="proposal-expiry-actions";
+      if(expiredAlerts.length){
+        const expiryAction=document.createElement("button");
+        expiryAction.className="saas-button primary proposal-expiry-action";
+        expiryAction.id="view-expired-proposals";
+        expiryAction.type="button";
+        expiryAction.textContent="Verificar vencidas";
+        expiryActions.append(expiryAction);
+      }
+      if(hasProposalFilters){
+        const clearAction=document.createElement("button");
+        clearAction.className="saas-button proposal-expiry-action";
+        clearAction.id="clear-proposal-filters-shortcut";
+        clearAction.type="button";
+        clearAction.textContent="Limpar filtros";
+        expiryActions.append(clearAction);
+      }
+      expiryPanel.replaceChildren(expiryCopy,expiryActions);
     }
     $("proposal-filter").onclick=()=>$("proposal-filters").hidden=!$("proposal-filters").hidden;
     $("proposal-period").onchange=()=>$("proposal-custom-dates").hidden=$("proposal-period").value!=="custom";
@@ -355,6 +369,7 @@
     $("new-proposal").onclick=()=>openProposal();
     document.querySelectorAll("[data-proposal]").forEach((button)=>button.onclick=()=>openProposal(button.dataset.proposal));
     $("view-expired-proposals")?.addEventListener("click",()=>{window.proposalFilters={...filters,status:"expired"};render();$("proposal-filters")?.scrollIntoView({behavior:"smooth",block:"start"});});
+    $("clear-proposal-filters-shortcut")?.addEventListener("click",()=>{window.proposalFilters={period:"all",status:"all",clientId:"all",opportunityId:"all",from:"",to:""};render();});
   }
   function formatDate(value) {
     if (!value) return "Nao informada";
