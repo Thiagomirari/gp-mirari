@@ -1078,7 +1078,7 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./supabase-config.js?v=20260730-crm-tarefas-obrigatorias"></script>
-  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260805-proposal-filter-reset" />
+  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260805-commercial-task-context" />
 </head>
 <body>
   <main class="app-shell">
@@ -2870,7 +2870,7 @@
         }
         modal.remove();
         toast(currentTask ? "Tarefa comercial atualizada." : "Tarefa comercial criada.");
-        render();
+        renderAfterCommercialTaskChange();
       };
     }
 
@@ -4108,11 +4108,18 @@
       };
     }
 
+    function renderAfterCommercialTaskChange() {
+      const preserveCRMContext = state.activeTab === "crm";
+      const scrollTop = window.scrollY;
+      render();
+      if (preserveCRMContext) window.requestAnimationFrame(() => window.scrollTo(0, scrollTop));
+    }
+
     function bindCommercialTaskEvents() {
       const toggle = document.getElementById("toggle-commercial-view");
       if (toggle) toggle.onclick = () => {
         state.filters.commercialView = state.filters.commercialView === "calendar" ? "list" : "calendar";
-        render();
+        renderAfterCommercialTaskChange();
       };
       const openFilter = document.getElementById("open-commercial-filter");
       if (openFilter) openFilter.onclick = openCommercialFilterModal;
@@ -4124,7 +4131,7 @@
         task.status = "Concluida";
         task.completedAt = nowISO();
         toast("Tarefa comercial concluida.");
-        render();
+        renderAfterCommercialTaskChange();
       });
       document.querySelectorAll("[data-reopen-commercial-task]").forEach(button => button.onclick = () => {
         const task = (state.crm.tasks || []).find(item => item.id === button.dataset.reopenCommercialTask);
@@ -4132,7 +4139,7 @@
         task.status = "Pendente";
         task.completedAt = "";
         toast("Tarefa comercial reaberta.");
-        render();
+        renderAfterCommercialTaskChange();
       });
       document.querySelectorAll("[data-edit-commercial-task]").forEach(button => button.onclick = () => {
         const task = (state.crm.tasks || []).find(item => item.id === button.dataset.editCommercialTask);
@@ -4146,7 +4153,7 @@
         const lead = (state.crm.leads || []).find(item => item.id === task.leadId);
         if (lead) lead.history.push({ at: nowISO(), userId: currentUser() ? currentUser().id : "", text: `Tarefa comercial excluida: ${task.title}.` });
         toast("Tarefa comercial excluida.");
-        render();
+        renderAfterCommercialTaskChange();
       });
     }
 
@@ -5361,7 +5368,7 @@
   </script>
   <!-- Script classico para que o MVP tambem carregue ao abrir este HTML diretamente. -->
   <script src="./assets/saas-core.js?v=20260805-proposal-dashboard-fix"></script>
-  <script src="./assets/saas-extension.js?v=20260805-proposal-filter-reset"></script>
+  <script src="./assets/saas-extension.js?v=20260805-commercial-task-context"></script>
   <script src="./assets/reports-v4.js?v=20260805-currency-live"></script>
 </body>
 </html>
