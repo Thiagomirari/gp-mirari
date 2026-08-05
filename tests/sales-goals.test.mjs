@@ -22,5 +22,7 @@ assert.match(html, /id="crm-value" inputmode="decimal"/, "O valor da nova oportu
 assert.match(html, /id="crm-detail-value" inputmode="decimal"/, "O valor da oportunidade selecionada precisa usar entrada monetaria.");
 assert.match(html, /modalValue\.oninput = \(\) => formatCurrencyWhileTyping\(modalValue\)/, "A nova oportunidade precisa formatar o valor durante a digitacao.");
 assert.match(html, /detailValue\.oninput = \(\) => formatCurrencyWhileTyping\(detailValue\)/, "A oportunidade selecionada precisa formatar o valor durante a digitacao.");
+assert.match(html, /id="crm-value"[^>]*oninput="formatCurrencyWhileTyping\(this\)"/, "A nova oportunidade precisa ter mascara imediata no campo.");
+assert.match(html, /id="crm-detail-value"[^>]*oninput="formatCurrencyWhileTyping\(this\)"/, "A oportunidade selecionada precisa ter mascara imediata no campo.");
 
 console.log("sales-goals.test.mjs: ok");

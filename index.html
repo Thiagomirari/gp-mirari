@@ -1078,7 +1078,7 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./supabase-config.js?v=20260730-crm-tarefas-obrigatorias"></script>
-  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260805-sales-goals" />
+  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260805-currency-live" />
 </head>
 <body>
   <main class="app-shell">
@@ -1277,7 +1277,7 @@
           <label>Contato <input id="crm-contact" placeholder="Telefone, WhatsApp ou e-mail" /></label>
           <label>Origem <input id="crm-source" placeholder="Instagram, indicacao, arquiteto..." /></label>
           <label>Interesse <input id="crm-interest" placeholder="Ambientes, tipo de projeto..." /></label>
-          <label>Valor estimado <input id="crm-value" inputmode="decimal" placeholder="R$ 0,00" /></label>
+          <label>Valor estimado <input id="crm-value" inputmode="decimal" oninput="formatCurrencyWhileTyping(this)" onkeyup="formatCurrencyWhileTyping(this)" placeholder="R$ 0,00" /></label>
           <label>Etiquetas <select id="crm-labels" multiple></select></label>
           <label>Prioridade <select id="crm-priority"><option>Alta</option><option selected>Media</option><option>Baixa</option></select></label>
           <label>Responsavel <select id="crm-owner"></select></label>
@@ -3415,7 +3415,7 @@
                 ${state.crm.expandedLeadId === lead.id ? `
                 <div class="form-grid">
                   <label>Cliente <input id="crm-detail-client" value="${escapeHtml(lead.client || "")}" /></label>
-                  <label>Valor estimado <input id="crm-detail-value" inputmode="decimal" value="${escapeHtml(lead.value || "")}" placeholder="R$ 0,00" /></label>
+                  <label>Valor estimado <input id="crm-detail-value" inputmode="decimal" oninput="formatCurrencyWhileTyping(this)" onkeyup="formatCurrencyWhileTyping(this)" value="${escapeHtml(lead.value || "")}" placeholder="R$ 0,00" /></label>
                   <label>Contato <input id="crm-detail-contact" value="${escapeHtml(lead.contact || "")}" /></label>
                   <label>Origem <input id="crm-detail-source" value="${escapeHtml(lead.source || "")}" /></label>
                   <label>Interesse <input id="crm-detail-interest" value="${escapeHtml(lead.interest || "")}" /></label>
@@ -3642,7 +3642,7 @@
             <div class="panel-header"><div><p class="eyebrow">Metas comerciais</p><h3>Meta anual de faturamento</h3><small class="muted">Cadastre uma meta por ano. O sistema calcula automaticamente as referências semestral, trimestral e mensal.</small></div></div>
             <form id="sales-goal-form" class="form-box sales-goal-form">
               <label>Ano <input id="sales-goal-year" type="number" min="2020" max="2100" value="${new Date().getFullYear()}" ${locked ? "disabled" : ""} required /></label>
-              <label>Meta anual (R$) <input id="sales-goal-annual" inputmode="decimal" placeholder="R$ 0,00" ${locked ? "disabled" : ""} required /></label>
+              <label>Meta anual (R$) <input id="sales-goal-annual" inputmode="decimal" oninput="formatCurrencyWhileTyping(this)" onkeyup="formatCurrencyWhileTyping(this)" placeholder="R$ 0,00" ${locked ? "disabled" : ""} required /></label>
               <button class="primary" ${locked ? "disabled" : ""} type="submit">Salvar meta</button>
             </form>
             <div class="sales-goal-list">${(state.salesGoals || []).sort((a, b) => b.year - a.year).map(goal => `<div class="sales-goal-row"><div><strong>${goal.year}</strong><small>Anual ${formatMoney(goal.annualRevenue)} | Semestral ${formatMoney(goal.annualRevenue / 2)} | Trimestral ${formatMoney(goal.annualRevenue / 4)} | Mensal ${formatMoney(goal.annualRevenue / 12)}</small></div><button class="danger" data-remove-sales-goal="${goal.year}" ${locked ? "disabled" : ""} type="button">Excluir</button></div>`).join("") || "<small class=\"muted\">Nenhuma meta anual cadastrada.</small>"}</div>
@@ -5360,7 +5360,7 @@
   <!-- Script classico para que o MVP tambem carregue ao abrir este HTML diretamente. -->
   <script src="./assets/saas-core.js?v=20260730-crm-tarefas-obrigatorias"></script>
   <script src="./assets/saas-extension.js?v=20260804-proposal-pdf-saas"></script>
-  <script src="./assets/reports-v4.js?v=20260805-sales-goals"></script>
+  <script src="./assets/reports-v4.js?v=20260805-currency-live"></script>
 </body>
 </html>
 
