@@ -1096,6 +1096,7 @@
           <p class="eyebrow">Usuario logado</p>
           <strong id="logged-user">Nao conectado</strong>
         </div>
+        <button class="secondary" id="refresh-app-button" title="Baixar novamente a versao mais recente" type="button">Atualizar versao</button>
         <button class="secondary" id="logout-button" type="button">Sair</button>
       </div>
     </section>
@@ -2152,6 +2153,11 @@
       const context = contexts[state.activeTab] || contexts.crm;
       document.getElementById("logged-user").textContent = user ? `${user.name} | ${user.permission}` : "Nao conectado";
       document.getElementById("logout-button").classList.toggle("hidden", !user);
+      document.getElementById("refresh-app-button").onclick = () => {
+        const url = new URL(window.location.href);
+        url.searchParams.set("app_refresh", Date.now().toString());
+        window.location.replace(url.toString());
+      };
       document.getElementById("page-eyebrow").textContent = context.eyebrow;
       document.getElementById("page-title").textContent = context.title;
       document.getElementById("page-description").textContent = context.description;

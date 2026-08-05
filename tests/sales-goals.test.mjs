@@ -14,5 +14,7 @@ for (const marker of ["salesGoalSummary", "Faturamento e atingimento", "Semestre
 
 assert.match(html, /annualRevenue: Math\.max\(0, Number\(goal\.annualRevenue\) \|\| 0\)/, "A meta anual precisa ser normalizada como valor nao negativo.");
 assert.match(reports, /Number\(goal\.annualRevenue \|\| 0\) \* overlapDays \/ yearDays/, "A meta do periodo precisa ser proporcional aos dias selecionados.");
+assert.match(html, /id="refresh-app-button"/, "O cabecalho precisa oferecer atualizacao forcada da aplicacao.");
+assert.match(html, /app_refresh/, "A atualizacao forcada precisa usar um parametro de cache-busting.");
 
 console.log("sales-goals.test.mjs: ok");
