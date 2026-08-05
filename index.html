@@ -3015,6 +3015,16 @@
       input.value = formatMoney(moneyNumber(input.value));
     }
 
+    function formatCurrencyWhileTyping(input) {
+      if (!input) return;
+      const digits = input.value.replace(/\D/g, "");
+      if (!digits) {
+        input.value = "";
+        return;
+      }
+      input.value = formatMoney(Number(digits) / 100);
+    }
+
     const crmDateLabels = {
       firstContact: "Primeiro contato",
       briefing: "Briefing",
@@ -3632,7 +3642,7 @@
             <div class="panel-header"><div><p class="eyebrow">Metas comerciais</p><h3>Meta anual de faturamento</h3><small class="muted">Cadastre uma meta por ano. O sistema calcula automaticamente as referências semestral, trimestral e mensal.</small></div></div>
             <form id="sales-goal-form" class="form-box sales-goal-form">
               <label>Ano <input id="sales-goal-year" type="number" min="2020" max="2100" value="${new Date().getFullYear()}" ${locked ? "disabled" : ""} required /></label>
-              <label>Meta anual (R$) <input id="sales-goal-annual" type="number" min="0" step="0.01" placeholder="Ex.: 1200000" ${locked ? "disabled" : ""} required /></label>
+              <label>Meta anual (R$) <input id="sales-goal-annual" inputmode="decimal" placeholder="R$ 0,00" ${locked ? "disabled" : ""} required /></label>
               <button class="primary" ${locked ? "disabled" : ""} type="submit">Salvar meta</button>
             </form>
             <div class="sales-goal-list">${(state.salesGoals || []).sort((a, b) => b.year - a.year).map(goal => `<div class="sales-goal-row"><div><strong>${goal.year}</strong><small>Anual ${formatMoney(goal.annualRevenue)} | Semestral ${formatMoney(goal.annualRevenue / 2)} | Trimestral ${formatMoney(goal.annualRevenue / 4)} | Mensal ${formatMoney(goal.annualRevenue / 12)}</small></div><button class="danger" data-remove-sales-goal="${goal.year}" ${locked ? "disabled" : ""} type="button">Excluir</button></div>`).join("") || "<small class=\"muted\">Nenhuma meta anual cadastrada.</small>"}</div>
@@ -4977,10 +4987,15 @@
         render();
       });
       const salesGoalForm = document.getElementById("sales-goal-form");
+      const salesGoalAnnual = document.getElementById("sales-goal-annual");
+      if (salesGoalAnnual) {
+        salesGoalAnnual.oninput = () => formatCurrencyWhileTyping(salesGoalAnnual);
+        salesGoalAnnual.onblur = () => formatMoneyInputValue(salesGoalAnnual);
+      }
       if (salesGoalForm) salesGoalForm.onsubmit = event => {
         event.preventDefault();
         const year = Number(document.getElementById("sales-goal-year").value);
-        const annualRevenue = Number(document.getElementById("sales-goal-annual").value);
+        const annualRevenue = moneyNumber(document.getElementById("sales-goal-annual").value);
         if (!Number.isInteger(year) || annualRevenue < 0 || !Number.isFinite(annualRevenue)) {
           toast("Informe um ano e uma meta anual validos.");
           return;
