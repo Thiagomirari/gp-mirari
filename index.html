@@ -1078,7 +1078,7 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./supabase-config.js?v=20260730-crm-tarefas-obrigatorias"></script>
-  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260805-crm-filter-align" />
+  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260805-crm-opportunity-layout" />
 </head>
 <body>
   <main class="app-shell">
@@ -3315,6 +3315,7 @@
       const stage = crmStage(lead.stageId);
       const taskState = crmTaskState(lead);
       const nextTask = crmNextTask(lead);
+      const specifierName = crmSpecifierName(lead.specifierId || (crmLeadClient(lead) || {}).specifierId);
       const taskLabel = taskState === "missing" ? "Sem proxima tarefa" : taskState === "late" ? "Tarefa atrasada" : `${nextTask.title} | ${formatDate(nextTask.dueDate)} ${nextTask.dueTime || ""}`;
       const initials = String(lead.client || "?").split(/\s+/).slice(0, 2).map(part => part.charAt(0)).join("").toUpperCase();
       return `
@@ -3325,6 +3326,7 @@
             <div class="crm-card-identity">
               <strong>${escapeHtml(lead.client)}</strong>
               <small>${escapeHtml(lead.interest || "Oportunidade")}</small>
+              ${specifierName !== "-" ? `<small class="crm-card-specifier">Especificador: ${escapeHtml(specifierName)}</small>` : ""}
             </div>
           </div>
           <div class="subtask-meta">
@@ -3450,7 +3452,6 @@
                 <textarea id="crm-detail-note" placeholder="Adicionar comentario ou registro comercial"></textarea>
                 <div class="actions">
                   <button class="primary" id="save-crm-lead" type="button">Salvar alteracoes</button>
-                  <button class="secondary" id="add-crm-task" type="button">Nova tarefa</button>
                   <button class="secondary" id="mark-crm-won" type="button">Negocio fechado</button>
                   <button class="danger" id="mark-crm-lost" type="button">Negocio perdido</button>
                   <button class="danger" id="remove-crm-lead" type="button">Remover</button>
@@ -5359,7 +5360,7 @@
   </script>
   <!-- Script classico para que o MVP tambem carregue ao abrir este HTML diretamente. -->
   <script src="./assets/saas-core.js?v=20260730-crm-tarefas-obrigatorias"></script>
-  <script src="./assets/saas-extension.js?v=20260805-proposal-currency-live"></script>
+  <script src="./assets/saas-extension.js?v=20260805-crm-opportunity-layout"></script>
   <script src="./assets/reports-v4.js?v=20260805-currency-live"></script>
 </body>
 </html>

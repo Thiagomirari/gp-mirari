@@ -406,14 +406,14 @@
     const target=document.querySelector("#tab-crm .detail-grid");
     if(!lead||!target||$("crm-linked-proposals"))return;
     const related=(state.proposals||[]).filter((proposal)=>proposal.crmOpportunityRef===lead.id&&!proposal.archivedAt);
-    target.insertAdjacentHTML("beforeend",`<article class="panel soft-panel" id="crm-linked-proposals"><div class="section-title"><div><p class="eyebrow">Comercial</p><h2>Propostas vinculadas</h2></div><span class="pill">${related.length}</span></div><div class="history-list">${related.map((proposal)=>`<div class="history-item"><div class="row-between"><strong>${esc(proposal.number)} v${proposal.version||1}</strong><span class="saas-badge">${esc(core().statusText[proposal.status]||proposal.status)}</span></div><small>${esc(proposal.name||"Sem nome")} | apresentada em ${core().money(proposal.totalCents)} | validade ${formatDate(proposal.validUntil)}</small><div class="inline-actions"><button class="secondary" type="button" data-open-crm-proposal="${proposal.id}">Abrir proposta</button></div></div>`).join("")||"<small>Nenhuma proposta vinculada a esta oportunidade.</small>"}</div></article>`);
+    target.querySelector(".crm-saas-history")?.insertAdjacentHTML("beforebegin",`<article class="panel soft-panel crm-saas-subsection" id="crm-linked-proposals"><div class="section-title"><div><p class="eyebrow">Comercial</p><h2>Propostas vinculadas</h2></div><div class="inline-actions"><span class="pill">${related.length}</span><button class="secondary" id="create-proposal" type="button">Criar proposta</button></div></div><div class="history-list">${related.map((proposal)=>`<div class="history-item"><div class="row-between"><strong>${esc(proposal.number)} v${proposal.version||1}</strong><span class="saas-badge">${esc(core().statusText[proposal.status]||proposal.status)}</span></div><small>${esc(proposal.name||"Sem nome")} | apresentada em ${core().money(proposal.totalCents)} | validade ${formatDate(proposal.validUntil)}</small><div class="inline-actions"><button class="secondary" type="button" data-open-crm-proposal="${proposal.id}">Abrir proposta</button></div></div>`).join("")||"<small>Nenhuma proposta vinculada a esta oportunidade.</small>"}</div></article>`);
     document.querySelectorAll("[data-open-crm-proposal]").forEach((button)=>button.onclick=()=>openProposal(button.dataset.openCrmProposal));
   }
   function injectCRM(){
     if(state.activeTab!=="crm"||!selectedLead?.())return;
-    const actions=$("save-crm-lead")?.parentElement;
-    if(actions&&!$("create-proposal")){const b=document.createElement("button");b.id="create-proposal";b.className="secondary";b.textContent="Criar proposta";b.onclick=()=>openProposal(null,selectedLead().id);actions.insertBefore(b,$("mark-crm-won"));}
     injectCRMProposalHistory();
+    const proposalButton=$("create-proposal");
+    if(proposalButton)proposalButton.onclick=()=>openProposal(null,selectedLead().id);
   }
   function injectSpecifierBirthdays(){
     if(state.activeTab!=="calendar"||$("specifier-birthday-panel"))return;
