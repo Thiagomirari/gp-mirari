@@ -29,5 +29,7 @@ assert.match(commercial, /applyCurrencyMask/, "As propostas precisam reutilizar 
 assert.match(commercial, /\.line-base,\.composition-cost,\.payment-entry-value,\.cash-split-value,#pricing-purchase-extra,#pricing-freight,#pricing-assembly/, "Todos os campos monetarios de propostas precisam estar cobertos pela mascara.");
 assert.match(commercial, /formatPercentWhileTyping/, "Os percentuais das condicoes de pagamento precisam aceitar formatacao durante a digitacao.");
 assert.match(commercial, /decimalInputNumber/, "Os percentuais das condicoes de pagamento precisam ser convertidos com virgula decimal.");
+assert.match(commercial, /valueInput\.value=core\(\)\.money\(previewOption\.entryCents\)/, "O valor da entrada recalculado por percentual precisa manter a mascara monetaria.");
+assert.match(commercial, /value\.value=core\(\)\.money\(payment\.amountCents\)/, "Os valores das parcelas recalculados por percentual precisam manter a mascara monetaria.");
 
 console.log("sales-goals.test.mjs: ok");

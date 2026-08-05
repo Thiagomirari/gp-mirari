@@ -149,7 +149,7 @@
   function replaceCashEntrySplits(row,editable){const option={installments:Number(row.querySelector(".payment-installments").value)||1,entryPercent:decimalInputNumber(row.querySelector(".payment-entry-percent").value),installmentSplits:readCashEntrySplits(row)};row.querySelector(".cash-entry-splits")?.replaceWith(document.createRange().createContextualFragment(cashEntrySplitsEditor(option,editable)));}
   function syncCashEntrySplits(row,option){
     const payments=option.installmentPayments||[];
-    [...row.querySelectorAll("[data-cash-split]")].forEach((split,index)=>{const payment=payments[index];if(!payment)return;const value=split.querySelector(".cash-split-value");const percent=split.querySelector(".cash-split-percent");if(split.dataset.splitMode==="amount")percent.value=(Math.round(payment.percent*100)/100).toString();else value.value=(payment.amountCents/100).toFixed(2).replace(".",",");});
+    [...row.querySelectorAll("[data-cash-split]")].forEach((split,index)=>{const payment=payments[index];if(!payment)return;const value=split.querySelector(".cash-split-value");const percent=split.querySelector(".cash-split-percent");if(split.dataset.splitMode==="amount")percent.value=(Math.round(payment.percent*100)/100).toString();else value.value=core().money(payment.amountCents);});
     const balance=row.querySelector("[data-cash-entry-balance]");if(!balance)return;const diff=Number(option.installmentRemainingCents)||0;balance.className=`cash-entry-balance ${Math.abs(diff)<=1?"ok":"red"}`;balance.textContent=Math.abs(diff)<=1?"Parcelas conferidas com o saldo restante.":diff>0?`Falta distribuir ${core().money(diff)} nas parcelas.`:`As parcelas excedem ${core().money(Math.abs(diff))}.`;
   }
   function formatPercent(value){return String(Math.round(Math.max(0,Math.min(100,decimalInputNumber(value)||0))*10000)/10000).replace(/\.0+$/,"");}
@@ -316,7 +316,7 @@
           const percentInput=row.querySelector(".payment-entry-percent");
           const valueInput=row.querySelector(".payment-entry-value");
           if(row.dataset.entryMode==="amount") percentInput.value=String(Math.round(previewOption.entryPercent*100)/100);
-          else valueInput.value=(previewOption.entryCents/100).toFixed(2).replace(".",",");
+          else valueInput.value=core().money(previewOption.entryCents);
         }
         if(row.dataset.paymentRow==="cash_entry")syncCashEntrySplits(row,previewOption);
       });
