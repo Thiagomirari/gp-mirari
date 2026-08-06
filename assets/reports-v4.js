@@ -106,6 +106,9 @@
     const all = (state.crm?.leads || []).filter(matchesGlobalFilters);
     const scoped = all.filter((lead) => inRange(firstContact(lead), filters));
     const sold = all.filter((lead) => isWon(lead) && inRange(lead.crmDates?.closed || lead.updatedAt || firstContact(lead), filters));
+    // Closing-period sales and lead-cohort conversion are different metrics.
+    // Never divide closings from older leads by leads that entered this period.
+    const wonCohort = scoped.filter(isWon);
     const lost = all.filter((lead) => isLost(lead) && inRange(lead.crmDates?.lost || lead.updatedAt || firstContact(lead), filters));
     const scopedLeadIds = new Set(scoped.map((lead) => lead.id));
     const proposals = (state.proposals || []).filter((proposal) => {
@@ -116,10 +119,10 @@
     const stages = activeStages().map((stage) => { const leads = scoped.filter((lead) => lead.stageId === stage.id); return { id: stage.id, name: stage.name || "Etapa", count: leads.length, value: leads.reduce((sum, lead) => sum + leadValue(lead), 0), probability: Number(stage.probability || 0) }; });
     const partners = new Map();
     sold.forEach((lead) => { const id = specifierId(lead); if (!id) return; const proposal = (state.proposals || []).filter((item) => item.crmOpportunityRef === lead.id).sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")))[0]; const row = partners.get(id) || { id, name: specifierFor(id)?.name || "Especificador", sales: 0, rt: 0 }; row.sales += leadValue(lead); row.rt += Number(proposal?.priceFormationHistory?.[0]?.analysis?.rtCents || proposal?.priceFormation?.rtCents || 0) / 100; partners.set(id, row); });
-    const team = (state.users || []).filter((user) => user.active !== false).map((user) => { const owned = scoped.filter((lead) => lead.ownerId === user.id); const sales = sold.filter((lead) => lead.ownerId === user.id); return { id: user.id, name: user.name, presented: owned.filter(isQualified).length, sold: sales.length, conversion: owned.length ? Math.round(sales.length / owned.length * 100) : 0, ticket: sales.length ? sales.reduce((sum, lead) => sum + leadValue(lead), 0) / sales.length : 0, revisions: 0 }; }).filter((row) => row.presented || row.sold);
+    const team = (state.users || []).filter((user) => user.active !== false).map((user) => { const owned = scoped.filter((lead) => lead.ownerId === user.id); const sales = sold.filter((lead) => lead.ownerId === user.id); const cohortSales = wonCohort.filter((lead) => lead.ownerId === user.id); return { id: user.id, name: user.name, presented: owned.filter(isQualified).length, sold: sales.length, conversion: owned.length ? Math.round(cohortSales.length / owned.length * 100) : 0, ticket: sales.length ? sales.reduce((sum, lead) => sum + leadValue(lead), 0) / sales.length : 0, revisions: 0 }; }).filter((row) => row.presented || row.sold);
     const previous = filters.start ? (() => { const previousStart = new Date(`${filters.start}T12:00:00`); previousStart.setMonth(previousStart.getMonth() - 1); const previousEnd = new Date(`${filters.start}T12:00:00`); previousEnd.setDate(0); return all.filter((lead) => { const date = firstContact(lead); return date >= iso(previousStart) && date <= iso(previousEnd); }); })() : [];
     const partnerRows = [...partners.values()].sort((a, b) => b.sales - a.sales);
-    return { all, scoped, sold, lost, proposals, stages, channels: channelRows(scoped), team, partners: partnerRows, summary: { leads: scoped.length, mom: previous.length ? (scoped.length - previous.length) / previous.length * 100 : null, qualification: scoped.length ? Math.round(scoped.filter(isQualified).length / scoped.length * 100) : 0, proposalTicket: proposals.length ? proposals.reduce((sum, proposal) => sum + Number(proposal.totalCents || 0) / 100, 0) / proposals.length : 0, soldValue: sold.reduce((sum, lead) => sum + leadValue(lead), 0), salesTicket: sold.length ? sold.reduce((sum, lead) => sum + leadValue(lead), 0) / sold.length : 0, conversion: scoped.length ? Math.round(sold.length / scoped.length * 100) : 0, closeDays: sold.length ? Math.round(sold.reduce((sum, lead) => sum + daysBetween(firstContact(lead), lead.crmDates?.closed || lead.updatedAt), 0) / sold.length) : 0, partnerSales: partnerRows.reduce((sum, row) => sum + row.sales, 0), partnerRt: partnerRows.reduce((sum, row) => sum + row.rt, 0) } };
+    return { all, scoped, sold, wonCohort, lost, proposals, stages, channels: channelRows(scoped), team, partners: partnerRows, summary: { leads: scoped.length, mom: previous.length ? (scoped.length - previous.length) / previous.length * 100 : null, qualification: scoped.length ? Math.round(scoped.filter(isQualified).length / scoped.length * 100) : 0, proposalTicket: proposals.length ? proposals.reduce((sum, proposal) => sum + Number(proposal.totalCents || 0) / 100, 0) / proposals.length : 0, soldValue: sold.reduce((sum, lead) => sum + leadValue(lead), 0), salesTicket: sold.length ? sold.reduce((sum, lead) => sum + leadValue(lead), 0) / sold.length : 0, conversion: scoped.length ? Math.round(wonCohort.length / scoped.length * 100) : 0, closeDays: sold.length ? Math.round(sold.reduce((sum, lead) => sum + daysBetween(firstContact(lead), lead.crmDates?.closed || lead.updatedAt), 0) / sold.length) : 0, partnerSales: partnerRows.reduce((sum, row) => sum + row.sales, 0), partnerRt: partnerRows.reduce((sum, row) => sum + row.rt, 0) } };
   }
 
   const palette = ["#D8AA7F", "#5E7484", "#6F8A7B", "#B99058", "#A87878", "#8B8585"];
@@ -242,7 +245,7 @@
     if (!target || state.activeTab !== "reports") return;
     let filters = window.reportFilters;
     if (!filters || !filters.preset) { filters = periodFor("month"); window.reportFilters = filters; }
-    const local = {};
+    const local = window.reportBlockFilters || {};
     const data = dataFor(filters);
     const global = window.reportGlobalFilters || {};
     const operations = taskMetrics(data, filters);
@@ -259,7 +262,8 @@
     const commercialTicket = commercialSold.length ? commercialSoldValue / commercialSold.length : 0;
     const commercialFunnelTicket = commercialLeads.length ? commercialFunnelValue / commercialLeads.length : 0;
     const commercialProposalTicket = commercialProposals.length ? commercialProposals.reduce((sum, proposal) => sum + Number(proposal.totalCents || 0) / 100, 0) / commercialProposals.length : 0;
-    const commercialConversion = commercialLeads.length ? Math.round(commercialSold.length / commercialLeads.length * 100) : 0;
+    const commercialWonCohort = commercialLeads.filter(isWon);
+    const commercialConversion = commercialLeads.length ? Math.round(commercialWonCohort.length / commercialLeads.length * 100) : 0;
     const openPipeline = commercialLeads.filter((lead) => !isWon(lead) && !isLost(lead)).reduce((sum, lead) => sum + leadValue(lead), 0);
     const presets = [["all", "Todo o periodo"], ["month", "Este mes"], ["last_30", "Ultimos 30 dias"], ["quarter", "Trimestre"], ["year", "Este ano"], ["last_12", "Ultimos 12 meses"], ["custom", "Selecionar periodo"]];
     const custom = filters.preset === "custom";

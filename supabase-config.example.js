@@ -4,5 +4,7 @@
 
 window.GP_MIRARI_SUPABASE = {
   url: "https://SEU-PROJETO.supabase.co",
-  anonKey: "SUA_ANON_PUBLIC_KEY"
+  anonKey: "SUA_ANON_PUBLIC_KEY",
+  // Nunca habilite em producao. Sem esta flag, login local fica bloqueado.
+  demoMode: false
 };

@@ -1,5 +1,5 @@
 -- GP Mirari V02 SaaS - Etapa 2: identidade, memberships e RLS.
--- Execute somente depois de supabase-v2-foundation.sql, em homologacao.
+-- Execute somente depois de 001-v2-foundation.sql, em homologacao.
 -- A migracao e aditiva/idempotente e nao concede acesso anonimo.
 
 begin;

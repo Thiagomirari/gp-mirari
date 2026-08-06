@@ -10,6 +10,9 @@ concurrency:
   group: gp-mirari-cpanel-deploy
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     name: Publish static files
@@ -18,6 +21,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          check-latest: true
+
+      - name: Validate release
+        run: npm run verify
 
       - name: Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -38,7 +50,13 @@ jobs:
             **/migrations/**
             **/supabase/**
             **/tests/**
+            **/*.md
+            **/*.log
             **/*.zip
             .cpanel.yml
             package.json
             supabase-config.example.js
+
+      - name: Smoke test published application
+        if: ${{ secrets.CPANEL_APP_URL != '' }}
+        run: curl --fail --show-error --silent --retry 3 "${{ secrets.CPANEL_APP_URL }}"

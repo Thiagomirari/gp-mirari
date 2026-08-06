@@ -48,7 +48,7 @@ supabase/functions/gp-admin-users/index.ts
 
 Essa funcao salva o usuario permitido no estado compartilhado e, quando houver senha inicial, tambem cria/atualiza o usuario no Supabase Auth.
 
-Para usuario somente Google, o GP Mirari salva diretamente a liberacao do e-mail no estado compartilhado. Nesse caso, nao e necessario criar senha artificial: o Supabase Auth cria ou reconhece o usuario durante o login OAuth, e o GP Mirari apenas valida se o e-mail esta ativo e liberado pelo ADM.
+Para usuario somente Google, o GP Mirari cria/provisiona o usuario no Supabase Auth sem senha local e sincroniza o membership relacional. O provedor Google ainda precisa estar habilitado, com a URL de redirecionamento correta e o e-mail do usuario confirmado.
 
 ## Encerramento automatico de sessoes
 

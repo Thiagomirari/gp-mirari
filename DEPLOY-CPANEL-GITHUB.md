@@ -43,6 +43,12 @@ Depois que o GitHub estiver configurado, o fluxo ideal sera:
 3. No cPanel, usamos `Pull` ou `Update from Remote`.
 4. A nova versao entra no ar.
 
+## Validacao automatica
+
+O deploy por GitHub Actions executa `npm run verify` antes de transferir qualquer arquivo. O comando roda toda a suite de testes e as checagens de sintaxe.
+
+Opcionalmente, configure o secret `CPANEL_APP_URL` com a URL publica do sistema para que o workflow execute um teste de disponibilidade apos o deploy.
+
 ## Configuracao do Supabase
 
 O arquivo `supabase-config.js` precisa existir no servidor.

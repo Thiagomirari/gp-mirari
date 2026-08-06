@@ -1076,7 +1076,7 @@
       .timeline-scale { margin-left: 0; }
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
   <script src="./supabase-config.js?v=20260730-crm-tarefas-obrigatorias"></script>
   <link rel="stylesheet" href="./assets/saas-theme.css?v=20260805-closed-crm-flow" />
 </head>
@@ -1360,10 +1360,10 @@
       salesGoals: [],
       filters: { query: "", calendarView: "timeline", calendarStage: "all", calendarOwner: "all", calendarStatus: "all", calendarPriority: "all", from: "", to: "", taskProject: "all", taskOwner: "all", taskStatus: "all", taskFrom: "", taskTo: "", crmQuery: "", crmStage: "all", crmOwner: "all", crmStatus: "all", crmFrom: "", crmTo: "", crmPeriodPreset: "all", commercialView: "list", commercialOwner: "all", commercialStatus: "all", commercialPriority: "all", commercialOpportunity: "all", commercialFrom: "", commercialTo: "" },
       users: [
-        { id: "u1", name: "Administrador", username: "ADM", password: "12345", mustChangePassword: true, sessionVersion: 1, role: "Gestor ADM", permission: "ADM", active: true },
-        { id: "u2", name: "Daniel", username: "daniel", password: "12345", mustChangePassword: false, sessionVersion: 1, role: "Tecnico", permission: "Operacional", active: true },
-        { id: "u3", name: "Lais", username: "lais", password: "12345", mustChangePassword: false, sessionVersion: 1, role: "Projetista", permission: "Operacional", active: true },
-        { id: "u4", name: "Equipe montagem", username: "montagem", password: "12345", mustChangePassword: false, sessionVersion: 1, role: "Montagem", permission: "Operacional", active: true }
+        { id: "u1", name: "Administrador", username: "ADM", password: "", mustChangePassword: false, sessionVersion: 1, role: "Gestor ADM", permission: "ADM", active: true },
+        { id: "u2", name: "Daniel", username: "daniel", password: "", mustChangePassword: false, sessionVersion: 1, role: "Tecnico", permission: "Operacional", active: true },
+        { id: "u3", name: "Lais", username: "lais", password: "", mustChangePassword: false, sessionVersion: 1, role: "Projetista", permission: "Operacional", active: true },
+        { id: "u4", name: "Equipe montagem", username: "montagem", password: "", mustChangePassword: false, sessionVersion: 1, role: "Montagem", permission: "Operacional", active: true }
       ],
       stages: [
         { id: "briefing", name: "Briefing", defaultOwnerId: "u1", defaultDays: 2, minDays: 0, blocksAdvance: true, color: "#316fa6", active: true, substages: [
@@ -1572,14 +1572,16 @@
       });
       next.users.forEach(user => {
         user.username = user.username || user.name;
-        user.password = user.password || "12345";
+        // Passwords are managed exclusively by Supabase Auth. A local password
+        // is accepted only in an explicitly enabled demo environment.
+        user.password = isDemoMode() ? String(user.password || "") : "";
         user.mustChangePassword = !!user.mustChangePassword;
         user.sessionVersion = Number(user.sessionVersion || 1);
         user.googleEnabled = !!user.googleEnabled;
         user.authMethods = Array.isArray(user.authMethods) && user.authMethods.length ? user.authMethods : [user.googleEnabled ? "google" : "password"];
       });
       if (!next.users.some(user => user.username === "ADM")) {
-        next.users.unshift({ id: uid("u"), name: "Administrador", username: "ADM", password: "12345", mustChangePassword: true, sessionVersion: 1, role: "Gestor ADM", permission: "ADM", active: true });
+        next.users.unshift({ id: uid("u"), name: "Administrador", username: "ADM", password: "", mustChangePassword: false, sessionVersion: 1, role: "Gestor ADM", permission: "ADM", active: true });
       }
       next.sessionUserId = next.sessionUserId || "";
       next.sessionVersionAtLogin = Number(next.sessionVersionAtLogin || 0);
@@ -1595,12 +1597,23 @@
     }
 
     function saveState() {
-      localStorage.setItem(storageKey, JSON.stringify(state));
+      // Never leave a previous authenticated workspace available after logout.
+      if (state.sessionUserId || isDemoMode()) localStorage.setItem(storageKey, JSON.stringify(state));
+      else localStorage.removeItem(storageKey);
       scheduleCloudSave();
     }
 
     function cloudConfig() {
       return window.GP_MIRARI_SUPABASE || {};
+    }
+
+    function isDemoMode() {
+      return cloudConfig().demoMode === true;
+    }
+
+    function expectsCloudAuth() {
+      const config = cloudConfig();
+      return !!(config.url && config.anonKey);
     }
 
     function isCloudConfigured() {
@@ -1905,7 +1918,7 @@
       cloudSyncEnabled = false;
       state.sessionUserId = "";
       state.sessionVersionAtLogin = 0;
-      localStorage.setItem(storageKey, JSON.stringify(state));
+      localStorage.removeItem(storageKey);
       toast(message || "Sua sessao foi encerrada pelo ADM.");
       render();
     }
@@ -2121,6 +2134,17 @@
 
     function render() {
       if (!ensureCurrentSessionValid()) return;
+      // Do not leave operational content in the DOM after logout or before a
+      // real session is established. Local access is allowed only in explicit
+      // demo mode, never as a production fallback.
+      if (!currentUser() && !isDemoMode()) {
+        document.querySelectorAll(".tab-view").forEach(view => {
+          view.classList.add("hidden");
+          view.replaceChildren();
+        });
+        renderHeader();
+        return;
+      }
       saveState();
       renderHeader();
       renderMetrics();
@@ -3909,6 +3933,7 @@
         cloudSyncEnabled = false;
         state.sessionUserId = "";
         state.sessionVersionAtLogin = 0;
+        localStorage.removeItem(storageKey);
         toast("Sessao encerrada.");
         render();
       };
@@ -3943,7 +3968,15 @@
           submitButton.disabled = true;
           submitButton.textContent = "Entrando...";
         }
-        if (isCloudConfigured()) {
+        if (expectsCloudAuth()) {
+          if (!isCloudConfigured()) {
+            document.getElementById("login-error").textContent = "O servico de autenticacao nao foi carregado. Atualize a pagina ou contate o administrador.";
+            if (submitButton) {
+              submitButton.disabled = false;
+              submitButton.textContent = "Entrar";
+            }
+            return;
+          }
           try {
             const authUser = await cloudSignIn(username, password);
             const result = await finishCloudLogin(authUser, username);
@@ -3955,12 +3988,23 @@
             toast(`Bem-vindo, ${result.user.name}.`);
             render();
           } catch (error) {
-            document.getElementById("login-error").textContent = "Usuario ou senha invalidos no Supabase.";
+            const authMessage = String(error && error.message ? error.message : "").toLowerCase();
+            document.getElementById("login-error").textContent = /invalid login|user not found|invalid credentials/.test(authMessage)
+              ? "Este usuario ainda nao esta provisionado no Supabase Auth ou a senha precisa ser redefinida pelo administrador."
+              : "Nao foi possivel validar o acesso no Supabase. Confira a configuracao e tente novamente.";
           } finally {
             if (submitButton) {
               submitButton.disabled = false;
               submitButton.textContent = "Entrar";
             }
+          }
+          return;
+        }
+        if (!isDemoMode()) {
+          document.getElementById("login-error").textContent = "Login local desativado. Configure o Supabase Auth para acessar.";
+          if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.textContent = "Entrar";
           }
           return;
         }

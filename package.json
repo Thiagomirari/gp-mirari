@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/finance.test.mjs && node tests/validate-release.mjs",
-    "check": "node --check assets/saas-core.js && node --check assets/saas-extension.js"
+    "test": "node tests/admin-users-security.test.mjs && node tests/foundation-migration.test.mjs && node tests/crm-filters-drag.test.mjs && node tests/finance.test.mjs && node tests/proposal-edge-pdf.test.mjs && node tests/proposal-pdf-layout.test.mjs && node tests/report-pdf-layout.test.mjs && node tests/reports-foundation.test.mjs && node tests/reports-function.test.mjs && node tests/reports-ui-integrity.test.mjs && node tests/sales-goals.test.mjs && node tests/validate-release.mjs",
+    "check": "node --check assets/saas-core.js && node --check assets/saas-extension.js && node --check assets/reports-v2.js && node --check assets/reports-v3.js && node --check assets/reports-v4.js",
+    "verify": "npm run check && npm test"
   }
 }
