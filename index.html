@@ -2143,6 +2143,9 @@
           view.replaceChildren();
         });
         renderHeader();
+        // The login form must be bound even before the first authenticated
+        // session; otherwise the browser performs a native GET to "/?".
+        bindLoginEvents();
         return;
       }
       saveState();
