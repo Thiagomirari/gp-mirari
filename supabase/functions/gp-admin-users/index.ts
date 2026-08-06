@@ -20,6 +20,14 @@ type AppUser = {
   sessionVersion?: number;
 };
 
+function passwordError(password: string) {
+  if (password.length < 12) return "A senha deve ter pelo menos 12 caracteres.";
+  if (!/[A-Z]/.test(password) || !/[a-z]/.test(password)) return "A senha deve conter letras maiusculas e minusculas.";
+  if (!/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) return "A senha deve conter numero e simbolo.";
+  if (/^(?:password|senha|admin|mirari|gp.?mirari|123456|qwerty)/i.test(password)) return "Escolha uma senha menos previsivel.";
+  return "";
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -214,6 +222,10 @@ Deno.serve(async (req) => {
     if (action === "create") {
       const username = storedUsername(payload.username);
       const password = String(payload.password || "").trim();
+      if (password) {
+        const issue = passwordError(password);
+        if (issue) return json({ error: issue }, 400);
+      }
       const googleEnabled = !!payload.googleEnabled;
       const authMethods = Array.isArray(payload.authMethods) && payload.authMethods.length
         ? payload.authMethods
@@ -266,12 +278,18 @@ Deno.serve(async (req) => {
       const updates: Record<string, unknown> = {};
       if (action === "update") {
         if (username && username !== current.username) updates.email = loginEmail(username);
-        if (payload.password) updates.password = String(payload.password);
+        if (payload.password) {
+          updates.password = String(payload.password);
+          const issue = passwordError(String(updates.password));
+          if (issue) return json({ error: issue }, 400);
+        }
         updates.user_metadata = { name: payload.name || current.name, username };
       }
       if (action === "resetPassword") {
         if (!payload.password) return json({ error: "Nova senha obrigatoria." }, 400);
         updates.password = String(payload.password);
+        const issue = passwordError(String(updates.password));
+        if (issue) return json({ error: issue }, 400);
       }
 
       let authUserId = await resolveAuthUserId(adminClient, current);

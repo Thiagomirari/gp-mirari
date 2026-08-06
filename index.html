@@ -1811,11 +1811,23 @@
       return { ok: true, user };
     }
 
+    function passwordPolicyError(password) {
+      if (String(password || "").length < 12) return "A senha deve ter pelo menos 12 caracteres.";
+      if (!/[A-Z]/.test(password) || !/[a-z]/.test(password)) return "A senha deve conter letras maiusculas e minusculas.";
+      if (!/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) return "A senha deve conter numero e simbolo.";
+      if (/^(?:password|senha|admin|mirari|gp.?mirari|123456|qwerty)/i.test(password)) return "Escolha uma senha menos previsivel.";
+      return "";
+    }
+
     async function cloudUpdateCurrentAccess(username, password) {
       if (!getCloudClient()) return;
       const payload = {};
       if (username) payload.email = cloudEmail(username);
-      if (password) payload.password = password;
+      if (password) {
+        const issue = passwordPolicyError(password);
+        if (issue) throw new Error(issue);
+        payload.password = password;
+      }
       const { error } = await getCloudClient().auth.updateUser(payload);
       if (error) throw error;
     }
