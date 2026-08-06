@@ -58,5 +58,7 @@ jobs:
             supabase-config.example.js
 
       - name: Smoke test published application
-        if: ${{ secrets.CPANEL_APP_URL != '' }}
-        run: curl --fail --show-error --silent --retry 3 "${{ secrets.CPANEL_APP_URL }}"
+        env:
+          CPANEL_APP_URL: ${{ secrets.CPANEL_APP_URL }}
+        if: ${{ env.CPANEL_APP_URL != '' }}
+        run: curl --fail --show-error --silent --retry 3 "$CPANEL_APP_URL"
