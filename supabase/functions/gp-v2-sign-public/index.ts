@@ -2,6 +2,7 @@
 // Authentication is performed with opaque, hashed access/session tokens and email OTP.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 import { PDFDocument, StandardFonts, rgb } from "https://esm.sh/pdf-lib@1.17.1";
+import { zipSync } from "npm:fflate@0.8.2";
 
 const encoder = new TextEncoder();
 const bucketName = "gp-v2-signature-files";
@@ -657,6 +658,35 @@ async function downloadFinal(request: Request, payload: Record<string, unknown>,
   return reply(200, { ok: true, signedUrl: signed.signedUrl, expiresIn: 300, sha256: artifact.sha256 });
 }
 
+async function downloadFinalBundle(request: Request, payload: Record<string, unknown>, admin: AdminClient) {
+  const context = await sessionContext(admin, payload.sessionToken, request);
+  if (!context || context.envelope.status !== "signed") return reply(404, { error: "final_document_unavailable" });
+  const { data: documents } = await admin.from("gp_v2_signature_envelope_documents")
+    .select("id,display_order,final_storage_path,final_sha256,gp_v2_documents(title)")
+    .eq("organization_id", context.session.organization_id).eq("envelope_id", context.envelope.id).not("final_storage_path", "eq", "").order("display_order").limit(10);
+  if (!documents?.length) return reply(404, { error: "final_document_unavailable" });
+  let total = 0;
+  const files: Record<string, Uint8Array> = {};
+  for (const item of documents) {
+    const { data: content, error } = await admin.storage.from(bucketName).download(String(item.final_storage_path));
+    if (error || !content) return reply(503, { error: "final_document_unavailable" });
+    const bytes = new Uint8Array(await content.arrayBuffer()); total += bytes.byteLength;
+    if (total > 40 * 1024 * 1024) return reply(413, { error: "final_bundle_too_large" });
+    const itemDocument = Array.isArray((item as any).gp_v2_documents) ? (item as any).gp_v2_documents[0] : (item as any).gp_v2_documents;
+    const name = String(itemDocument?.title || `documento-${item.display_order}`).normalize("NFKD").replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 100) || `documento-${item.display_order}`;
+    files[`${String(item.display_order).padStart(2, "0")}-${name}.pdf`] = bytes;
+  }
+  const { data: report } = await admin.from("gp_v2_signature_artifacts").select("storage_path").eq("organization_id", context.session.organization_id).eq("envelope_id", context.envelope.id).eq("artifact_kind", "evidence_report").maybeSingle();
+  if (report?.storage_path) {
+    const { data: content } = await admin.storage.from(bucketName).download(report.storage_path);
+    if (content) files["relatorio-evidencias.pdf"] = new Uint8Array(await content.arrayBuffer());
+  }
+  const zip = zipSync(files, { level: 6 });
+  await appendEvent(admin, request, { organizationId: context.session.organization_id, envelopeId: context.envelope.id, signerId: context.signer.id, eventType: "final_document.bundle_downloaded", documentHash: context.envelope.document_manifest_sha256 || "", authChannel: "authenticated_session", tokenFingerprint: context.session.session_fingerprint, timezone: payload.timezone as string, metadata: { documentCount: documents.length } });
+  const fileName = `gp-mirari-documentos-${String(context.document.verification_code || "assinados").replace(/[^A-Z0-9-]/gi, "")}.zip`;
+  return new Response(zip, { status: 200, headers: { ...cors, "Content-Type": "application/zip", "Content-Disposition": `attachment; filename="${fileName}"` } });
+}
+
 async function verifyDocument(request: Request, payload: Record<string, unknown>, admin: AdminClient) {
   const rate = await consumeRate(admin, await rateIdentity(request, "verify_document"), "verify_document", 600, 30, 900);
   const rateError = rateReply(rate); if (rateError) return rateError;
@@ -696,6 +726,7 @@ Deno.serve(async (request) => {
     if (action === "sign") return signDocument(request, payload, admin);
     if (action === "decline") return declineDocument(request, payload, admin);
     if (action === "download_final") return downloadFinal(request, payload, admin);
+    if (action === "download_final_bundle") return downloadFinalBundle(request, payload, admin);
     if (action === "verify_document") return verifyDocument(request, payload, admin);
     if (action === "retry_finalization") return retryFinalization(request, payload, admin);
     return reply(400, { error: "unsupported_action" });

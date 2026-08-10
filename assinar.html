@@ -8,7 +8,7 @@
   <title>Assinar documento | GP Mirari</title>
   <link rel="stylesheet" href="./assets/signatures.css?v=20260810-multi-document" />
   <script defer src="./supabase-config.js?v=20260806"></script>
-  <script defer src="./assets/sign-public.js?v=20260810-multi-document"></script>
+  <script defer src="./assets/sign-public.js?v=20260810-folder-editing"></script>
 </head>
 <body>
   <main class="sign-shell">
@@ -45,7 +45,7 @@
           <div class="actions"><button class="button" type="submit">Aceitar e assinar</button><button class="button danger" id="decline-button" type="button">Recusar documento</button></div>
         </form>
       </section>
-      <section id="complete-panel" class="hidden"><h2>Processo concluído</h2><p id="complete-message">Sua assinatura foi registrada.</p><div class="actions"><button class="button hidden" id="download-final" type="button">Baixar documento concluído</button><a class="button secondary" id="verify-link" href="./verificar-assinatura.html">Verificar autenticidade</a></div></section>
+      <section id="complete-panel" class="hidden"><h2>Processo concluído</h2><p id="complete-message">Sua assinatura foi registrada.</p><div class="actions"><button class="button hidden" id="download-final" type="button">Baixar documento concluído</button><button class="button secondary hidden" id="download-final-bundle" type="button">Baixar pasta ZIP</button><a class="button secondary" id="verify-link" href="./verificar-assinatura.html">Verificar autenticidade</a></div></section>
       <p class="notice">A validade e a força probatória dependem do tipo de documento, do método de identificação e das evidências coletadas. Este fluxo utiliza assinatura eletrônica com trilha de evidências e não exige certificado ICP-Brasil.</p>
     </section>
   </main>

@@ -21,7 +21,7 @@
   }
   function friendly(error) {
     const code = String(error?.message || error || "");
-    const messages = { signature_access_unavailable: "Este link está inválido, expirado ou indisponível.", identity_could_not_be_confirmed: "Não foi possível confirmar os dados informados.", otp_invalid_or_expired: "O código está incorreto, expirado ou bloqueado.", temporarily_unavailable: "Muitas tentativas foram realizadas. Aguarde e tente novamente.", rate_limit_service_unavailable: "A validação de segurança está temporariamente indisponível. Aguarde alguns instantes e tente novamente.", session_invalid_or_expired: "Sua sessão expirou. Abra novamente o link recebido por e-mail.", express_consent_required: "Leia o documento e marque as duas confirmações para assinar.", signature_process_closed: "Este processo já foi encerrado." };
+    const messages = { signature_access_unavailable: "Este link está inválido, expirado ou indisponível.", identity_could_not_be_confirmed: "Não foi possível confirmar os dados informados.", otp_invalid_or_expired: "O código está incorreto, expirado ou bloqueado.", temporarily_unavailable: "Muitas tentativas foram realizadas. Aguarde e tente novamente.", rate_limit_service_unavailable: "A validação de segurança está temporariamente indisponível. Aguarde alguns instantes e tente novamente.", session_invalid_or_expired: "Sua sessão expirou. Abra novamente o link recebido por e-mail.", express_consent_required: "Leia o documento e marque as duas confirmações para assinar.", signature_process_closed: "Este processo já foi encerrado.", final_bundle_too_large: "A pasta é grande demais para um ZIP único. Baixe os documentos individualmente." };
     return messages[code] || "Não foi possível concluir esta etapa. Tente novamente.";
   }
   async function inspect() {
@@ -62,7 +62,7 @@
     }
     list.replaceChildren(...state.documents.map((item, index) => { const button = document.createElement("button"); button.type = "button"; button.textContent = `Documento ${index + 1}: ${item.title}`; button.onclick = () => showDocument(index); return button; }));
     showDocument(0); byId("privacy-notice").textContent = `${data.privacyNotice.title}\n\n${data.privacyNotice.content}`; byId("consent-text").textContent = data.consentText.content;
-    if (data.status === "signed") { byId("download-final").classList.remove("hidden"); byId("complete-message").textContent = "O documento foi concluído. Você pode baixar a cópia final idêntica à disponibilizada às demais partes."; showPanel("complete-panel", 4); }
+    if (data.status === "signed") { byId("download-final").classList.remove("hidden"); byId("download-final-bundle").classList.toggle("hidden", state.documents.length < 2); byId("complete-message").textContent = "O documento foi concluído. Você pode baixar a cópia final idêntica à disponibilizada às demais partes."; showPanel("complete-panel", 4); }
     else showPanel("document-panel", 3);
   }
   async function sendOtp() {
@@ -92,7 +92,7 @@
       await call("accept_consent", { sessionToken: state.sessionToken, accepted: true, consentVersion: state.consentVersion, viewedDocumentVersionIds: state.viewedDocumentVersionIds });
       const result = await call("sign", { sessionToken: state.sessionToken });
       byId("complete-message").textContent = result.status === "finalizing" ? "Sua assinatura foi registrada. O documento final está sendo preparado." : result.status === "completed" ? "Todas as assinaturas foram concluídas. O documento final foi gerado e enviado às partes." : "Sua assinatura foi registrada. O processo aguarda as demais partes.";
-      byId("download-final").classList.toggle("hidden", result.status !== "completed"); showPanel("complete-panel", 4); clearTransientState(); message("Assinatura registrada com sucesso.", "success");
+      byId("download-final").classList.toggle("hidden", result.status !== "completed"); byId("download-final-bundle").classList.toggle("hidden", result.status !== "completed" || state.documents.length < 2); showPanel("complete-panel", 4); clearTransientState(); message("Assinatura registrada com sucesso.", "success");
     } catch (error) { message(friendly(error)); } finally { busy(event.currentTarget, false); }
   });
   byId("decline-button").addEventListener("click", async () => {
@@ -100,5 +100,6 @@
     try { await call("decline", { sessionToken: state.sessionToken, reason }); clearTransientState(); byId("complete-message").textContent = "O documento foi recusado e o processo foi encerrado."; showPanel("complete-panel", 4); } catch (error) { message(friendly(error)); }
   });
   byId("download-final").addEventListener("click", async () => { try { const data = await call("download_final", { sessionToken: state.sessionToken }); window.location.assign(data.signedUrl); } catch (error) { message(friendly(error)); } });
+  byId("download-final-bundle").addEventListener("click", async () => { try { const response = await fetch(endpoint(), { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ action:"download_final_bundle", timezone:timezone(), sessionToken:state.sessionToken }) }); if (!response.ok) { const data = await response.json().catch(() => ({})); throw new Error(data.error || "final_document_unavailable"); } const blob = await response.blob(), url = URL.createObjectURL(blob), link = document.createElement("a"); link.href = url; link.download = "documentos-assinados.zip"; document.body.append(link); link.click(); link.remove(); URL.revokeObjectURL(url); } catch (error) { message(friendly(error)); } });
   inspect().catch((error) => { byId("document-title").textContent = "Acesso indisponível"; showPanel("loading-panel", 1); byId("loading-panel").textContent = friendly(error); message(friendly(error)); });
 })();
