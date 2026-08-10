@@ -150,5 +150,6 @@ assert.match(signatureUi, /sig-purpose/, "document UI must retain compatibility 
 assert.match(signingPage, /document-list/, "public signing page must expose multi-document navigation");
 assert.match(finalArtifactsMigration, /final_storage_path/, "each envelope document needs an immutable final artifact location");
 assert.match(finalArtifactsMigration, /final_sha256/, "each envelope document needs its own final hash");
+assert.match(publicSignatureApi, /final_storage_path/, "finalization must persist a final artifact for each envelope document");
 
 console.log("signature-foundation: ok");

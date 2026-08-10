@@ -472,12 +472,13 @@ async function finalizeEnvelope(request: Request, admin: AdminClient, context: a
     if (!completedEvent) await appendEvent(admin, request, { organizationId, envelopeId: envelope.id, eventType: "process.completed", actorType: "system", documentHash: existingFinal.sha256, authChannel: "system", timezone: "America/Sao_Paulo", occurredAt: completionAt, metadata: { recovered: true, finalSha256: existingFinal.sha256, evidenceReportSha256: existingReport.sha256 } });
     return { finalHash: existingFinal.sha256, reportHash: existingReport.sha256 };
   }
-  const [{ data: original }, { data: signers }, { data: events }, { data: actions }, { data: fields }] = await Promise.all([
+  const [{ data: original }, { data: signers }, { data: events }, { data: actions }, { data: fields }, { data: envelopeDocuments }] = await Promise.all([
     admin.storage.from(bucketName).download(version.storage_path),
     admin.from("gp_v2_signature_signers").select("id,name,email,signer_role,signer_type,company_legal_name,job_title,document_last4,authentication_methods,signed_at").eq("organization_id", organizationId).eq("envelope_id", envelope.id).order("signing_order"),
     admin.from("gp_v2_signature_events").select("sequence_number,event_type,occurred_at,local_occurred_at,presented_timezone,ip_address,result,auth_channel,event_hash").eq("organization_id", organizationId).eq("envelope_id", envelope.id).order("sequence_number"),
     admin.from("gp_v2_signature_actions").select("signer_id,signed_at,signature_method,document_sha256").eq("organization_id", organizationId).eq("envelope_id", envelope.id),
     admin.from("gp_v2_signature_fields").select("signer_id,field_type,page_number,x_ratio,y_ratio,width_ratio,height_ratio").eq("organization_id", organizationId).eq("envelope_id", envelope.id).eq("document_version_id", version.id),
+    admin.from("gp_v2_signature_envelope_documents").select("id,display_order,document_version_id,gp_v2_document_versions(storage_path)").eq("organization_id", organizationId).eq("envelope_id", envelope.id).order("display_order"),
   ]);
   if (!original || !signers || !events || !actions) throw new Error("finalization_inputs_missing");
   const originalBytes = new Uint8Array(await original.arrayBuffer());
@@ -523,6 +524,25 @@ async function finalizeEnvelope(request: Request, admin: AdminClient, context: a
   const bucket = admin.storage.from(bucketName);
   await uploadImmutable(bucket, finalPath, finalBytes, finalHash);
   await uploadImmutable(bucket, reportPath, reportBytes, reportHash);
+  // Every PDF in a folder receives an immutable final copy. The legacy signed_pdf
+  // artifact remains the primary-document compatibility download.
+  for (const item of envelopeDocuments || []) {
+    const itemVersion = Array.isArray((item as any).gp_v2_document_versions) ? (item as any).gp_v2_document_versions[0] : (item as any).gp_v2_document_versions;
+    let itemPath = finalPath, itemHash = finalHash;
+    if (String((item as any).document_version_id) !== String(version.id)) {
+      const { data: itemOriginal } = await bucket.download(itemVersion?.storage_path || "");
+      if (!itemOriginal) throw new Error("envelope_document_download_failed");
+      const itemPdf = await PDFDocument.load(new Uint8Array(await itemOriginal.arrayBuffer()));
+      const itemCertificatePages = await itemPdf.copyPages(certificate, certificate.getPageIndices());
+      itemCertificatePages.forEach((page) => itemPdf.addPage(page));
+      const itemBytes = new Uint8Array(await itemPdf.save());
+      itemHash = await sha256(itemBytes);
+      itemPath = `${basePath}/documento-${String((item as any).display_order).padStart(2, "0")}-concluido.pdf`;
+      await uploadImmutable(bucket, itemPath, itemBytes, itemHash);
+    }
+    const { error: itemFinalError } = await admin.from("gp_v2_signature_envelope_documents").update({ final_storage_path: itemPath, final_sha256: itemHash, finalized_at: completionAt, updated_at: completionAt }).eq("id", (item as any).id).eq("organization_id", organizationId);
+    if (itemFinalError) throw new Error("envelope_document_final_persist_failed");
+  }
   await persistImmutableArtifact(admin, { organization_id: organizationId, envelope_id: envelope.id, artifact_kind: "signed_pdf", storage_path: finalPath, content_type: "application/pdf", size_bytes: finalBytes.byteLength, sha256: finalHash });
   await persistImmutableArtifact(admin, { organization_id: organizationId, envelope_id: envelope.id, artifact_kind: "evidence_report", storage_path: reportPath, content_type: "application/pdf", size_bytes: reportBytes.byteLength, sha256: reportHash });
   const { error: envelopeError } = await admin.from("gp_v2_signature_envelopes").update({ status: "signed", completed_at: completionAt, last_error_code: "", updated_at: completionAt }).eq("id", envelope.id).eq("organization_id", organizationId);
