@@ -142,5 +142,7 @@ assert.match(deliveryMigration, /gp_v2_signature_fields/, "signature field place
 assert.match(deliveryMigration, /gp_v2_signature_email_deliveries/, "email delivery status must be separated from signer status");
 assert.match(resendWebhook, /new Webhook\(secret\)\.verify/, "Resend webhooks must verify Svix signatures");
 assert.match(resendWebhook, /svix-id/, "Resend webhooks must use Svix idempotency identifiers");
+assert.match(publicSignatureApi, /gp_v2_signature_fields/, "finalization must retrieve version-specific signature placement fields");
+assert.match(publicSignatureApi, /page\.drawRectangle/, "finalization must visibly stamp signature fields into the final PDF");
 
 console.log("signature-foundation: ok");

@@ -466,15 +466,31 @@ async function finalizeEnvelope(request: Request, admin: AdminClient, context: a
     if (!completedEvent) await appendEvent(admin, request, { organizationId, envelopeId: envelope.id, eventType: "process.completed", actorType: "system", documentHash: existingFinal.sha256, authChannel: "system", timezone: "America/Sao_Paulo", occurredAt: completionAt, metadata: { recovered: true, finalSha256: existingFinal.sha256, evidenceReportSha256: existingReport.sha256 } });
     return { finalHash: existingFinal.sha256, reportHash: existingReport.sha256 };
   }
-  const [{ data: original }, { data: signers }, { data: events }, { data: actions }] = await Promise.all([
+  const [{ data: original }, { data: signers }, { data: events }, { data: actions }, { data: fields }] = await Promise.all([
     admin.storage.from(bucketName).download(version.storage_path),
     admin.from("gp_v2_signature_signers").select("id,name,email,signer_role,signer_type,company_legal_name,job_title,document_last4,authentication_methods,signed_at").eq("organization_id", organizationId).eq("envelope_id", envelope.id).order("signing_order"),
     admin.from("gp_v2_signature_events").select("sequence_number,event_type,occurred_at,local_occurred_at,presented_timezone,ip_address,result,auth_channel,event_hash").eq("organization_id", organizationId).eq("envelope_id", envelope.id).order("sequence_number"),
     admin.from("gp_v2_signature_actions").select("signer_id,signed_at,signature_method,document_sha256").eq("organization_id", organizationId).eq("envelope_id", envelope.id),
+    admin.from("gp_v2_signature_fields").select("signer_id,field_type,page_number,x_ratio,y_ratio,width_ratio,height_ratio").eq("organization_id", organizationId).eq("envelope_id", envelope.id).eq("document_version_id", version.id),
   ]);
   if (!original || !signers || !events || !actions) throw new Error("finalization_inputs_missing");
   const originalBytes = new Uint8Array(await original.arrayBuffer());
   const pdf = await PDFDocument.load(originalBytes);
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const signerById = new Map((signers || []).map((item: any) => [item.id, item]));
+  for (const field of fields || []) {
+    const page = pdf.getPages()[Number(field.page_number) - 1];
+    const signer = signerById.get(field.signer_id) as any;
+    if (!page || !signer) continue;
+    const { width, height } = page.getSize();
+    const x = Number(field.x_ratio) * width, boxWidth = Number(field.width_ratio) * width, boxHeight = Number(field.height_ratio) * height;
+    const y = height - (Number(field.y_ratio) + Number(field.height_ratio)) * height;
+    const signedAt = signer.signed_at ? localDateTime(signer.signed_at, "America/Sao_Paulo") : localDateTime(completionAt, "America/Sao_Paulo");
+    const label = field.field_type === "signed_at" ? signedAt : field.field_type === "signer_name" ? signer.name : `Assinado eletronicamente\n${signer.name}\n${signedAt}\n${document.verification_code}`;
+    page.drawRectangle({ x, y, width: boxWidth, height: boxHeight, borderColor: rgb(0.16, 0.37, 0.32), borderWidth: 0.8, color: rgb(0.96, 0.98, 0.97), opacity: 0.92 });
+    const lines = label.split("\n");
+    lines.slice(0, 4).forEach((line: string, index: number) => page.drawText(line.slice(0, 90), { x: x + 4, y: y + boxHeight - 12 - index * 10, size: Math.max(6, Math.min(9, boxHeight / 5)), font, color: rgb(0.08, 0.20, 0.17) }));
+  }
   const certificateBytes = await createEvidencePdf("Certificado de assinaturas eletrônicas", [
     { heading: "Documento", lines: [`Código: ${document.verification_code}`, `Nome: ${document.title}`, `Hash SHA-256 original: ${version.sha256}`, `Conclusão: ${localDateTime(completionAt, "America/Sao_Paulo")} (UTC: ${completionAt})`, `Verificação: ${config().verificationUrl}?codigo=${document.verification_code}`] },
     { heading: "Signatários", lines: signers.map((item: any) => `${item.name} | ${item.signer_role} | CPF ${maskedCpf(item.document_last4)} | ${item.email} | autenticação: link individual + OTP por e-mail + aceite expresso | assinatura: ${item.signed_at || completionAt}`) },
