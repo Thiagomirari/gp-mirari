@@ -363,19 +363,22 @@ async function getDocument(request: Request, payload: Record<string, unknown>, a
   if (!context) return reply(401, { error: "session_invalid_or_expired" });
   const { session, signer, envelope, document, version } = context;
   const now = new Date().toISOString();
-  const [{ data: signedUrl }, { data: privacy }, { data: consent }, { data: finalArtifact }] = await Promise.all([
-    admin.storage.from(bucketName).createSignedUrl(version.storage_path, 300),
+  const [{ data: envelopeDocuments }, { data: privacy }, { data: consent }, { data: finalArtifact }] = await Promise.all([
+    admin.from("gp_v2_signature_envelope_documents").select("id,display_order,required,document_id,document_version_id,gp_v2_documents(title,verification_code),gp_v2_document_versions(file_name,storage_path,sha256)").eq("organization_id", session.organization_id).eq("envelope_id", envelope.id).order("display_order"),
     admin.from("gp_v2_signature_privacy_notices").select("version,title,content").eq("organization_id", session.organization_id).eq("version", document.privacy_notice_version).maybeSingle(),
     admin.from("gp_v2_signature_consent_texts").select("id,version,content,content_sha256").eq("organization_id", session.organization_id).eq("version", envelope.consent_text_version).maybeSingle(),
     admin.from("gp_v2_signature_artifacts").select("id").eq("organization_id", session.organization_id).eq("envelope_id", envelope.id).eq("artifact_kind", "signed_pdf").maybeSingle(),
   ]);
-  if (!signedUrl?.signedUrl || !privacy || !consent) return reply(503, { error: "document_temporarily_unavailable" });
-  if (!session.document_viewed_at) {
-    await admin.from("gp_v2_signature_sessions").update({ document_viewed_at: now }).eq("id", session.id);
-    await appendEvent(admin, request, { organizationId: session.organization_id, envelopeId: envelope.id, signerId: signer.id, eventType: "document.viewed", documentHash: version.sha256, authChannel: "authenticated_session", tokenFingerprint: session.session_fingerprint, timezone: payload.timezone as string });
-  }
+  const publicDocuments = await Promise.all((envelopeDocuments || []).map(async (item: any) => {
+    const doc = Array.isArray(item.gp_v2_documents) ? item.gp_v2_documents[0] : item.gp_v2_documents;
+    const itemVersion = Array.isArray(item.gp_v2_document_versions) ? item.gp_v2_document_versions[0] : item.gp_v2_document_versions;
+    const { data } = await admin.storage.from(bucketName).createSignedUrl(itemVersion?.storage_path || "", 300);
+    return { id: item.id, documentId: item.document_id, documentVersionId: item.document_version_id, title: doc?.title || "Documento", code: doc?.verification_code || "", fileName: itemVersion?.file_name || "", sha256: itemVersion?.sha256 || "", required: item.required !== false, signedUrl: data?.signedUrl || "" };
+  }));
+  if (!publicDocuments.length || publicDocuments.some((item) => !item.signedUrl) || !privacy || !consent) return reply(503, { error: "document_temporarily_unavailable" });
+  if (!session.document_viewed_at) await appendEvent(admin, request, { organizationId: session.organization_id, envelopeId: envelope.id, signerId: signer.id, eventType: "document.presented", documentHash: version.sha256, authChannel: "authenticated_session", tokenFingerprint: session.session_fingerprint, timezone: payload.timezone as string, metadata: { documentCount: publicDocuments.length } });
   return reply(200, {
-    ok: true, title: document.title, documentCode: document.verification_code, documentUrl: signedUrl.signedUrl, urlExpiresIn: 300,
+    ok: true, title: document.title, documentCode: document.verification_code, documentUrl: publicDocuments[0].signedUrl, documents: publicDocuments, urlExpiresIn: 300,
     originalSha256: version.sha256, privacyNotice: privacy, consentText: consent, status: envelope.status,
     canSign: !["signed", "declined", "expired", "cancelled", "superseded"].includes(envelope.status) && signer.status !== "signed",
     finalAvailable: !!finalArtifact,
@@ -386,7 +389,9 @@ async function acceptConsent(request: Request, payload: Record<string, unknown>,
   const context = await sessionContext(admin, payload.sessionToken, request);
   if (!context || payload.accepted !== true) return reply(400, { error: "express_consent_required" });
   const { session, signer, envelope, version } = context;
-  if (!session.document_viewed_at || !signer.otp_verified_at) return reply(409, { error: "document_reading_and_otp_required" });
+  const viewedVersionIds = Array.isArray(payload.viewedDocumentVersionIds) ? payload.viewedDocumentVersionIds.map(String) : [];
+  const { data: requiredDocuments } = await admin.from("gp_v2_signature_envelope_documents").select("document_version_id").eq("organization_id", session.organization_id).eq("envelope_id", envelope.id).eq("required", true);
+  if (!signer.otp_verified_at || !requiredDocuments?.length || requiredDocuments.some((item: any) => !viewedVersionIds.includes(String(item.document_version_id)))) return reply(409, { error: "document_reading_and_otp_required" });
   const { data: consentText } = await admin.from("gp_v2_signature_consent_texts").select("id,version,content_sha256").eq("organization_id", session.organization_id).eq("version", envelope.consent_text_version).maybeSingle();
   if (!consentText || String(payload.consentVersion || "") !== consentText.version) return reply(409, { error: "consent_version_changed" });
   const existing = await admin.from("gp_v2_signature_consents").select("id").eq("organization_id", session.organization_id).eq("envelope_id", envelope.id).eq("signer_id", signer.id).maybeSingle();
@@ -397,13 +402,14 @@ async function acceptConsent(request: Request, payload: Record<string, unknown>,
   const ipHash = await hmacSha256(config().dataPepper, `ip|${ip || "unknown"}`);
   const { data: inserted, error } = await admin.from("gp_v2_signature_consents").insert({
     organization_id: session.organization_id, envelope_id: envelope.id, signer_id: signer.id, document_version_id: version.id,
-    consent_text_id: consentText.id, consent_text_version: consentText.version, consent_text_sha256: consentText.content_sha256,
+    consent_text_id: consentText.id, consent_text_version: consentText.version, consent_text_sha256: consentText.content_sha256, document_manifest_sha256: envelope.document_manifest_sha256 || "",
     accepted_at: now, ip_address: ip || null, ip_hash: ipHash, user_agent: String(request.headers.get("user-agent") || "").slice(0, 1000),
     presented_timezone: timezone, local_accepted_at: localDateTime(now, timezone),
   }).select("id").single();
   if (error || !inserted) return reply(409, { error: "consent_could_not_be_recorded" });
+  await admin.from("gp_v2_signature_sessions").update({ document_viewed_at: now }).eq("id", session.id);
   await admin.from("gp_v2_signature_signers").update({ consented_at: now, status: "consented", updated_at: now }).eq("id", signer.id);
-  await appendEvent(admin, request, { organizationId: session.organization_id, envelopeId: envelope.id, signerId: signer.id, eventType: "consent.accepted", documentHash: version.sha256, authChannel: "authenticated_session", tokenFingerprint: session.session_fingerprint, timezone, metadata: { consentVersion: consentText.version, consentSha256: consentText.content_sha256 } });
+  await appendEvent(admin, request, { organizationId: session.organization_id, envelopeId: envelope.id, signerId: signer.id, eventType: "consent.accepted", documentHash: version.sha256, authChannel: "authenticated_session", tokenFingerprint: session.session_fingerprint, timezone, metadata: { consentVersion: consentText.version, consentSha256: consentText.content_sha256, documentCount: requiredDocuments.length } });
   return reply(200, { ok: true, consentId: inserted.id });
 }
 
@@ -582,7 +588,7 @@ async function signDocument(request: Request, payload: Record<string, unknown>, 
     organization_id: session.organization_id, envelope_id: envelope.id, signer_id: signer.id, document_version_id: version.id,
     consent_id: consent.id, signature_method: "electronic_action", visual_representation: "typed_name", visual_representation_sha256: visualHash,
     signed_at: now, ip_address: ip || null, ip_hash: ipHash, user_agent: String(request.headers.get("user-agent") || "").slice(0, 1000),
-    presented_timezone: timezone, local_signed_at: localDateTime(now, timezone), document_sha256: version.sha256,
+    presented_timezone: timezone, local_signed_at: localDateTime(now, timezone), document_sha256: version.sha256, document_manifest_sha256: envelope.document_manifest_sha256 || "",
   });
   if (actionError && !String(actionError.code || "").includes("23505")) return reply(409, { error: "signature_could_not_be_recorded" });
   const { data, error } = await admin.rpc("gp_v2_mark_internal_signature", { p_organization_id: session.organization_id, p_envelope_id: envelope.id, p_signer_id: signer.id, p_signed_at: now });

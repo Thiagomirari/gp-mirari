@@ -2,7 +2,7 @@
   "use strict";
   const panels = ["loading-panel", "identity-panel", "otp-panel", "document-panel", "complete-panel"];
   const storageKey = "gp_mirari_signature_public_v1";
-  const state = { token: "", challengeId: "", sessionToken: "", signerType: "person", consentVersion: "", documentCode: "", completed: false };
+  const state = { token: "", challengeId: "", sessionToken: "", signerType: "person", consentVersion: "", documentCode: "", completed: false, documents: [], viewedDocumentVersionIds: [] };
   const byId = (id) => document.getElementById(id);
   const timezone = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo"; } catch (_) { return "America/Sao_Paulo"; } };
   function endpoint() { const url = String(window.GP_MIRARI_SUPABASE?.url || "").replace(/\/+$/, ""); return `${url}/functions/v1/gp-v2-sign-public`; }
@@ -51,7 +51,17 @@
   }
   function presentDocument(data) {
     state.consentVersion = data.consentText.version;
-    byId("document-frame").src = data.documentUrl; byId("original-hash").textContent = data.originalSha256; byId("privacy-notice").textContent = `${data.privacyNotice.title}\n\n${data.privacyNotice.content}`; byId("consent-text").textContent = data.consentText.content;
+    state.documents = Array.isArray(data.documents) && data.documents.length ? data.documents : [{ title:data.title, signedUrl:data.documentUrl, sha256:data.originalSha256, documentVersionId:"", required:true }];
+    state.viewedDocumentVersionIds = [];
+    const list = byId("document-list");
+    function showDocument(index) {
+      const item = state.documents[index];
+      byId("document-frame").onload = () => { if (item.documentVersionId && !state.viewedDocumentVersionIds.includes(item.documentVersionId)) state.viewedDocumentVersionIds.push(item.documentVersionId); };
+      byId("document-frame").src = item.signedUrl; byId("original-hash").textContent = item.sha256 || data.originalSha256;
+      [...list.querySelectorAll("button")].forEach((button, position) => button.classList.toggle("active", position === index));
+    }
+    list.replaceChildren(...state.documents.map((item, index) => { const button = document.createElement("button"); button.type = "button"; button.textContent = `Documento ${index + 1}: ${item.title}`; button.onclick = () => showDocument(index); return button; }));
+    showDocument(0); byId("privacy-notice").textContent = `${data.privacyNotice.title}\n\n${data.privacyNotice.content}`; byId("consent-text").textContent = data.consentText.content;
     if (data.status === "signed") { byId("download-final").classList.remove("hidden"); byId("complete-message").textContent = "O documento foi concluído. Você pode baixar a cópia final idêntica à disponibilizada às demais partes."; showPanel("complete-panel", 4); }
     else showPanel("document-panel", 3);
   }
@@ -77,7 +87,9 @@
     event.preventDefault(); message(""); if (!byId("read-confirmation").checked || !byId("express-consent").checked) return message(friendly("express_consent_required"));
     busy(event.currentTarget, true);
     try {
-      await call("accept_consent", { sessionToken: state.sessionToken, accepted: true, consentVersion: state.consentVersion });
+      const required = state.documents.filter((item) => item.required !== false).map((item) => item.documentVersionId).filter(Boolean);
+      if (required.some((id) => !state.viewedDocumentVersionIds.includes(id))) return message("Abra e visualize todos os documentos obrigatórios antes de assinar.");
+      await call("accept_consent", { sessionToken: state.sessionToken, accepted: true, consentVersion: state.consentVersion, viewedDocumentVersionIds: state.viewedDocumentVersionIds });
       const result = await call("sign", { sessionToken: state.sessionToken });
       byId("complete-message").textContent = result.status === "finalizing" ? "Sua assinatura foi registrada. O documento final está sendo preparado." : result.status === "completed" ? "Todas as assinaturas foram concluídas. O documento final foi gerado e enviado às partes." : "Sua assinatura foi registrada. O processo aguarda as demais partes.";
       byId("download-final").classList.toggle("hidden", result.status !== "completed"); showPanel("complete-panel", 4); clearTransientState(); message("Assinatura registrada com sucesso.", "success");

@@ -6,9 +6,9 @@
   <meta name="referrer" content="no-referrer" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://stoczbnzjowrygsxrylh.supabase.co; frame-src https://stoczbnzjowrygsxrylh.supabase.co; style-src 'self'; script-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'self'; object-src 'none'" />
   <title>Assinar documento | GP Mirari</title>
-  <link rel="stylesheet" href="./assets/signatures.css?v=20260806" />
+  <link rel="stylesheet" href="./assets/signatures.css?v=20260810-multi-document" />
   <script defer src="./supabase-config.js?v=20260806"></script>
-  <script defer src="./assets/sign-public.js?v=20260810-rate-limit-hotfix"></script>
+  <script defer src="./assets/sign-public.js?v=20260810-multi-document"></script>
 </head>
 <body>
   <main class="sign-shell">
@@ -35,11 +35,12 @@
       </section>
       <section id="document-panel" class="hidden">
         <h2>Leia o documento completo</h2><p>O arquivo abaixo corresponde à versão identificada pelo hash SHA-256 informado.</p>
+        <nav id="document-list" class="document-list" aria-label="Documentos da pasta de assinatura"></nav>
         <iframe id="document-frame" class="document-frame" title="Documento completo para leitura"></iframe>
         <p class="muted">Hash original: <code id="original-hash"></code></p>
         <h2>Aviso de privacidade</h2><div id="privacy-notice" class="privacy"></div>
         <form id="consent-form">
-          <label class="check"><input id="read-confirmation" type="checkbox" required /><span>Confirmo que visualizei o documento completo apresentado acima.</span></label>
+          <label class="check"><input id="read-confirmation" type="checkbox" required /><span>Confirmo que visualizei todos os documentos obrigatórios apresentados acima.</span></label>
           <label class="check"><input id="express-consent" type="checkbox" required /><strong id="consent-text"></strong></label>
           <div class="actions"><button class="button" type="submit">Aceitar e assinar</button><button class="button danger" id="decline-button" type="button">Recusar documento</button></div>
         </form>

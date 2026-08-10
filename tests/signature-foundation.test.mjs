@@ -144,5 +144,8 @@ assert.match(resendWebhook, /new Webhook\(secret\)\.verify/, "Resend webhooks mu
 assert.match(resendWebhook, /svix-id/, "Resend webhooks must use Svix idempotency identifiers");
 assert.match(publicSignatureApi, /gp_v2_signature_fields/, "finalization must retrieve version-specific signature placement fields");
 assert.match(publicSignatureApi, /page\.drawRectangle/, "finalization must visibly stamp signature fields into the final PDF");
+assert.match(publicSignatureApi, /gp_v2_signature_envelope_documents/, "public portal must retrieve every document in the signature envelope");
+assert.match(signatureUi, /sig-purpose/, "document UI must retain compatibility with legacy policy controls while hiding them from daily intake");
+assert.match(signingPage, /document-list/, "public signing page must expose multi-document navigation");
 
 console.log("signature-foundation: ok");

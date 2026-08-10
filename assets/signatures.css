@@ -34,6 +34,9 @@ p { line-height:1.55; }
 .button.secondary { color:var(--green-dark); background:var(--sand); border:1px solid var(--line); }
 .button.danger { color:var(--danger); background:#fff2f2; border:1px solid #efc9c9; }
 .document-frame { width:100%; height:min(68vh,780px); border:1px solid var(--line); border-radius:12px; background:#eee; }
+.document-list { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 12px; }
+.document-list button { border:1px solid var(--line); border-radius:8px; padding:8px 10px; background:#fff; color:var(--green-dark); cursor:pointer; }
+.document-list button.active { color:#fff; background:var(--green); border-color:var(--green); }
 .privacy { max-height:180px; overflow:auto; white-space:pre-wrap; padding:13px; border:1px solid var(--line); border-radius:10px; font-size:13px; background:#fafafa; }
 .otp { max-width:250px; letter-spacing:.36em; font-size:24px; font-weight:800; text-align:center; }
 .verify-result dl { display:grid; grid-template-columns:180px 1fr; gap:8px 14px; }
