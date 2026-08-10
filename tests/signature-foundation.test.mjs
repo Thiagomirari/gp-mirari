@@ -20,6 +20,8 @@ const envelopeDocumentsMigration = await readFile(join(root, "migrations", "015-
 const deliveryMigration = await readFile(join(root, "migrations", "016-signature-fields-and-email-delivery.sql"), "utf8");
 const resendWebhook = await readFile(join(root, "supabase", "functions", "gp-v2-resend-webhook", "index.ts"), "utf8");
 const finalArtifactsMigration = await readFile(join(root, "migrations", "018-envelope-document-final-artifacts.sql"), "utf8");
+const fieldPreActionMigration = await readFile(join(root, "migrations", "019-signature-field-pre-first-action.sql"), "utf8");
+const pdfjsBundle = await readFile(join(root, "assets", "vendor", "pdfjs-4.10.38", "pdf.min.js"), "utf8");
 
 for (const table of [
   "gp_v2_document_templates",
@@ -151,5 +153,12 @@ assert.match(signingPage, /document-list/, "public signing page must expose mult
 assert.match(finalArtifactsMigration, /final_storage_path/, "each envelope document needs an immutable final artifact location");
 assert.match(finalArtifactsMigration, /final_sha256/, "each envelope document needs its own final hash");
 assert.match(publicSignatureApi, /final_storage_path/, "finalization must persist a final artifact for each envelope document");
+assert.match(signatureApi, /preview_envelope_document/, "admin API must provide an authorized temporary preview URL");
+assert.match(signatureApi, /save_signature_fields/, "admin API must validate and persist positioned fields");
+assert.match(signatureUi, /pdfjs-4\.10\.38\/pdf\.min\.js/, "visual field editor must use a locally pinned PDF.js bundle");
+assert.match(signatureUi, /sig-pdf-field/, "visual field editor must render draggable field overlays");
+assert.match(fieldPreActionMigration, /awaiting_signature/, "field placement must remain editable before the first signer action");
+assert.match(fieldPreActionMigration, /first signature action/, "field placement must lock immediately after signer evidence begins");
+assert.match(pdfjsBundle, /Mozilla Foundation/, "pinned PDF.js bundle must be present locally");
 
 console.log("signature-foundation: ok");

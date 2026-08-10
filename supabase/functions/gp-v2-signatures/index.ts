@@ -882,6 +882,55 @@ async function downloadArtifact(payload: Record<string, unknown>, admin: AdminCl
   return reply(200, { ok: true, signedUrl: signed.signedUrl, expiresIn: 300, sha256: artifact.sha256, contentType: artifact.content_type });
 }
 
+async function saveSignatureFields(payload: Record<string, unknown>, admin: AdminClient, userId: string) {
+  const organizationId = String(payload.organizationId || "");
+  const envelopeId = String(payload.envelopeId || "");
+  const actor = await requireActor(admin, userId, organizationId, allowedRoles);
+  if (!actor) return reply(403, { error: "signature_manager_role_required" });
+  if (!isUuid(envelopeId)) return reply(400, { error: "envelope_id_invalid" });
+  const { data: envelope } = await admin.from("gp_v2_signature_envelopes").select("id,status").eq("organization_id", organizationId).eq("id", envelopeId).maybeSingle();
+  if (!envelope || !["preparing", "awaiting_send", "failed"].includes(String(envelope.status))) return reply(409, { error: "signature_fields_locked" });
+  const [{ data: actions }, { data: documents }, { data: signers }] = await Promise.all([
+    admin.from("gp_v2_signature_actions").select("id").eq("organization_id", organizationId).eq("envelope_id", envelopeId).limit(1),
+    admin.from("gp_v2_signature_envelope_documents").select("id,document_version_id").eq("organization_id", organizationId).eq("envelope_id", envelopeId),
+    admin.from("gp_v2_signature_signers").select("id").eq("organization_id", organizationId).eq("envelope_id", envelopeId),
+  ]);
+  if (actions?.length) return reply(409, { error: "signature_fields_locked" });
+  const envelopeDocuments = new Map((documents || []).map((item: any) => [item.id, item.document_version_id]));
+  const signerIds = new Set((signers || []).map((item: any) => item.id));
+  const allowedFieldTypes = new Set(["signature", "initial", "signer_name", "signed_at"]);
+  const fields = Array.isArray(payload.fields) ? payload.fields.slice(0, 100) : [];
+  const rows = fields.map((field: any) => ({
+    organization_id: organizationId, envelope_id: envelopeId, envelope_document_id: String(field.envelopeDocumentId || ""), document_version_id: String(field.documentVersionId || ""), signer_id: String(field.signerId || ""), field_type: String(field.fieldType || "signature"), page_number: Number(field.pageNumber), x_ratio: Number(field.xRatio), y_ratio: Number(field.yRatio), width_ratio: Number(field.widthRatio), height_ratio: Number(field.heightRatio), page_rotation: Number(field.pageRotation || 0), required: field.required !== false, created_by: userId,
+  }));
+  if (rows.some((field: any) => !isUuid(field.envelope_document_id) || !signerIds.has(field.signer_id) || envelopeDocuments.get(field.envelope_document_id) !== field.document_version_id || !allowedFieldTypes.has(field.field_type) || !Number.isInteger(field.page_number) || field.page_number < 1 || ![field.x_ratio, field.y_ratio, field.width_ratio, field.height_ratio].every(Number.isFinite) || field.x_ratio < 0 || field.y_ratio < 0 || field.width_ratio <= 0 || field.height_ratio <= 0 || field.x_ratio + field.width_ratio > 1 || field.y_ratio + field.height_ratio > 1 || ![0,90,180,270].includes(field.page_rotation))) return reply(400, { error: "signature_fields_invalid" });
+  const { error: deleteError } = await admin.from("gp_v2_signature_fields").delete().eq("organization_id", organizationId).eq("envelope_id", envelopeId);
+  if (deleteError) return reply(409, { error: "signature_fields_locked" });
+  if (rows.length) {
+    const { error: insertError } = await admin.from("gp_v2_signature_fields").insert(rows);
+    if (insertError) return reply(400, { error: "signature_fields_save_failed" });
+  }
+  await audit(admin, organizationId, userId, "signature_envelope", envelopeId, "signature_fields_updated", crypto.randomUUID(), { fieldCount: rows.length });
+  return reply(200, { ok: true, fieldCount: rows.length });
+}
+
+async function previewEnvelopeDocument(payload: Record<string, unknown>, admin: AdminClient, userId: string) {
+  const organizationId = String(payload.organizationId || "");
+  const envelopeId = String(payload.envelopeId || "");
+  const envelopeDocumentId = String(payload.envelopeDocumentId || "");
+  const actor = await requireActor(admin, userId, organizationId, readableRoles);
+  if (!actor) return reply(403, { error: "document_access_denied" });
+  if (!isUuid(envelopeId) || !isUuid(envelopeDocumentId)) return reply(400, { error: "envelope_document_id_invalid" });
+  const { data: item } = await admin.from("gp_v2_signature_envelope_documents")
+    .select("id,document_version_id,gp_v2_document_versions(storage_path,file_name,content_type,sha256)")
+    .eq("organization_id", organizationId).eq("envelope_id", envelopeId).eq("id", envelopeDocumentId).maybeSingle();
+  const version = Array.isArray(item?.gp_v2_document_versions) ? item?.gp_v2_document_versions[0] : item?.gp_v2_document_versions;
+  if (!item || !version?.storage_path) return reply(404, { error: "envelope_document_not_found" });
+  const { data: signed, error } = await admin.storage.from("gp-v2-signature-files").createSignedUrl(version.storage_path, 300);
+  if (error || !signed?.signedUrl) return reply(500, { error: "envelope_document_preview_failed" });
+  return reply(200, { ok: true, signedUrl: signed.signedUrl, expiresIn: 300, documentVersionId: item.document_version_id, fileName: version.file_name, sha256: version.sha256, contentType: version.content_type });
+}
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (request.method !== "POST") return reply(405, { error: "method_not_allowed" });
@@ -906,6 +955,8 @@ Deno.serve(async (request) => {
   if (action === "save_compliance_configuration") return saveComplianceConfiguration(payload, admin, user.id);
   if (action === "cancel_envelope") return cancelEnvelope(request, payload, admin, user.id);
   if (action === "download_artifact") return downloadArtifact(payload, admin, user.id);
+  if (action === "save_signature_fields") return saveSignatureFields(payload, admin, user.id);
+  if (action === "preview_envelope_document") return previewEnvelopeDocument(payload, admin, user.id);
   if (action === "provider_status") {
     const organizationId = String(payload.organizationId || "");
     const actor = await requireActor(admin, user.id, organizationId, allowedRoles);
