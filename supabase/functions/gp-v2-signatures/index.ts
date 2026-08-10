@@ -217,15 +217,32 @@ async function createDocument(request: Request, admin: AdminClient, userId: stri
   const documentKind = String(metadata.documentKind || "other");
   const sourceType = String(metadata.sourceType || "manual");
   const signatureLevel = String(metadata.signatureLevel || "advanced");
-  const purpose = String(metadata.purpose || "").trim().slice(0, 500);
-  const legalBasis = String(metadata.legalBasis || "");
-  const privacyNoticeVersion = String(metadata.privacyNoticeVersion || "").trim().slice(0, 100);
-  const retentionPolicyVersion = String(metadata.retentionPolicyVersion || "").trim().slice(0, 100);
-  const retentionUntil = String(metadata.retentionUntil || "");
+  let purpose = "";
+  let legalBasis = "";
+  let privacyNoticeVersion = "";
+  let retentionPolicyVersion = "";
+  let retentionUntil = "";
   if (!title || !allowedKinds.has(documentKind) || !allowedSources.has(sourceType) || !allowedSignatureLevels.has(signatureLevel)
-    || !purpose || !legalBases.has(legalBasis) || !privacyNoticeVersion || !retentionPolicyVersion || !/^\d{4}-\d{2}-\d{2}$/.test(retentionUntil)) {
+  ) {
     return reply(400, { error: "document_metadata_invalid" });
   }
+
+  // Compliance is selected by the active, administrator-approved policy. Client input
+  // is deliberately ignored so a user cannot bind a document to an arbitrary version.
+  const [{ data: privacyNotice }, { data: retentionPolicy }] = await Promise.all([
+    admin.from("gp_v2_signature_privacy_notices").select("version").eq("organization_id", organizationId).eq("active", true).not("published_at", "is", null).order("published_at", { ascending: false }).limit(1).maybeSingle(),
+    admin.from("gp_v2_signature_retention_policies").select("version,legal_basis,purpose,retention_months").eq("organization_id", organizationId).eq("document_kind", documentKind).eq("active", true).not("approved_at", "is", null).order("approved_at", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  if (!privacyNotice || !retentionPolicy || !legalBases.has(String(retentionPolicy.legal_basis)) || String(retentionPolicy.purpose || "").trim().length < 20) {
+    return reply(409, { error: "active_compliance_configuration_required", documentKind });
+  }
+  privacyNoticeVersion = String(privacyNotice.version);
+  retentionPolicyVersion = String(retentionPolicy.version);
+  legalBasis = String(retentionPolicy.legal_basis);
+  purpose = String(retentionPolicy.purpose).trim().slice(0, 500);
+  const retentionDate = new Date();
+  retentionDate.setUTCMonth(retentionDate.getUTCMonth() + Number(retentionPolicy.retention_months));
+  retentionUntil = retentionDate.toISOString().slice(0, 10);
 
   const links = Array.isArray(metadata.links) ? metadata.links.slice(0, 20) : [];
   if (links.some((link: Record<string, unknown>) => !allowedEntityTypes.has(String(link?.entityType || "")) || !String(link?.entityRef || "").trim())) {

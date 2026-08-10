@@ -122,6 +122,9 @@ assert.doesNotMatch(signingPage, /express-consent[^>]+checked/, "express consent
 assert.match(signingPage, /Content-Security-Policy/, "public signing page needs a CSP");
 assert.match(verificationPage, /verify-form/, "verification page must expose the public verifier form");
 assert.match(signatureUi, /legalReviewConfirmed/, "compliance publishing must require explicit legal review confirmation");
+assert.match(signatureApi, /active_compliance_configuration_required/, "document creation must resolve compliance from an active approved policy");
+assert.match(signatureApi, /Client input[\s\S]*ignored/, "the client must not select arbitrary legal-policy versions");
+assert.match(signatureUi, /sig-purpose/, "document UI must retain compatibility with legacy policy controls while hiding them from daily intake");
 assert.match(signatureUi, /data-signer-role/, "administrative UI must collect signer roles");
 assert.match(signatureUi, /witness/, "administrative UI must allow optional witnesses");
 assert.match(publicSignatureApi, /retryFinalization/, "failed finalization must be safely resumable");

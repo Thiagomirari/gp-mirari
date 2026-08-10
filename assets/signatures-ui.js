@@ -115,6 +115,20 @@
   }
 
   function bindDocumentForm() {
+    {
+      const kind = document.getElementById("sig-kind");
+      ["sig-purpose", "sig-legal", "sig-policy", "sig-retention-until"].forEach((id) => { const field = document.getElementById(id); field?.closest("label")?.classList.add("hidden"); if (field) field.required = false; });
+      document.getElementById("sig-document-form").onsubmit = async (event) => {
+        event.preventDefault();
+        const file = document.getElementById("sig-file").files[0];
+        if (!file || file.type !== "application/pdf") return setFormMessage("Selecione um arquivo PDF.");
+        const form = new FormData();
+        form.set("file", file);
+        form.set("metadata", JSON.stringify({ organizationId, title:document.getElementById("sig-title").value, documentKind:kind.value, sourceType:"manual", signatureLevel:"advanced" }));
+        try { setFormMessage("Enviando e calculando o hash…", true); await invokeUpload(form); await refresh(); } catch (error) { setFormMessage(error.message); }
+      };
+      return;
+    }
     const kind = document.getElementById("sig-kind"), policy = document.getElementById("sig-policy"), retention = document.getElementById("sig-retention-until");
     function updatePolicies() { const matches = policies.filter((item) => item.document_kind === kind.value); policy.innerHTML = matches.map((item) => `<option value="${esc(item.version)}" data-months="${item.retention_months}" data-legal="${item.legal_basis}">${esc(item.name)} — ${item.retention_months} meses</option>`).join(""); if (matches[0]) { document.getElementById("sig-legal").value = matches[0].legal_basis; const date = new Date(); date.setMonth(date.getMonth() + Number(matches[0].retention_months)); retention.value = date.toISOString().slice(0,10); } }
     kind.onchange = updatePolicies; policy.onchange = () => { const selected = policy.selectedOptions[0]; if (!selected) return; document.getElementById("sig-legal").value = selected.dataset.legal; const date = new Date(); date.setMonth(date.getMonth() + Number(selected.dataset.months)); retention.value = date.toISOString().slice(0,10); }; updatePolicies();
