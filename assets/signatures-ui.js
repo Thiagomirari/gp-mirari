@@ -34,7 +34,7 @@
   async function invoke(body) {
     const auth = await session();
     const { data, error } = await getClient().functions.invoke("gp-v2-signatures", { body: { organizationId, timezone: timezone(), ...body }, headers: { "idempotency-key": crypto.randomUUID() } });
-    if (error) { let message = error.message; try { const parsed = await error.context?.json(); message = parsed?.error || message; } catch (_) {} throw new Error(message); }
+    if (error) { let message = error.message; try { const parsed = await error.context?.json(); message = parsed?.error || message; if (parsed?.error === "compliance_configuration_invalid" && Array.isArray(parsed.invalidFields)) message = `Revise: ${parsed.invalidFields.join(", ")}.`; } catch (_) {} throw new Error(message); }
     return data;
   }
 

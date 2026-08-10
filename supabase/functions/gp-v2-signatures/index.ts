@@ -626,12 +626,19 @@ async function saveComplianceConfiguration(payload: Record<string, unknown>, adm
   const retentionMonths = Number(retention.retentionMonths);
   const evidenceRetentionMonths = Number(retention.evidenceRetentionMonths);
   const validVersion = /^[a-zA-Z0-9._-]{3,100}$/;
-  if (!validVersion.test(privacyVersion) || !privacyTitle || privacyContent.length < 100 || !validVersion.test(retentionVersion)
-    || !retentionName || !allowedKinds.has(documentKind) || !legalBases.has(legalBasis) || purpose.length < 20 || approvedBy.length < 3
-    || !Number.isInteger(retentionMonths) || retentionMonths < 1 || retentionMonths > 600
-    || !Number.isInteger(evidenceRetentionMonths) || evidenceRetentionMonths < 1 || evidenceRetentionMonths > 600) {
-    return reply(400, { error: "compliance_configuration_invalid" });
-  }
+  const invalidFields: string[] = [];
+  if (!validVersion.test(privacyVersion)) invalidFields.push("versão do aviso");
+  if (!privacyTitle) invalidFields.push("título do aviso");
+  if (privacyContent.length < 100) invalidFields.push("texto do aviso (mínimo de 100 caracteres)");
+  if (!validVersion.test(retentionVersion)) invalidFields.push("versão da retenção");
+  if (!retentionName) invalidFields.push("nome da política");
+  if (!allowedKinds.has(documentKind)) invalidFields.push("tipo de documento");
+  if (!legalBases.has(legalBasis)) invalidFields.push("base legal");
+  if (purpose.length < 20) invalidFields.push("finalidade do tratamento (mínimo de 20 caracteres)");
+  if (approvedBy.length < 3) invalidFields.push("responsável pela aprovação");
+  if (!Number.isInteger(retentionMonths) || retentionMonths < 1 || retentionMonths > 600) invalidFields.push("retenção do documento (1 a 600 meses)");
+  if (!Number.isInteger(evidenceRetentionMonths) || evidenceRetentionMonths < 1 || evidenceRetentionMonths > 600) invalidFields.push("retenção das evidências (1 a 600 meses)");
+  if (invalidFields.length) return reply(400, { error: "compliance_configuration_invalid", invalidFields });
   const [{ data: existingPrivacy }, { data: existingRetention }] = await Promise.all([
     admin.from("gp_v2_signature_privacy_notices").select("id").eq("organization_id", organizationId).eq("version", privacyVersion).maybeSingle(),
     admin.from("gp_v2_signature_retention_policies").select("id").eq("organization_id", organizationId).eq("version", retentionVersion).eq("document_kind", documentKind).maybeSingle(),
