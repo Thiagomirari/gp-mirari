@@ -711,6 +711,37 @@ async function correctSignerAndResend(request: Request, payload: Record<string, 
   return resendInternalInvitation(request, { ...payload, signerId }, admin, userId);
 }
 
+async function updateSignerAndResend(request: Request, payload: Record<string, unknown>, admin: AdminClient, userId: string) {
+  const organizationId = String(payload.organizationId || "");
+  const signerId = String(payload.signerId || "");
+  const actor = await requireActor(admin, userId, organizationId, allowedRoles);
+  if (!actor) return reply(403, { error: "signature_manager_role_required" });
+  if (!isUuid(signerId)) return reply(400, { error: "signer_id_invalid" });
+  const input = (payload.signer || {}) as InternalSignerInput;
+  const name = String(input.name || "").trim().slice(0, 180);
+  const email = String(input.email || "").trim().toLowerCase();
+  const cpf = normalizeDigits(input.cpf);
+  const signerType = String(input.signerType || "person");
+  const signerRole = String(input.role || "signer");
+  const cnpj = normalizeDigits(input.companyDocument);
+  const companyLegalName = String(input.companyLegalName || "").trim().slice(0, 180);
+  const jobTitle = String(input.jobTitle || "").trim().slice(0, 180);
+  if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || cpf.length !== 11 || !internalSignerRoles.has(signerRole) || !["person", "company_representative"].includes(signerType) || (signerType === "company_representative" && (cnpj.length !== 14 || !companyLegalName || !jobTitle))) return reply(400, { error: "signers_invalid" });
+  const { data: signer } = await admin.from("gp_v2_signature_signers").select("id,envelope_id,gp_v2_signature_envelopes!inner(id,status,provider)").eq("organization_id", organizationId).eq("id", signerId).maybeSingle();
+  const envelope = signer?.gp_v2_signature_envelopes as unknown as Record<string, unknown> | null;
+  if (!signer || !envelope || envelope.provider !== "internal" || !["preparing", "awaiting_send", "awaiting_signature", "failed"].includes(String(envelope.status))) return reply(409, { error: "signer_contact_locked" });
+  const { data: actions } = await admin.from("gp_v2_signature_actions").select("id").eq("organization_id", organizationId).eq("envelope_id", envelope.id).limit(1);
+  if (actions?.length) return reply(409, { error: "signer_contact_locked" });
+  const now = new Date().toISOString();
+  const { error } = await admin.from("gp_v2_signature_signers").update({
+    name, email, signer_role: signerRole, signer_type: signerType, document_last4: cpf.slice(-4), document_hash: await hmacSha256(internalProviderConfig().dataPepper, `${organizationId}|cpf|${cpf}`),
+    company_legal_name: signerType === "company_representative" ? companyLegalName : "", company_document_last4: signerType === "company_representative" ? cnpj.slice(-4) : "", company_document_hash: signerType === "company_representative" ? await hmacSha256(internalProviderConfig().dataPepper, `${organizationId}|cnpj|${cnpj}`) : "", job_title: signerType === "company_representative" ? jobTitle : "", representation_declared: false, representation_declared_at: null, status: "pending", updated_at: now,
+  }).eq("organization_id", organizationId).eq("id", signerId);
+  if (error) return reply(400, { error: "signer_update_failed" });
+  await appendEvidenceEvent(admin, { organizationId, envelopeId: String(envelope.id), signerId, eventType: "signer.updated", actorType: "user", occurredAt: now, timezone: safeTimezone(payload.timezone), ip: requestIp(request), userAgent: request.headers.get("user-agent") || "", result: "success", authChannel: "supabase_auth", metadata: { contactUpdated: true, identityUpdated: true, companyRepresentative: signerType === "company_representative" } });
+  return resendInternalInvitation(request, { ...payload, signerId }, admin, userId);
+}
+
 async function saveComplianceConfiguration(payload: Record<string, unknown>, admin: AdminClient, userId: string) {
   const organizationId = String(payload.organizationId || "");
   const actor = await requireActor(admin, userId, organizationId, ["owner", "admin"]);
@@ -1036,6 +1067,7 @@ Deno.serve(async (request) => {
   if (action === "send_document") return sendDocument(request, payload, admin, user.id);
   if (action === "resend_invitation") return resendInternalInvitation(request, payload, admin, user.id);
   if (action === "correct_signer_and_resend") return correctSignerAndResend(request, payload, admin, user.id);
+  if (action === "update_signer_and_resend") return updateSignerAndResend(request, payload, admin, user.id);
   if (action === "save_compliance_configuration") return saveComplianceConfiguration(payload, admin, user.id);
   if (action === "cancel_envelope") return cancelEnvelope(request, payload, admin, user.id);
   if (action === "download_artifact") return downloadArtifact(payload, admin, user.id);

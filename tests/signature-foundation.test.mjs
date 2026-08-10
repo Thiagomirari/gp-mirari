@@ -170,5 +170,7 @@ assert.match(fieldPreActionMigration, /first signature action/, "field placement
 assert.match(envelopeBackfillMigration, /disable trigger gp_v2_signature_envelope_documents_guard/, "backfill must safely cover existing signed envelopes");
 assert.match(envelopeBackfillMigration, /gp_v2_refresh_signature_envelope_manifest/, "backfill must rebuild immutable document manifests");
 assert.match(pdfjsBundle, /Mozilla Foundation/, "pinned PDF.js bundle must be present locally");
+assert.match(signatureApi, /updateSignerAndResend/, "full signer edits must reissue access before the first action");
+assert.match(signatureUi, /sig-edit-signer-form/, "admin UI must expose the signer editor before signature evidence exists");
 
 console.log("signature-foundation: ok");
