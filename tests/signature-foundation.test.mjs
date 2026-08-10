@@ -17,6 +17,8 @@ const verificationPage = await readFile(join(root, "verificar-assinatura.html"),
 const retryMigration = await readFile(join(root, "migrations", "012-signature-artifact-retry.sql"), "utf8");
 const rateLimitHotfix = await readFile(join(root, "migrations", "014-signature-rate-limit-hotfix.sql"), "utf8");
 const envelopeDocumentsMigration = await readFile(join(root, "migrations", "015-signature-envelope-documents.sql"), "utf8");
+const deliveryMigration = await readFile(join(root, "migrations", "016-signature-fields-and-email-delivery.sql"), "utf8");
+const resendWebhook = await readFile(join(root, "supabase", "functions", "gp-v2-resend-webhook", "index.ts"), "utf8");
 
 for (const table of [
   "gp_v2_document_templates",
@@ -136,5 +138,9 @@ assert.match(envelopeDocumentsMigration, /create table if not exists public\.gp_
 assert.match(envelopeDocumentsMigration, /document_manifest_sha256/, "envelopes must bind signatures to a deterministic document manifest");
 assert.match(envelopeDocumentsMigration, /envelope documents are immutable after sending/, "sent envelopes must reject document mutations");
 assert.match(envelopeDocumentsMigration, /enable row level security/, "multi-document envelope table needs RLS");
+assert.match(deliveryMigration, /gp_v2_signature_fields/, "signature field placement must be modeled by document version");
+assert.match(deliveryMigration, /gp_v2_signature_email_deliveries/, "email delivery status must be separated from signer status");
+assert.match(resendWebhook, /new Webhook\(secret\)\.verify/, "Resend webhooks must verify Svix signatures");
+assert.match(resendWebhook, /svix-id/, "Resend webhooks must use Svix idempotency identifiers");
 
 console.log("signature-foundation: ok");

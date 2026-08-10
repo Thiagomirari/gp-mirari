@@ -573,6 +573,10 @@ async function sendInternalDocument(request: Request, payload: Record<string, un
         `signature-invite/${envelopeId}/${invitation.signerId}/1`,
       );
       delivered += 1;
+      await admin.from("gp_v2_signature_email_deliveries").upsert({
+        organization_id: organizationId, envelope_id: envelopeId, signer_id: invitation.signerId,
+        message_type: "invitation", provider: "resend", provider_message_id_hash: await sha256(messageId), delivery_status: "sent",
+      }, { onConflict: "organization_id,provider,provider_message_id_hash" });
       await admin.from("gp_v2_signature_signers").update({ status: "invited", updated_at: new Date().toISOString() }).eq("id", invitation.signerId).eq("organization_id", organizationId);
       await appendEvidenceEvent(admin, { organizationId, envelopeId, signerId: invitation.signerId, eventType: "invitation.sent", actorType: "system", timezone, ip: contextIp, userAgent: contextUserAgent, result: "success", documentHash: version.sha256, authChannel: "email", metadata: { providerMessageIdHash: await sha256(messageId), signerOrder: index + 1 } });
     } catch (error) {

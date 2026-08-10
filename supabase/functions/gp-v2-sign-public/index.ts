@@ -315,6 +315,7 @@ async function requestOtp(request: Request, payload: Record<string, unknown>, ad
   try {
     const messageId = await sendEmail(signer.email, `Código de assinatura: ${document.title}`, `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#252525"><h2>Confirmação de assinatura</h2><p>Olá, ${escapeHtml(signer.name)}.</p><p>Seu código temporário é:</p><p style="font-size:30px;letter-spacing:8px;font-weight:bold">${code}</p><p>Ele expira em 10 minutos. Não compartilhe este código.</p></div>`, `signature-otp/${challengeId}`);
     await admin.from("gp_v2_signature_otp_challenges").update({ sent_at: new Date().toISOString(), provider_message_id_hash: await sha256(messageId) }).eq("id", challengeId);
+    await admin.from("gp_v2_signature_email_deliveries").upsert({ organization_id: link.organization_id, envelope_id: envelope.id, signer_id: signer.id, message_type: "otp", provider: "resend", provider_message_id_hash: await sha256(messageId), delivery_status: "sent" }, { onConflict: "organization_id,provider,provider_message_id_hash" });
     await appendEvent(admin, request, { organizationId: link.organization_id, envelopeId: envelope.id, signerId: signer.id, eventType: "otp.sent", documentHash: version.sha256, authChannel: "email_otp", tokenFingerprint: link.token_fingerprint, timezone: payload.timezone as string, metadata: { expiresInSeconds: 600 } });
     return reply(200, { ok: true, challengeId, expiresIn: 600, maskedEmail: maskedEmail(signer.email) });
   } catch {
