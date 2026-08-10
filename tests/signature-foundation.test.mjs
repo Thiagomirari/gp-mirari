@@ -19,6 +19,7 @@ const rateLimitHotfix = await readFile(join(root, "migrations", "014-signature-r
 const envelopeDocumentsMigration = await readFile(join(root, "migrations", "015-signature-envelope-documents.sql"), "utf8");
 const deliveryMigration = await readFile(join(root, "migrations", "016-signature-fields-and-email-delivery.sql"), "utf8");
 const resendWebhook = await readFile(join(root, "supabase", "functions", "gp-v2-resend-webhook", "index.ts"), "utf8");
+const finalArtifactsMigration = await readFile(join(root, "migrations", "018-envelope-document-final-artifacts.sql"), "utf8");
 
 for (const table of [
   "gp_v2_document_templates",
@@ -147,5 +148,7 @@ assert.match(publicSignatureApi, /page\.drawRectangle/, "finalization must visib
 assert.match(publicSignatureApi, /gp_v2_signature_envelope_documents/, "public portal must retrieve every document in the signature envelope");
 assert.match(signatureUi, /sig-purpose/, "document UI must retain compatibility with legacy policy controls while hiding them from daily intake");
 assert.match(signingPage, /document-list/, "public signing page must expose multi-document navigation");
+assert.match(finalArtifactsMigration, /final_storage_path/, "each envelope document needs an immutable final artifact location");
+assert.match(finalArtifactsMigration, /final_sha256/, "each envelope document needs its own final hash");
 
 console.log("signature-foundation: ok");
