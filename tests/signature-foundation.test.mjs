@@ -15,6 +15,8 @@ const signatureUi = await readFile(join(root, "assets", "signatures-ui.js"), "ut
 const signingPage = await readFile(join(root, "assinar.html"), "utf8");
 const verificationPage = await readFile(join(root, "verificar-assinatura.html"), "utf8");
 const retryMigration = await readFile(join(root, "migrations", "012-signature-artifact-retry.sql"), "utf8");
+const rateLimitHotfix = await readFile(join(root, "migrations", "014-signature-rate-limit-hotfix.sql"), "utf8");
+const envelopeDocumentsMigration = await readFile(join(root, "migrations", "015-signature-envelope-documents.sql"), "utf8");
 
 for (const table of [
   "gp_v2_document_templates",
@@ -125,5 +127,11 @@ assert.match(signatureUi, /witness/, "administrative UI must allow optional witn
 assert.match(publicSignatureApi, /retryFinalization/, "failed finalization must be safely resumable");
 assert.match(publicSignatureApi, /uploadImmutable/, "final artifacts must be idempotent and immutable");
 assert.match(retryMigration, /drop constraint if exists gp_v2_signature_artifacts_organization_id_storage_path_key/, "retry envelopes must be able to reference the same immutable original");
+assert.match(rateLimitHotfix, /v_now timestamptz := clock_timestamp\(\)/, "rate-limit hotfix must avoid the CURRENT_TIME variable collision");
+assert.doesNotMatch(rateLimitHotfix, /current_time timestamptz/i, "rate-limit hotfix must not redeclare CURRENT_TIME");
+assert.match(envelopeDocumentsMigration, /create table if not exists public\.gp_v2_signature_envelope_documents/, "multi-document envelope table is required");
+assert.match(envelopeDocumentsMigration, /document_manifest_sha256/, "envelopes must bind signatures to a deterministic document manifest");
+assert.match(envelopeDocumentsMigration, /envelope documents are immutable after sending/, "sent envelopes must reject document mutations");
+assert.match(envelopeDocumentsMigration, /enable row level security/, "multi-document envelope table needs RLS");
 
 console.log("signature-foundation: ok");
