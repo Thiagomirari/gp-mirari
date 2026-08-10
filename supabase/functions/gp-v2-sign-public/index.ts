@@ -148,9 +148,29 @@ async function consumeRate(admin: AdminClient, key: string, action: string, wind
   const { data, error } = await admin.rpc("gp_v2_consume_signature_rate_limit", {
     p_key_hash: keyHash, p_action: action, p_window_seconds: windowSeconds, p_max_requests: maxRequests, p_block_seconds: blockSeconds,
   });
-  if (error) return { allowed: false, retryAfter: 60 };
+  if (error) {
+    console.error("signature_rate_limit_unavailable", JSON.stringify({ code: String(error.code || ""), message: String(error.message || "").slice(0, 180), hint: String(error.hint || "").slice(0, 120), action }));
+    return { status: "unavailable" as const, retryAfter: 0 };
+  }
   const row = Array.isArray(data) ? data[0] : data;
-  return { allowed: row?.allowed === true, retryAfter: Number(row?.retry_after_seconds || 0) };
+  if (!row || typeof row.allowed !== "boolean") {
+    console.error("signature_rate_limit_unavailable", JSON.stringify({ code: "invalid_rpc_response", action }));
+    return { status: "unavailable" as const, retryAfter: 0 };
+  }
+  return row.allowed ? { status: "allowed" as const, retryAfter: 0 } : { status: "limited" as const, retryAfter: Math.max(1, Number(row.retry_after_seconds || 1)) };
+}
+
+async function rateIdentity(request: Request, fallback: string) {
+  const ip = requestIp(request);
+  if (ip) return `ip:${ip}`;
+  const agentFingerprint = (await sha256(request.headers.get("user-agent") || "")).slice(0, 32);
+  return `${fallback}:ua:${agentFingerprint}`;
+}
+
+function rateReply(rate: { status: "allowed" | "limited" | "unavailable" }) {
+  if (rate.status === "limited") return reply(429, { error: "temporarily_unavailable" }, { "Retry-After": String((rate as any).retryAfter || 1) });
+  if (rate.status === "unavailable") return reply(503, { error: "rate_limit_service_unavailable" });
+  return null;
 }
 
 async function recordInvalidAccess(admin: AdminClient, request: Request, incidentType: string) {
@@ -218,8 +238,8 @@ async function sessionContext(admin: AdminClient, rawSession: unknown, request: 
 }
 
 async function inspectLink(request: Request, payload: Record<string, unknown>, admin: AdminClient) {
-  const rate = await consumeRate(admin, requestIp(request) || "unknown", "inspect_link", 600, 30, 900);
-  if (!rate.allowed) return reply(429, { error: "temporarily_unavailable" }, { "Retry-After": String(rate.retryAfter) });
+  const rate = await consumeRate(admin, await rateIdentity(request, "inspect"), "inspect_link", 600, 30, 900);
+  const rateError = rateReply(rate); if (rateError) return rateError;
   const context = await accessContext(admin, payload.accessToken, request, payload.timezone);
   if (!context) {
     await recordInvalidAccess(admin, request, "invalid_signature_link");
@@ -243,8 +263,8 @@ async function confirmIdentity(request: Request, payload: Record<string, unknown
   const context = await accessContext(admin, payload.accessToken, request, payload.timezone);
   if (!context) return reply(400, { error: "identity_could_not_be_confirmed" });
   const { signer, envelope, link, version } = context;
-  const rate = await consumeRate(admin, `${link.id}|${requestIp(request)}`, "confirm_identity", 900, 8, 1800);
-  if (!rate.allowed) return reply(429, { error: "temporarily_unavailable" }, { "Retry-After": String(rate.retryAfter) });
+  const rate = await consumeRate(admin, `${link.id}|${await rateIdentity(request, "identity")}`, "confirm_identity", 900, 8, 1800);
+  const rateError = rateReply(rate); if (rateError) return rateError;
   const cpf = normalizeDigits(payload.cpf);
   const expectedCpf = await hmacSha256(config().dataPepper, `${link.organization_id}|cpf|${cpf}`);
   let valid = cpf.length === 11 && sameHash(expectedCpf, signer.document_hash);
@@ -274,9 +294,10 @@ async function requestOtp(request: Request, payload: Record<string, unknown>, ad
   const { signer, envelope, link, document, version } = context;
   const [signerRate, ipRate] = await Promise.all([
     consumeRate(admin, signer.id, "request_otp_signer", 3600, 5, 1800),
-    consumeRate(admin, requestIp(request) || "unknown", "request_otp_ip", 600, 15, 1800),
+    consumeRate(admin, await rateIdentity(request, `otp:${signer.id}`), "request_otp_ip", 600, 15, 1800),
   ]);
-  if (!signerRate.allowed || !ipRate.allowed) return reply(429, { error: "temporarily_unavailable" }, { "Retry-After": String(Math.max(signerRate.retryAfter, ipRate.retryAfter)) });
+  const signerRateError = rateReply(signerRate); if (signerRateError) return signerRateError;
+  const ipRateError = rateReply(ipRate); if (ipRateError) return ipRateError;
   const challengeId = crypto.randomUUID();
   const code = randomOtp();
   const codeHash = await hmacSha256(config().otpPepper, `${challengeId}|${code}`);
@@ -309,8 +330,8 @@ async function verifyOtp(request: Request, payload: Record<string, unknown>, adm
   const code = normalizeDigits(payload.code);
   if (!context || !/^[0-9a-f-]{36}$/i.test(challengeId) || code.length !== 6) return reply(400, { error: "otp_invalid_or_expired" });
   const { signer, envelope, link, version } = context;
-  const rate = await consumeRate(admin, `${requestIp(request)}|${signer.id}`, "verify_otp", 900, 12, 1800);
-  if (!rate.allowed) return reply(429, { error: "temporarily_unavailable" }, { "Retry-After": String(rate.retryAfter) });
+  const rate = await consumeRate(admin, `${signer.id}|${await rateIdentity(request, "verify_otp")}`, "verify_otp", 900, 12, 1800);
+  const rateError = rateReply(rate); if (rateError) return rateError;
   const { data: challenge } = await admin.from("gp_v2_signature_otp_challenges").select("id").eq("id", challengeId).eq("organization_id", link.organization_id).eq("signer_id", signer.id).eq("access_link_id", link.id).maybeSingle();
   if (!challenge) return reply(400, { error: "otp_invalid_or_expired" });
   const codeHash = await hmacSha256(config().otpPepper, `${challengeId}|${code}`);
@@ -594,8 +615,8 @@ async function downloadFinal(request: Request, payload: Record<string, unknown>,
 }
 
 async function verifyDocument(request: Request, payload: Record<string, unknown>, admin: AdminClient) {
-  const rate = await consumeRate(admin, requestIp(request) || "unknown", "verify_document", 600, 30, 900);
-  if (!rate.allowed) return reply(429, { error: "temporarily_unavailable" }, { "Retry-After": String(rate.retryAfter) });
+  const rate = await consumeRate(admin, await rateIdentity(request, "verify_document"), "verify_document", 600, 30, 900);
+  const rateError = rateReply(rate); if (rateError) return rateError;
   const code = String(payload.code || "").trim().toUpperCase();
   if (!/^GP-[A-F0-9]{24}$/.test(code)) return reply(404, { error: "document_not_found" });
   const { data: document } = await admin.from("gp_v2_documents").select("id,organization_id,title,status,created_at,completed_at,current_version_id,verification_code").eq("verification_code", code).maybeSingle();
