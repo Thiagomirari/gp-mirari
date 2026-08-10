@@ -1109,6 +1109,7 @@
       <button class="tab-button" data-tab="calendar" data-short="A" type="button"><span class="nav-icon">A</span><span class="nav-label">Calendario</span></button>
       <button class="tab-button" data-tab="kanban" data-short="K" type="button"><span class="nav-icon">K</span><span class="nav-label">Kanban</span></button>
       <button class="tab-button" data-tab="tasks" data-short="T" type="button"><span class="nav-icon">T</span><span class="nav-label">Tarefas</span></button>
+      <button class="tab-button" data-tab="signatures" data-short="D" type="button"><span class="nav-icon">D</span><span class="nav-label">Documentos</span></button>
       <button class="tab-button" data-tab="admin" data-short="G" type="button"><span class="nav-icon">G</span><span class="nav-label">Administracao</span></button>
     </nav>
 
@@ -1126,6 +1127,7 @@
     <section id="tab-calendar" class="tab-view hidden"></section>
     <section id="tab-kanban" class="tab-view hidden"></section>
     <section id="tab-tasks" class="tab-view hidden"></section>
+    <section id="tab-signatures" class="tab-view hidden"></section>
     <section id="tab-admin" class="tab-view hidden"></section>
   </main>
 
@@ -2174,6 +2176,7 @@
       if (state.activeTab === "tasks") renderTasks();
       if (state.activeTab === "crm") renderCRM();
       if (state.activeTab === "commercial") renderCommercialTasks();
+      if (state.activeTab === "signatures") window.GP_SIGNATURES_UI?.render();
       if (state.activeTab === "admin") renderAdmin();
       bindCommonEvents();
     }
@@ -2187,6 +2190,7 @@
         calendar: { eyebrow: "GP Mirari", title: "Calendario", description: "Planejamento visual de prazos, etapas e capacidade." },
         kanban: { eyebrow: "GP Mirari", title: "Kanban de projetos", description: "Uma leitura direta do fluxo operacional em andamento." },
         tasks: { eyebrow: "GP Mirari", title: "Tarefas", description: "Acompanhe prioridades, checklists e itens proximos ao prazo." },
+        signatures: { eyebrow: "GP Mirari", title: "Documentos", description: "Assinaturas eletrônicas, evidências e verificação de integridade." },
         admin: { eyebrow: "GP Mirari", title: "Administracao", description: "Padroes, usuarios e configuracoes que organizam a operacao." }
       };
       const context = contexts[state.activeTab] || contexts.crm;
@@ -5480,6 +5484,7 @@
   <script src="./assets/saas-core.js?v=20260805-proposal-dashboard-fix"></script>
   <script src="./assets/saas-extension.js?v=20260805-closed-crm-flow"></script>
   <script src="./assets/reports-v4.js?v=20260805-currency-live"></script>
+  <script src="./assets/signatures-ui.js?v=20260806-internal-provider"></script>
 </body>
 </html>
 

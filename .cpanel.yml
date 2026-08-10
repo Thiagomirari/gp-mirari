@@ -6,4 +6,7 @@ deployment:
     - /bin/cp -R assets $DEPLOYPATH
     - /bin/cp -R docs $DEPLOYPATH
     - /bin/cp index.html $DEPLOYPATH
+    - /bin/cp assinar.html $DEPLOYPATH
+    - /bin/cp verificar-assinatura.html $DEPLOYPATH
+    - /bin/cp supabase-config.js $DEPLOYPATH
     - /bin/cp README.md $DEPLOYPATH

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="referrer" content="no-referrer" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://stoczbnzjowrygsxrylh.supabase.co; frame-src https://stoczbnzjowrygsxrylh.supabase.co; style-src 'self'; script-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'self'; object-src 'none'" />
+  <title>Assinar documento | GP Mirari</title>
+  <link rel="stylesheet" href="./assets/signatures.css?v=20260806" />
+  <script defer src="./supabase-config.js?v=20260806"></script>
+  <script defer src="./assets/sign-public.js?v=20260806"></script>
+</head>
+<body>
+  <main class="sign-shell">
+    <header class="sign-header"><div class="sign-brand"><span class="sign-mark">M</span><span>GP Mirari</span></div><span class="secure-label">Ambiente seguro de assinatura eletrônica</span></header>
+    <section class="sign-card">
+      <p class="eyebrow">Assinatura eletrônica</p>
+      <h1 id="document-title">Validando acesso…</h1>
+      <p class="muted" id="document-code"></p>
+      <div id="message" class="hidden" role="alert"></div>
+      <div class="steps" aria-label="Etapas"><span class="step active" data-step="1">1. Identificação</span><span class="step" data-step="2">2. Código</span><span class="step" data-step="3">3. Leitura e aceite</span><span class="step" data-step="4">4. Conclusão</span></div>
+
+      <section id="loading-panel"><p>Estamos verificando o link individual. Aguarde um instante.</p></section>
+      <section id="identity-panel" class="hidden">
+        <h2>Confirme sua identidade</h2><p>Olá, <strong id="signer-name"></strong>. Para prosseguir, confirme os dados abaixo.</p>
+        <form id="identity-form">
+          <div class="field"><label for="cpf">CPF</label><input id="cpf" inputmode="numeric" autocomplete="off" maxlength="14" required /></div>
+          <div id="company-fields" class="hidden"><div class="field"><label for="cnpj">CNPJ da empresa representada</label><input id="cnpj" inputmode="numeric" autocomplete="off" maxlength="18" /></div><label class="check"><input id="representation" type="checkbox" /><span>Declaro que possuo poderes para representar a empresa neste documento.</span></label></div>
+          <div class="actions"><button class="button" type="submit">Confirmar e receber código</button></div>
+        </form>
+      </section>
+      <section id="otp-panel" class="hidden">
+        <h2>Código de validação</h2><p>Enviamos um código temporário para <strong id="masked-email"></strong>. Ele expira em 10 minutos.</p>
+        <form id="otp-form"><div class="field"><label for="otp">Código de 6 números</label><input class="otp" id="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required /></div><div class="actions"><button class="button" type="submit">Validar código</button><button class="button secondary" id="resend-otp" type="button">Enviar novo código</button></div></form>
+      </section>
+      <section id="document-panel" class="hidden">
+        <h2>Leia o documento completo</h2><p>O arquivo abaixo corresponde à versão identificada pelo hash SHA-256 informado.</p>
+        <iframe id="document-frame" class="document-frame" title="Documento completo para leitura"></iframe>
+        <p class="muted">Hash original: <code id="original-hash"></code></p>
+        <h2>Aviso de privacidade</h2><div id="privacy-notice" class="privacy"></div>
+        <form id="consent-form">
+          <label class="check"><input id="read-confirmation" type="checkbox" required /><span>Confirmo que visualizei o documento completo apresentado acima.</span></label>
+          <label class="check"><input id="express-consent" type="checkbox" required /><strong id="consent-text"></strong></label>
+          <div class="actions"><button class="button" type="submit">Aceitar e assinar</button><button class="button danger" id="decline-button" type="button">Recusar documento</button></div>
+        </form>
+      </section>
+      <section id="complete-panel" class="hidden"><h2>Processo concluído</h2><p id="complete-message">Sua assinatura foi registrada.</p><div class="actions"><button class="button hidden" id="download-final" type="button">Baixar documento concluído</button><a class="button secondary" id="verify-link" href="./verificar-assinatura.html">Verificar autenticidade</a></div></section>
+      <p class="notice">A validade e a força probatória dependem do tipo de documento, do método de identificação e das evidências coletadas. Este fluxo utiliza assinatura eletrônica com trilha de evidências e não exige certificado ICP-Brasil.</p>
+    </section>
+  </main>
+</body>
+</html>
