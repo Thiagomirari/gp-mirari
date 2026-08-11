@@ -72,7 +72,8 @@
     const shownEnvironmentValue=hasComposition?subItemsCost:Number(item.baseUnitCents)||0;
     const included=item.included!==false;
     return `<article class="saas-line ${included?"":"excluded"}" data-line data-item-id="${esc(item.id||"")}" data-commercial-edit-allowed="${commercialEditAllowed?"1":""}" data-manual-base-cents="${Number(item.baseUnitCents)||0}" data-sub-items="${encodeURIComponent(JSON.stringify(subItems))}">
-      <div class="saas-line-include"><div class="saas-line-order"><button class="saas-line-drag-handle" type="button" draggable="${editable?"true":"false"}" data-line-drag-handle aria-label="Arrastar ambiente para alterar a ordem" title="Arraste para alterar a ordem" ${editable?"":"disabled"}>⠿</button><span class="saas-line-order-label">Ordem de apresentacao</span><button class="saas-button saas-line-move" type="button" data-line-move="up" aria-label="Mover ambiente para cima" title="Mover para cima" ${editable?"":"disabled"}>↑</button><button class="saas-button saas-line-move" type="button" data-line-move="down" aria-label="Mover ambiente para baixo" title="Mover para baixo" ${editable?"":"disabled"}>↓</button></div><label class="saas-check"><input class="line-included" type="checkbox" ${included?"checked":""} ${editable?"":"disabled"}> Incluir no PDF e na formacao de preco</label></div>
+      <button class="saas-line-drag-handle" type="button" draggable="${editable?"true":"false"}" data-line-drag-handle aria-label="Arrastar ambiente para alterar a ordem" title="Arraste para alterar a ordem" ${editable?"":"disabled"}>⠿</button>
+      <div class="saas-line-include"><label class="saas-check"><input class="line-included" type="checkbox" ${included?"checked":""} ${editable?"":"disabled"}> Incluir no PDF e na formacao de preco</label></div>
       <div class="saas-line-grid">
         <div class="saas-field line-name-field"><label>Produto ou ambiente</label><input class="saas-input line-name" placeholder="Ex.: Cozinha planejada" value="${esc(item.name||"")}"></div>
         <div class="saas-field"><label>Custo de producao (R$)</label><input class="saas-input line-base" inputmode="decimal" oninput="formatCurrencyWhileTyping(this)" onkeyup="formatCurrencyWhileTyping(this)" placeholder="0,00" value="${shownEnvironmentValue?((shownEnvironmentValue/100).toFixed(2).replace('.',',')):""}" ${hasComposition?"readonly aria-readonly=\"true\"":""}></div>
@@ -470,24 +471,10 @@
     };
     const refreshLineOrderControls=()=>{
       const rows=[...document.querySelectorAll("#proposal-lines [data-line]")];
-      rows.forEach((row,index)=>{
-        row.dataset.lineOrder=String(index+1);
-        row.querySelector("[data-line-move='up']").disabled=!editable||index===0;
-        row.querySelector("[data-line-move='down']").disabled=!editable||index===rows.length-1;
-        row.querySelector(".saas-line-order-label").textContent=`Ordem ${index+1} de ${rows.length}`;
-      });
-    };
-    const moveLine=(row,direction)=>{
-      const sibling=direction==="up"?row.previousElementSibling:row.nextElementSibling;
-      if(!sibling||!sibling.matches("[data-line]"))return;
-      if(direction==="up")row.parentElement.insertBefore(row,sibling);
-      else row.parentElement.insertBefore(sibling,row);
-      refreshLineOrderControls();
-      calculate();
+      rows.forEach((row,index)=>{ row.dataset.lineOrder=String(index+1); });
     };
     const bind=()=>{
       document.querySelectorAll(".line-remove").forEach((b)=>b.onclick=()=>{b.closest("[data-line]").remove();refreshLineOrderControls();calculate();});
-      document.querySelectorAll("[data-line-move]").forEach((button)=>button.onclick=()=>moveLine(button.closest("[data-line]"),button.dataset.lineMove));
       document.querySelectorAll(".saas-line-drag-handle").forEach((handle)=>{
         handle.ondragstart=(event)=>{const row=handle.closest("[data-line]");event.dataTransfer.effectAllowed="move";event.dataTransfer.setData("text/plain",row.dataset.itemId||row.dataset.lineOrder||"");row.classList.add("saas-line-dragging");};
         handle.ondragend=()=>document.querySelectorAll("[data-line]").forEach((row)=>row.classList.remove("saas-line-dragging","saas-line-drag-over"));
