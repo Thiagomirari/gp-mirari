@@ -78,6 +78,17 @@
     return { items, baseCents, markupCents, rtCents, globalRtPercent: appliedGlobalRtPercent, discountCents, totalCents: Math.max(0, beforeDiscountCents - discountCents) };
   }
 
+  function applySalesSimulation(proposal = {}, selectedItemIds = [], discountPercent = 0, globalRtPercent, options = {}) {
+    const selectedIds = new Set(selectedItemIds || []);
+    const sourceItems = (proposal.items || []).map((item) => ({ ...item, included: selectedIds.has(item.id) }));
+    const totals = calculateProposal(sourceItems, discountPercent, globalRtPercent, options);
+    const calculatedById = new Map(totals.items.map((item) => [item.id, item]));
+    const items = sourceItems.map((item) => selectedIds.has(item.id)
+      ? { ...item, ...(calculatedById.get(item.id) || {}), included: true }
+      : { ...item, included: false });
+    return { ...totals, items };
+  }
+
   function calculatePriceFormation(proposal = {}, formation = {}, contributors = [], paymentModels = []) {
     const calculated = calculateProposal(proposal.items || [], proposal.discountPercent, proposal.globalRtEnabled ? proposal.globalRtPercent : 0, { netRtTaxPercent: formation.taxPercent });
     const baseSaleCents = Math.max(0, Math.round(Number(proposal.totalCents ?? calculated.totalCents) || 0));
@@ -246,5 +257,5 @@
     transition(id, status, actor, note = "") { const proposal = this.proposal(id); const allowed = { draft:["negotiation","internal_review","cancelled"], negotiation:["internal_review","cancelled"], internal_review:["approved","negotiation"], approved:["sent","negotiation"], sent:["accepted","rejected","negotiation"], accepted:["negotiation"], rejected:[], cancelled:[] }; if (!proposal || !(allowed[proposal.status] || []).includes(status)) return null; proposal.status = status; proposal.updatedAt = new Date().toISOString(); const summary = note || statusText[status]; proposal.events.unshift({ at: proposal.updatedAt, actor, type: status, summary }); this.recordLeadHistory(proposal.crmOpportunityRef, actor, `Proposta ${proposal.number}: ${summary}.`, proposal.updatedAt); return proposal; }
     clone(id, actor) { const source = this.proposal(id); if (!source) return null; const clone = JSON.parse(JSON.stringify(source)); const groupId = source.groupId || source.id; const maxVersion = this.shared.proposals.filter((item) => (item.groupId || item.id) === groupId || item.number === source.number).reduce((max, item) => Math.max(max, Number(item.version) || 1), 0); clone.id = uid("proposal"); clone.groupId = groupId; clone.version = maxVersion + 1; clone.status = "draft"; clone.projectId = null; clone.createdAt = new Date().toISOString(); clone.updatedAt = clone.createdAt; clone.events = [{ at: clone.createdAt, actor, type:"version", summary:`Nova versao ${clone.version} criada a partir da versao ${source.version || 1}.` }]; this.shared.proposals.unshift(clone); this.recordLeadHistory(clone.crmOpportunityRef, actor, `Proposta ${clone.number}: versao ${clone.version} criada.`, clone.createdAt); return clone; }
   }
-  globalThis.GPMirariCommercial = { uid, cents, money, clampPercent, clampMarkup, calculateProposal, calculatePriceFormation, buildInstallments, cardReferenceCents, calculatePaymentOption, calculatePaymentOptions, defaultCardRates, defaultStoreRates, paymentTypeText, statusText, CommercialRepository };
+  globalThis.GPMirariCommercial = { uid, cents, money, clampPercent, clampMarkup, calculateProposal, applySalesSimulation, calculatePriceFormation, buildInstallments, cardReferenceCents, calculatePaymentOption, calculatePaymentOptions, defaultCardRates, defaultStoreRates, paymentTypeText, statusText, CommercialRepository };
 })();
