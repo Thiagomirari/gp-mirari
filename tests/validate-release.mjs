@@ -20,9 +20,9 @@ assert.ok(
 );
 assert.match(index, /saas-core\.js/);
 assert.match(index, /saas-extension\.js/);
-assert.match(index, /saas-extension\.js\?v=20260811-sales-negotiation/);
-assert.match(index, /saas-theme\.css\?v=20260811-sales-negotiation/);
-assert.match(index, /saas-core\.js\?v=20260811-sales-negotiation/);
+assert.match(index, /saas-extension\.js\?v=20260811-sales-polish/);
+assert.match(index, /saas-theme\.css\?v=20260811-sales-polish/);
+assert.match(index, /saas-core\.js\?v=20260811-sales-polish/);
 assert.match(index, /crm-optional-fields/);
 assert.match(index, /Data do primeiro contato/);
 assert.match(index, /Proxima tarefa/);

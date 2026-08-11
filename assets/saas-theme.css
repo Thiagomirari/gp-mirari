@@ -298,3 +298,6 @@
 @media (max-width:760px) { .saas-sales-toolbar { align-items:stretch; flex-direction:column; }.saas-sales-toolbar .saas-field { width:100%; } }
 
 .saas-sales-item{align-items:flex-start}.saas-sales-item-edit{display:grid;grid-template-columns:100px 150px auto;gap:8px;align-items:end}.saas-sales-item-edit label{font-size:10px}.saas-sales-item-edit .saas-input{min-height:34px;padding:0 8px}.saas-payment-custom{display:grid;gap:8px;margin-top:12px;padding:12px;border:1px solid var(--saas-line);border-radius:9px;background:#fcfcfb}.saas-payment-custom label{font-size:11px}.saas-payment-custom small{font-weight:750}.saas-payment-custom .positive{color:#2e7d32}.saas-payment-custom .negative{color:#c62828}@media(max-width:760px){.saas-sales-item-edit{width:100%;grid-template-columns:1fr 1fr}.saas-sales-item-edit>strong{grid-column:1/-1}}
+
+/* Negotiation value editing: compact client-facing presentation */
+.saas-sales-item-edit{grid-template-columns:96px minmax(180px,1fr)}.saas-sales-item-edit label small{display:block;margin-top:4px;color:var(--saas-muted);font-size:10px;font-weight:500}.saas-payment-custom{grid-template-columns:repeat(2,minmax(0,1fr))}.saas-payment-custom small{grid-column:1/-1}@media(max-width:760px){.saas-payment-custom{grid-template-columns:1fr}}
