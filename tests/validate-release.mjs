@@ -20,7 +20,7 @@ assert.ok(
 );
 assert.match(index, /saas-core\.js/);
 assert.match(index, /saas-extension\.js/);
-assert.match(index, /saas-extension\.js\?v=20260805-closed-crm-flow/);
+assert.match(index, /saas-extension\.js\?v=20260811-proposal-item-order/);
 assert.match(index, /saas-core\.js\?v=20260805-proposal-dashboard-fix/);
 assert.match(index, /crm-optional-fields/);
 assert.match(index, /Data do primeiro contato/);
