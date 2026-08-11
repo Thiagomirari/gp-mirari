@@ -89,6 +89,17 @@
     return { ...totals, items };
   }
 
+  function calculateSalesNegotiation(proposal = {}, negotiation = {}, options = {}) {
+    const selectedIds = new Set(negotiation.selectedItemIds || (proposal.items || []).filter((item) => item.included !== false).map((item) => item.id));
+    const overrides = negotiation.itemOverrides || {};
+    const base = calculateProposal((proposal.items || []).filter((item) => selectedIds.has(item.id)), 0, proposal.globalRtEnabled ? proposal.globalRtPercent : 0, options);
+    const items = base.items.map((item) => { const override = overrides[item.id] || {}; const manual = override.manualTotalCents !== undefined && override.manualTotalCents !== null && override.manualTotalCents !== ""; const beforeDiscountCents = manual ? cents(override.manualTotalCents) : item.totalCents; const negotiationDiscountPercent = manual ? 0 : clampPercent(override.discountPercent); const negotiationDiscountCents = Math.round(beforeDiscountCents * negotiationDiscountPercent / 100); const totalCents = Math.max(0,beforeDiscountCents-negotiationDiscountCents); return {...item,negotiationBaseCents:beforeDiscountCents,negotiationDiscountPercent,negotiationDiscountCents,totalCents,finalUnitCents:Math.round(totalCents/Math.max(.001,Number(item.quantity)||1))}; });
+    const beforeGlobalDiscountCents = items.reduce((sum,item)=>sum+item.totalCents,0);
+    const globalDiscountPercent = clampPercent(negotiation.discountPercent);
+    const globalDiscountCents = Math.round(beforeGlobalDiscountCents * globalDiscountPercent / 100);
+    return {items,beforeGlobalDiscountCents,globalDiscountPercent,globalDiscountCents,totalCents:Math.max(0,beforeGlobalDiscountCents-globalDiscountCents)};
+  }
+
   function calculatePriceFormation(proposal = {}, formation = {}, contributors = [], paymentModels = []) {
     const calculated = calculateProposal(proposal.items || [], proposal.discountPercent, proposal.globalRtEnabled ? proposal.globalRtPercent : 0, { netRtTaxPercent: formation.taxPercent });
     const baseSaleCents = Math.max(0, Math.round(Number(proposal.totalCents ?? calculated.totalCents) || 0));
@@ -257,5 +268,5 @@
     transition(id, status, actor, note = "") { const proposal = this.proposal(id); const allowed = { draft:["negotiation","internal_review","cancelled"], negotiation:["internal_review","cancelled"], internal_review:["approved","negotiation"], approved:["sent","negotiation"], sent:["accepted","rejected","negotiation"], accepted:["negotiation"], rejected:[], cancelled:[] }; if (!proposal || !(allowed[proposal.status] || []).includes(status)) return null; proposal.status = status; proposal.updatedAt = new Date().toISOString(); const summary = note || statusText[status]; proposal.events.unshift({ at: proposal.updatedAt, actor, type: status, summary }); this.recordLeadHistory(proposal.crmOpportunityRef, actor, `Proposta ${proposal.number}: ${summary}.`, proposal.updatedAt); return proposal; }
     clone(id, actor) { const source = this.proposal(id); if (!source) return null; const clone = JSON.parse(JSON.stringify(source)); const groupId = source.groupId || source.id; const maxVersion = this.shared.proposals.filter((item) => (item.groupId || item.id) === groupId || item.number === source.number).reduce((max, item) => Math.max(max, Number(item.version) || 1), 0); clone.id = uid("proposal"); clone.groupId = groupId; clone.version = maxVersion + 1; clone.status = "draft"; clone.projectId = null; clone.createdAt = new Date().toISOString(); clone.updatedAt = clone.createdAt; clone.events = [{ at: clone.createdAt, actor, type:"version", summary:`Nova versao ${clone.version} criada a partir da versao ${source.version || 1}.` }]; this.shared.proposals.unshift(clone); this.recordLeadHistory(clone.crmOpportunityRef, actor, `Proposta ${clone.number}: versao ${clone.version} criada.`, clone.createdAt); return clone; }
   }
-  globalThis.GPMirariCommercial = { uid, cents, money, clampPercent, clampMarkup, calculateProposal, applySalesSimulation, calculatePriceFormation, buildInstallments, cardReferenceCents, calculatePaymentOption, calculatePaymentOptions, defaultCardRates, defaultStoreRates, paymentTypeText, statusText, CommercialRepository };
+  globalThis.GPMirariCommercial = { uid, cents, money, clampPercent, clampMarkup, calculateProposal, applySalesSimulation, calculateSalesNegotiation, calculatePriceFormation, buildInstallments, cardReferenceCents, calculatePaymentOption, calculatePaymentOptions, defaultCardRates, defaultStoreRates, paymentTypeText, statusText, CommercialRepository };
 })();
