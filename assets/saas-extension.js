@@ -72,7 +72,7 @@
     const shownEnvironmentValue=hasComposition?subItemsCost:Number(item.baseUnitCents)||0;
     const included=item.included!==false;
     return `<article class="saas-line ${included?"":"excluded"}" data-line data-item-id="${esc(item.id||"")}" data-commercial-edit-allowed="${commercialEditAllowed?"1":""}" data-manual-base-cents="${Number(item.baseUnitCents)||0}" data-sub-items="${encodeURIComponent(JSON.stringify(subItems))}">
-      <button class="saas-line-drag-handle" type="button" draggable="${editable?"true":"false"}" data-line-drag-handle aria-label="Arrastar ambiente para alterar a ordem" title="Arraste para alterar a ordem" ${editable?"":"disabled"}>⠿</button>
+      <button class="saas-line-drag-handle" type="button" data-line-drag-handle aria-label="Arrastar ambiente para alterar a ordem" title="Arraste para alterar a ordem" ${editable?"":"disabled"}></button>
       <div class="saas-line-include"><label class="saas-check"><input class="line-included" type="checkbox" ${included?"checked":""} ${editable?"":"disabled"}> Incluir no PDF e na formacao de preco</label></div>
       <div class="saas-line-grid">
         <div class="saas-field line-name-field"><label>Produto ou ambiente</label><input class="saas-input line-name" placeholder="Ex.: Cozinha planejada" value="${esc(item.name||"")}"></div>
@@ -475,14 +475,49 @@
     };
     const bind=()=>{
       document.querySelectorAll(".line-remove").forEach((b)=>b.onclick=()=>{b.closest("[data-line]").remove();refreshLineOrderControls();calculate();});
+      let lineDragState=null;
+      const stopLineDrag=()=>{
+        if(!lineDragState)return;
+        lineDragState.row.classList.remove("saas-line-dragging");
+        document.querySelectorAll("#proposal-lines [data-line]").forEach((row)=>row.classList.remove("saas-line-drop-before","saas-line-drop-after"));
+        lineDragState=null;
+        document.removeEventListener("pointermove",moveLineByPointer);
+        document.removeEventListener("pointerup",stopLineDrag);
+        document.removeEventListener("pointercancel",stopLineDrag);
+        refreshLineOrderControls();
+        calculate();
+      };
+      const moveLineByPointer=(event)=>{
+        if(!lineDragState||event.pointerId!==lineDragState.pointerId)return;
+        const modal=document.querySelector("#commercial-modal .saas-modal");
+        if(modal){
+          const bounds=modal.getBoundingClientRect();
+          const edge=72;
+          if(event.clientY<bounds.top+edge)modal.scrollTop-=Math.ceil((bounds.top+edge-event.clientY)/5)+8;
+          if(event.clientY>bounds.bottom-edge)modal.scrollTop+=Math.ceil((event.clientY-(bounds.bottom-edge))/5)+8;
+        }
+        const target=document.elementFromPoint(event.clientX,event.clientY)?.closest("#proposal-lines [data-line]");
+        const dragging=lineDragState.row;
+        document.querySelectorAll("#proposal-lines [data-line]").forEach((row)=>row.classList.remove("saas-line-drop-before","saas-line-drop-after"));
+        if(!target||target===dragging)return;
+        const rect=target.getBoundingClientRect();
+        const placeAfter=event.clientY>rect.top+(rect.height/2);
+        target.classList.add(placeAfter?"saas-line-drop-after":"saas-line-drop-before");
+        target.parentElement.insertBefore(dragging,placeAfter?target.nextElementSibling:target);
+      };
       document.querySelectorAll(".saas-line-drag-handle").forEach((handle)=>{
-        handle.ondragstart=(event)=>{const row=handle.closest("[data-line]");event.dataTransfer.effectAllowed="move";event.dataTransfer.setData("text/plain",row.dataset.itemId||row.dataset.lineOrder||"");row.classList.add("saas-line-dragging");};
-        handle.ondragend=()=>document.querySelectorAll("[data-line]").forEach((row)=>row.classList.remove("saas-line-dragging","saas-line-drag-over"));
-      });
-      document.querySelectorAll("#proposal-lines [data-line]").forEach((row)=>{
-        row.ondragover=(event)=>{if(!editable)return;event.preventDefault();event.dataTransfer.dropEffect="move";row.classList.add("saas-line-drag-over");};
-        row.ondragleave=()=>row.classList.remove("saas-line-drag-over");
-        row.ondrop=(event)=>{if(!editable)return;event.preventDefault();const dragging=document.querySelector(".saas-line-dragging");if(!dragging||dragging===row)return;const placeAfter=event.clientY>row.getBoundingClientRect().top+(row.getBoundingClientRect().height/2);row.parentElement.insertBefore(dragging,placeAfter?row.nextElementSibling:row);refreshLineOrderControls();calculate();};
+        handle.onpointerdown=(event)=>{
+          if(!editable||event.button!==0)return;
+          const row=handle.closest("[data-line]");
+          if(!row)return;
+          event.preventDefault();
+          handle.setPointerCapture?.(event.pointerId);
+          lineDragState={row,pointerId:event.pointerId};
+          row.classList.add("saas-line-dragging");
+          document.addEventListener("pointermove",moveLineByPointer);
+          document.addEventListener("pointerup",stopLineDrag);
+          document.addEventListener("pointercancel",stopLineDrag);
+        };
       });
       document.querySelectorAll(".line-composition").forEach((button)=>button.onclick=()=>openLineComposition(button.closest("[data-line]"),editable,admin()||commercialOverride,calculate));
       document.querySelectorAll("[data-line] input").forEach((input)=>input.oninput=()=>{if(input.classList.contains("line-base")&&!input.readOnly){applyCurrencyMask(input);input.closest("[data-line]").dataset.manualBaseCents=core().cents(input.value);}calculate();});
