@@ -12,6 +12,8 @@ assert.match(index, /GP Mirari - MVP Local/);
 assert.match(index, /function bindCriticalShellEvents\(\)/);
 assert.match(index, /function renderModuleFailure\(error\)/);
 assert.match(index, /data-module-recovery/);
+assert.match(index, /const taskLabel = !nextTask/);
+assert.match(index, /crmStage\(lead\.stageId\)\?\.name/);
 assert.ok(
   index.indexOf("bindCriticalShellEvents();", index.indexOf("saveState();")) < index.indexOf("renderMetrics();", index.indexOf("saveState();")),
   "Navegacao e logout precisam ser vinculados antes da renderizacao do modulo ativo."

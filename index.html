@@ -3429,7 +3429,11 @@
       const taskState = crmTaskState(lead);
       const nextTask = crmNextTask(lead);
       const specifierName = crmSpecifierName(lead.specifierId || (crmLeadClient(lead) || {}).specifierId);
-      const taskLabel = taskState === "missing" ? "Sem proxima tarefa" : taskState === "late" ? "Tarefa atrasada" : `${nextTask.title} | ${formatDate(nextTask.dueDate)} ${nextTask.dueTime || ""}`;
+      const taskLabel = !nextTask
+        ? (lead.status === "Aberta" ? "Sem proxima tarefa" : `Status: ${lead.status || "Encerrada"}`)
+        : taskState === "late"
+          ? "Tarefa atrasada"
+          : `${nextTask.title || "Proxima tarefa"} | ${formatDate(nextTask.dueDate)} ${nextTask.dueTime || ""}`;
       const initials = String(lead.client || "?").split(/\s+/).slice(0, 2).map(part => part.charAt(0)).join("").toUpperCase();
       return `
         <button class="crm-card crm-saas-card ${lead.id === state.crm.selectedLeadId ? "selected" : ""} ${taskState === "missing" ? "crm-card-alert" : ""} ${taskState === "late" ? "crm-card-late" : ""}" type="button" draggable="true" data-crm-lead="${lead.id}" data-crm-lead-draggable="${lead.id}">
@@ -3514,7 +3518,7 @@
               <article class="panel soft-panel crm-opportunity-card crm-saas-selected ${state.crm.expandedLeadId === lead.id ? "expanded" : ""}" data-toggle-crm-lead="${lead.id}" style="grid-column:1/-1">
                 <div class="section-title">
                   <div><p class="eyebrow">Oportunidade selecionada</p><h2>${escapeHtml(lead.client)}</h2></div>
-                  <div class="actions"><span class="pill">${escapeHtml(crmStage(lead.stageId).name || "-")}</span><button class="crm-expand-toggle" id="toggle-crm-lead" type="button" title="${state.crm.expandedLeadId === lead.id ? "Recolher" : "Abrir"}">${state.crm.expandedLeadId === lead.id ? "Recolher" : "Abrir"}</button></div>
+                  <div class="actions"><span class="pill">${escapeHtml(crmStage(lead.stageId)?.name || "Etapa indisponivel")}</span><button class="crm-expand-toggle" id="toggle-crm-lead" type="button" title="${state.crm.expandedLeadId === lead.id ? "Recolher" : "Abrir"}">${state.crm.expandedLeadId === lead.id ? "Recolher" : "Abrir"}</button></div>
                 </div>
                 <div class="subtask-meta">
                   <span class="pill">${formatMoney(moneyNumber(lead.closedValue || lead.value))}</span>
