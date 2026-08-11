@@ -9,6 +9,13 @@ const ui = await read("assets/saas-extension.js");
 const core = await read("assets/saas-core.js");
 
 assert.match(index, /GP Mirari - MVP Local/);
+assert.match(index, /function bindCriticalShellEvents\(\)/);
+assert.match(index, /function renderModuleFailure\(error\)/);
+assert.match(index, /data-module-recovery/);
+assert.ok(
+  index.indexOf("bindCriticalShellEvents();", index.indexOf("saveState();")) < index.indexOf("renderMetrics();", index.indexOf("saveState();")),
+  "Navegacao e logout precisam ser vinculados antes da renderizacao do modulo ativo."
+);
 assert.match(index, /saas-core\.js/);
 assert.match(index, /saas-extension\.js/);
 assert.match(index, /saas-extension\.js\?v=20260805-closed-crm-flow/);

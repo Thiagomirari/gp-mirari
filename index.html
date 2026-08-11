@@ -2157,6 +2157,7 @@
           view.replaceChildren();
         });
         renderHeader();
+        bindCriticalShellEvents();
         // The login form must be bound even before the first authenticated
         // session; otherwise the browser performs a native GET to "/?".
         bindLoginEvents();
@@ -2164,21 +2165,75 @@
       }
       saveState();
       renderHeader();
-      renderMetrics();
+      // Navigation and logout must remain available even when a business
+      // module fails while rendering.
+      bindCriticalShellEvents();
+      try {
+        renderMetrics();
+        document.querySelectorAll(".tab-view").forEach(view => view.classList.add("hidden"));
+        const activeView = document.getElementById("tab-" + state.activeTab);
+        if (activeView) activeView.classList.remove("hidden");
+        else document.getElementById("tab-crm").classList.remove("hidden");
+        document.querySelectorAll(".tab-button").forEach(button => button.classList.toggle("active", button.dataset.tab === state.activeTab));
+        if (state.activeTab === "projects") renderProjects();
+        if (state.activeTab === "calendar") renderCalendar();
+        if (state.activeTab === "kanban") renderKanban();
+        if (state.activeTab === "tasks") renderTasks();
+        if (state.activeTab === "crm") renderCRM();
+        if (state.activeTab === "commercial") renderCommercialTasks();
+        if (state.activeTab === "signatures") window.GP_SIGNATURES_UI?.render();
+        if (state.activeTab === "admin") renderAdmin();
+        bindCommonEvents();
+      } catch (error) {
+        renderModuleFailure(error);
+      }
+    }
+
+    async function logoutCurrentSession() {
+      try {
+        if (getCloudClient()) await getCloudClient().auth.signOut();
+      } catch (error) {
+        console.warn("Nao foi possivel encerrar a sessao remota; a sessao local sera limpa.", error);
+      }
+      cloudSyncEnabled = false;
+      state.sessionUserId = "";
+      state.sessionVersionAtLogin = 0;
+      localStorage.removeItem(storageKey);
+      toast("Sessao encerrada.");
+      render();
+    }
+
+    function bindCriticalShellEvents() {
+      document.querySelectorAll(".tab-button").forEach(button => {
+        button.onclick = () => {
+          state.activeTab = button.dataset.tab;
+          render();
+        };
+      });
+      const logoutButton = document.getElementById("logout-button");
+      if (logoutButton) logoutButton.onclick = logoutCurrentSession;
+    }
+
+    function renderModuleFailure(error) {
+      console.error(`Falha ao renderizar o modulo ${state.activeTab}.`, error);
       document.querySelectorAll(".tab-view").forEach(view => view.classList.add("hidden"));
-      const activeView = document.getElementById("tab-" + state.activeTab);
-      if (activeView) activeView.classList.remove("hidden");
-      else document.getElementById("tab-crm").classList.remove("hidden");
-      document.querySelectorAll(".tab-button").forEach(button => button.classList.toggle("active", button.dataset.tab === state.activeTab));
-      if (state.activeTab === "projects") renderProjects();
-      if (state.activeTab === "calendar") renderCalendar();
-      if (state.activeTab === "kanban") renderKanban();
-      if (state.activeTab === "tasks") renderTasks();
-      if (state.activeTab === "crm") renderCRM();
-      if (state.activeTab === "commercial") renderCommercialTasks();
-      if (state.activeTab === "signatures") window.GP_SIGNATURES_UI?.render();
-      if (state.activeTab === "admin") renderAdmin();
-      bindCommonEvents();
+      const fallbackView = document.getElementById("tab-" + state.activeTab) || document.getElementById("tab-crm");
+      if (!fallbackView) return;
+      fallbackView.classList.remove("hidden");
+      fallbackView.innerHTML = `
+        <section class="panel" data-module-recovery>
+          <div class="empty-state">
+            <h3>Nao foi possivel carregar este modulo</h3>
+            <p>Os demais menus e a saida continuam disponiveis. Tente carregar novamente.</p>
+            <div class="actions-row">
+              <button class="primary" id="retry-module-button" type="button">Tentar novamente</button>
+              <button class="secondary" id="recovery-logout-button" type="button">Sair com seguranca</button>
+            </div>
+          </div>
+        </section>`;
+      document.getElementById("retry-module-button").onclick = render;
+      document.getElementById("recovery-logout-button").onclick = logoutCurrentSession;
+      bindCriticalShellEvents();
     }
 
     function renderHeader() {
@@ -3946,16 +4001,7 @@
     }
 
     function bindCommonEvents() {
-      document.querySelectorAll(".tab-button").forEach(button => button.onclick = () => { state.activeTab = button.dataset.tab; render(); });
-      document.getElementById("logout-button").onclick = async () => {
-        if (getCloudClient()) await getCloudClient().auth.signOut();
-        cloudSyncEnabled = false;
-        state.sessionUserId = "";
-        state.sessionVersionAtLogin = 0;
-        localStorage.removeItem(storageKey);
-        toast("Sessao encerrada.");
-        render();
-      };
+      bindCriticalShellEvents();
       document.querySelectorAll("[data-close-modal]").forEach(button => button.onclick = closeProjectModal);
       document.querySelectorAll("[data-close-return-modal]").forEach(button => button.onclick = closeReturnModal);
       document.querySelectorAll("[data-close-crm-filter]").forEach(button => button.onclick = closeCRMFilterModal);
