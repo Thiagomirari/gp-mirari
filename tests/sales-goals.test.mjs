@@ -32,7 +32,7 @@ assert.match(html, /crm-card-specifier/, "Os cartoes do CRM precisam exibir o es
 assert.doesNotMatch(html, /crm-card-specifier[^<]*>Especificador:/, "O cartao do CRM nao deve repetir o rotulo antes do nome do especificador.");
 assert.match(html, /id="crm-detail-value"[^>]*oninput="formatCurrencyWhileTyping\(this\)"/, "A oportunidade selecionada precisa manter sua mascara monetaria.");
 assert.match(commercial, /applyCurrencyMask/, "As propostas precisam reutilizar a mascara monetaria do sistema.");
-assert.match(commercial, /\.line-base,\.composition-cost,\.payment-entry-value,\.cash-split-value,#pricing-purchase-extra,#pricing-freight,#pricing-assembly/, "Todos os campos monetarios de propostas precisam estar cobertos pela mascara.");
+assert.match(commercial, /\.line-base,\.composition-cost,\.payment-entry-value,\.cash-split-value,[^)]*#pricing-purchase-extra,#pricing-freight,#pricing-assembly/, "Todos os campos monetarios de propostas precisam estar cobertos pela mascara.");
 assert.match(commercial, /formatPercentWhileTyping/, "Os percentuais das condicoes de pagamento precisam aceitar formatacao durante a digitacao.");
 assert.match(commercial, /decimalInputNumber/, "Os percentuais das condicoes de pagamento precisam ser convertidos com virgula decimal.");
 assert.match(commercial, /valueInput\.value=core\(\)\.money\(previewOption\.entryCents\)/, "O valor da entrada recalculado por percentual precisa manter a mascara monetaria.");
