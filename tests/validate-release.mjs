@@ -7,6 +7,7 @@ const read = (path) => readFile(new URL(path, root), "utf8");
 const index = await read("index.html");
 const ui = await read("assets/saas-extension.js");
 const core = await read("assets/saas-core.js");
+const theme = await read("assets/saas-theme.css");
 
 assert.match(index, /GP Mirari - MVP Local/);
 assert.match(index, /function bindCriticalShellEvents\(\)/);
@@ -20,9 +21,9 @@ assert.ok(
 );
 assert.match(index, /saas-core\.js/);
 assert.match(index, /saas-extension\.js/);
-assert.match(index, /saas-extension\.js\?v=20260812-card-summary/);
-assert.match(index, /saas-theme\.css\?v=20260812-card-summary/);
-assert.match(index, /saas-core\.js\?v=20260812-card-summary/);
+assert.match(index, /saas-extension\.js\?v=20260812-summary-density/);
+assert.match(index, /saas-theme\.css\?v=20260812-summary-density/);
+assert.match(index, /saas-core\.js\?v=20260812-summary-density/);
 assert.match(index, /crm-optional-fields/);
 assert.match(index, /Data do primeiro contato/);
 assert.match(index, /Proxima tarefa/);
@@ -103,6 +104,7 @@ assert.match(ui, /configuredPayment=paymentConditions\(total,proposal\.paymentOp
 assert.match(ui, /sales-card-installments/, "A tela de negociacao deve permitir escolher as parcelas do cartao.");
 assert.match(ui, /simulation\.cardInstallments\?\.card/, "O PDF deve respeitar o parcelamento de cartao escolhido na simulacao.");
 assert.match(ui, /saas-summary-compact/, "O resumo da proposta deve apresentar informacoes principais de forma compacta.");
+assert.match(theme, /saas-proposal-summary \.saas-final-only \{[^}]*font-size: 15px !important/, "O preco final do resumo deve usar tipografia compacta.");
 assert.match(ui, /function openSalesWorkspace\(proposal\)/);
 assert.match(ui, /Tela de vendas/);
 assert.match(ui, /data-item/);
