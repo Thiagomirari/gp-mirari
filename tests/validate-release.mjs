@@ -20,9 +20,9 @@ assert.ok(
 );
 assert.match(index, /saas-core\.js/);
 assert.match(index, /saas-extension\.js/);
-assert.match(index, /saas-extension\.js\?v=20260812-sales-locks/);
-assert.match(index, /saas-theme\.css\?v=20260812-sales-locks/);
-assert.match(index, /saas-core\.js\?v=20260812-sales-locks/);
+assert.match(index, /saas-extension\.js\?v=20260812-sales-unlock/);
+assert.match(index, /saas-theme\.css\?v=20260812-sales-unlock/);
+assert.match(index, /saas-core\.js\?v=20260812-sales-unlock/);
 assert.match(index, /crm-optional-fields/);
 assert.match(index, /Data do primeiro contato/);
 assert.match(index, /Proxima tarefa/);
@@ -109,6 +109,7 @@ assert.match(ui, /Aprovar negociacao/, "O botao de formalizacao deve ter texto v
 assert.match(ui, /Math\.min\(3,Number\(payment\.installments\)/, "A negociacao deve permitir ate tres parcelas.");
 assert.match(ui, /syncPaymentInputs/, "Valores e percentuais devem sincronizar durante a digitacao.");
 assert.match(ui, /data-item-lock/, "Valores manuais devem oferecer bloqueio por ambiente.");
+assert.match(ui, /locked:false,manualTotalCents:null,discountPercent:0/, "Desbloquear um ambiente deve remover sua base manual para voltar ao desconto global.");
 assert.match(ui, /overallDiscountPercent/, "O topo deve exibir o desconto efetivo da proposta.");
 assert.match(ui, /rebalanceSplit/, "A parcela editada deve redistribuir o percentual restante.");
 assert.doesNotMatch(ui, /Entrada e parcelas totalizam 100%/, "O resumo redundante de 100% deve ser removido.");
