@@ -98,6 +98,7 @@ assert.match(ui, /Markup \(%\)/);
 assert.match(ui, /RT global \(%\)/);
 assert.match(ui, /Resumo em tempo real/);
 assert.match(ui, /Gerar PDF/);
+assert.match(ui, /installmentPayments:condition===\x27cash_entry\x27/, "O PDF da negociacao deve carregar os valores das parcelas simuladas.");
 assert.match(ui, /function openSalesWorkspace\(proposal\)/);
 assert.match(ui, /Tela de vendas/);
 assert.match(ui, /data-item/);
