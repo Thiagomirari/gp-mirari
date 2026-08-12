@@ -96,7 +96,8 @@
     const preparedItems = base.items.map((item) => {
       const override = overrides[item.id] || {};
       const manual = override.manualTotalCents !== undefined && override.manualTotalCents !== null && override.manualTotalCents !== "";
-      const negotiationBaseCents = Math.max(0, Number(item.totalCents) || 0);
+      const conditionMultiplier = Math.max(0, Number(negotiation.conditionMultiplier) || 1);
+      const negotiationBaseCents = Math.max(0, Math.round((Number(item.totalCents) || 0) * conditionMultiplier));
       const requestedManualCents = manual ? cents(override.manualTotalCents) : negotiationBaseCents;
       const beforeGlobalCents = manual
         ? Math.min(negotiationBaseCents, Math.max(0, requestedManualCents))
