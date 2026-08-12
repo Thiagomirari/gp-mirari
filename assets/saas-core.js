@@ -93,11 +93,30 @@
     const selectedIds = new Set(negotiation.selectedItemIds || (proposal.items || []).filter((item) => item.included !== false).map((item) => item.id));
     const overrides = negotiation.itemOverrides || {};
     const base = calculateProposal((proposal.items || []).filter((item) => selectedIds.has(item.id)), 0, proposal.globalRtEnabled ? proposal.globalRtPercent : 0, options);
-    const items = base.items.map((item) => { const override = overrides[item.id] || {}; const manual = override.manualTotalCents !== undefined && override.manualTotalCents !== null && override.manualTotalCents !== ""; const negotiationBaseCents = Math.max(0, Number(item.totalCents) || 0); const requestedManualCents = manual ? cents(override.manualTotalCents) : negotiationBaseCents; const totalCents = manual ? Math.min(negotiationBaseCents, Math.max(0, requestedManualCents)) : Math.max(0, negotiationBaseCents - Math.round(negotiationBaseCents * clampPercent(override.discountPercent) / 100)); const negotiationDiscountCents = Math.max(0, negotiationBaseCents - totalCents); const negotiationDiscountPercent = negotiationBaseCents ? negotiationDiscountCents * 100 / negotiationBaseCents : 0; return {...item,negotiationBaseCents,negotiationDiscountPercent,negotiationDiscountCents,totalCents,finalUnitCents:Math.round(totalCents/Math.max(.001,Number(item.quantity)||1))}; });
-    const beforeGlobalDiscountCents = items.reduce((sum,item)=>sum+item.totalCents,0);
+    const preparedItems = base.items.map((item) => {
+      const override = overrides[item.id] || {};
+      const manual = override.manualTotalCents !== undefined && override.manualTotalCents !== null && override.manualTotalCents !== "";
+      const negotiationBaseCents = Math.max(0, Number(item.totalCents) || 0);
+      const requestedManualCents = manual ? cents(override.manualTotalCents) : negotiationBaseCents;
+      const beforeGlobalCents = manual
+        ? Math.min(negotiationBaseCents, Math.max(0, requestedManualCents))
+        : Math.max(0, negotiationBaseCents - Math.round(negotiationBaseCents * clampPercent(override.discountPercent) / 100));
+      return {...item,negotiationBaseCents,beforeGlobalCents,locked:override.locked===true};
+    });
+    const beforeGlobalDiscountCents = preparedItems.reduce((sum,item)=>sum+item.beforeGlobalCents,0);
     const globalDiscountPercent = clampPercent(negotiation.discountPercent);
-    const globalDiscountCents = Math.round(beforeGlobalDiscountCents * globalDiscountPercent / 100);
-    return {items,beforeGlobalDiscountCents,globalDiscountPercent,globalDiscountCents,totalCents:Math.max(0,beforeGlobalDiscountCents-globalDiscountCents)};
+    const items = preparedItems.map((item) => {
+      const globalItemDiscountCents = item.locked ? 0 : Math.round(item.beforeGlobalCents * globalDiscountPercent / 100);
+      const totalCents = Math.max(0,item.beforeGlobalCents-globalItemDiscountCents);
+      const negotiationDiscountCents = Math.max(0,item.negotiationBaseCents-totalCents);
+      const negotiationDiscountPercent = item.negotiationBaseCents ? negotiationDiscountCents*100/item.negotiationBaseCents : 0;
+      return {...item,globalItemDiscountCents,negotiationDiscountCents,negotiationDiscountPercent,totalCents,finalUnitCents:Math.round(totalCents/Math.max(.001,Number(item.quantity)||1))};
+    });
+    const globalDiscountCents = items.reduce((sum,item)=>sum+item.globalItemDiscountCents,0);
+    const grossTotalCents = items.reduce((sum,item)=>sum+item.negotiationBaseCents,0);
+    const totalCents = items.reduce((sum,item)=>sum+item.totalCents,0);
+    const overallDiscountPercent = grossTotalCents ? (grossTotalCents-totalCents)*100/grossTotalCents : 0;
+    return {items,grossTotalCents,beforeGlobalDiscountCents,globalDiscountPercent,globalDiscountCents,overallDiscountPercent,totalCents};
   }
 
   function calculatePriceFormation(proposal = {}, formation = {}, contributors = [], paymentModels = []) {
