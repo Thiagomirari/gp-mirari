@@ -20,9 +20,9 @@ assert.ok(
 );
 assert.match(index, /saas-core\.js/);
 assert.match(index, /saas-extension\.js/);
-assert.match(index, /saas-extension\.js\?v=20260812-sales-auto/);
-assert.match(index, /saas-theme\.css\?v=20260812-sales-auto/);
-assert.match(index, /saas-core\.js\?v=20260812-sales-auto/);
+assert.match(index, /saas-extension\.js\?v=20260812-sales-live/);
+assert.match(index, /saas-theme\.css\?v=20260812-sales-live/);
+assert.match(index, /saas-core\.js\?v=20260812-sales-live/);
 assert.match(index, /crm-optional-fields/);
 assert.match(index, /Data do primeiro contato/);
 assert.match(index, /Proxima tarefa/);
@@ -106,6 +106,9 @@ assert.doesNotMatch(ui, /Salvar negociacao/, "A negociacao deve usar salvamento 
 assert.match(ui, /Nova simulacao/, "Deve iniciar uma simulacao limpa.");
 assert.match(ui, /O valor final nao pode ser maior que o valor bruto/, "O valor final deve respeitar o valor bruto.");
 assert.match(ui, /Aprovar negociacao/, "O botao de formalizacao deve ter texto visivel.");
+assert.match(ui, /Math\.min\(3,Number\(payment\.installments\)/, "A negociacao deve permitir ate tres parcelas.");
+assert.match(ui, /syncPaymentInputs/, "Valores e percentuais devem sincronizar durante a digitacao.");
+assert.match(ui, /\[data-entry-value\]/, "Campos monetarios da entrada devem receber mascara em reais.");
 assert.match(ui, /Custos, markup e proposta-base permanecem protegidos/);
 assert.match(ui, /saas-line-drag-handle/);
 assert.match(ui, /refreshLineOrderControls/);
