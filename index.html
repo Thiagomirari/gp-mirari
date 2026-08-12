@@ -236,6 +236,16 @@
     .ghost { border: 1px solid transparent; background: transparent; color: var(--muted); }
 
     .project-list, .history-list, .task-list, .stage-list, .user-list, .calendar-list, .crm-list { display: grid; gap: 8px; }
+    .project-task-wall .panel-header { align-items: flex-start; }
+    .project-task-wall .panel-header .muted { max-width: 720px; margin: 5px 0 0; }
+    .project-task-wall #add-task-form[hidden] { display: none; }
+    .task-completed { opacity: .7; }
+    .task-note { margin: 8px 0 0; color: var(--muted); white-space: pre-wrap; }
+    .task-checklist-list { display: grid; gap: 5px; margin-top: 9px; }
+    .task-checklist-list label { display: flex; align-items: flex-start; gap: 7px; font-weight: 500; }
+    .task-checklist-list input:checked + span { color: var(--muted); text-decoration: line-through; }
+    .pill.required { border-color: #d6a165; background: #fff6ec; color: #83531e; }
+    .pill.task-deadline { border-color: #d7b7b3; color: #9c3f36; }
 
     .project-card, .task-card, .stage-admin-card, .user-card, .calendar-row, .history-item, .subtask-row, .crm-card {
       border: 1px solid var(--line);
@@ -1078,7 +1088,7 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
   <script src="./supabase-config.js?v=20260730-crm-tarefas-obrigatorias"></script>
-  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260812-condition-gross" />
+  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260812-project-task-wall" />
 </head>
 <body>
   <main class="app-shell">
@@ -1399,7 +1409,7 @@
       projects: [],
       crm: {
         uiVersion: 2,
-        selectedLeadId: "lead1",
+        selectedLeadId: "lead2",
         activeFunnelId: "crm-standard",
         funnels: [
           { id: "crm-standard", name: "Funil padrao Mirari", active: true }
@@ -1414,7 +1424,7 @@
           { id: "crm-perdido", funnelId: "crm-standard", name: "Perdido", color: "#b4544d", probability: 0, active: true, closedType: "lost" }
         ],
         leads: [
-          { id: "lead1", funnelId: "crm-standard", client: "Fernanda Moraes", contact: "(11) 99999-0101", source: "Indicacao", interest: "Apartamento completo", stageId: "crm-proposta", ownerId: "u1", value: "R$ 96.000", priority: "Alta", status: "Aberta", nextActionDate: "2026-07-18", notes: "Cliente comparando acabamentos premium.", labels: [{ text: "Alto padrao", color: "#8b6f47" }], createdAt: "2026-07-08", enteredAt: "2026-07-08", updatedAt: "2026-07-12", events: [], history: [{ at: "2026-07-12T09:00:00", userId: "u1", text: "Proposta enviada para revisao da cliente." }] },
+
           { id: "lead2", funnelId: "crm-standard", client: "Arq. Paula Nunes", contact: "(11) 98888-2222", source: "Parceria arquitetura", interest: "Casa em Alphaville", stageId: "crm-briefing", ownerId: "u2", value: "R$ 180.000", priority: "Alta", status: "Aberta", nextActionDate: "2026-07-19", notes: "Possivel parceria recorrente.", labels: [{ text: "Parceiro", color: "#316fa6" }], createdAt: "2026-07-11", enteredAt: "2026-07-11", updatedAt: "2026-07-11", events: [], history: [{ at: "2026-07-11T14:20:00", userId: "u2", text: "Briefing inicial recebido via WhatsApp." }] },
           { id: "lead3", funnelId: "crm-standard", client: "Lucas Andrade", contact: "(11) 97777-3333", source: "Instagram", interest: "Cozinha planejada", stageId: "crm-contact", ownerId: "u3", value: "R$ 42.000", priority: "Media", status: "Aberta", nextActionDate: "2026-07-17", notes: "Aguardar medidas do ambiente.", labels: [{ text: "Instagram", color: "#2f7d5b" }], createdAt: "2026-07-15", enteredAt: "2026-07-15", updatedAt: "2026-07-15", events: [], history: [{ at: "2026-07-15T17:10:00", userId: "u3", text: "Primeiro contato realizado." }] }
         ],
@@ -1434,17 +1444,8 @@
       history: []
     };
 
-    defaultState.projects = [
-      buildProject({ id: "p1", name: "Apartamento Jardins", client: "Mariana Alves", type: "Residencial", priority: "Alta", managerId: "u1", start: "2026-07-03", budget: "R$ 86.000", notes: "Moveis planejados de alto padrao para apartamento completo.", currentStageIndex: 4, status: "Em execucao" }, defaultState.stages),
-      buildProject({ id: "p2", name: "Casa Alphaville", client: "Roberto Lima", type: "Residencial", priority: "Alta", managerId: "u2", start: "2026-06-24", budget: "R$ 142.000", notes: "Projeto amplo com prioridade alta.", currentStageIndex: 5, status: "Atrasado" }, defaultState.stages),
-      buildProject({ id: "p3", name: "Studio Vila Olimpia", client: "Beatriz Costa", type: "Compacto", priority: "Media", managerId: "u3", start: "2026-07-10", budget: "R$ 48.500", notes: "Execucao enxuta com foco em prazos.", currentStageIndex: 2, status: "Em execucao" }, defaultState.stages)
-    ];
-    defaultState.history = [
-      historyItem("p1", "Apartamento Jardins", "Aprovacao", "Producao", "Camila", "Cliente aprovou o acabamento final.", "2026-07-14T09:30:00"),
-      historyItem("p2", "Casa Alphaville", "Producao", "Instalacao", "Daniel", "Liberado para equipe de montagem.", "2026-07-13T16:15:00"),
-      historyItem("p3", "Studio Vila Olimpia", "Medicao", "Projeto executivo", "Lais", "Medidas conferidas no local.", "2026-07-12T11:10:00")
-    ];
-
+    defaultState.projects = [];
+    defaultState.history = [];
     let state = loadState();
 
     function uid(prefix) {
@@ -1474,6 +1475,27 @@
       next.users = next.users && next.users.length ? next.users : clone(defaultState.users);
       next.stages = next.stages && next.stages.length ? next.stages : clone(defaultState.stages);
       next.projects = next.projects || [];
+      if (Number(next.demoProjectCleanupVersion || 0) < 1) {
+        const demoProjectIds = new Set(["p1", "p2", "p3", "p-1a9zn5aoal"]);
+        const demoProjectNames = new Set(["apartamento-jardins", "casa-alphaville", "casa-alphavile", "studio-vila-olimpia", "apartamento-completo"]);
+        const demoClientIds = new Set(["client_mru61x9b_4tjpnf", "client_mru61x9b_dug2x6", "client_mru61x9b_3kdkm4", "client_mry4aoam_dlmdsj"]);
+        next.projects.filter(project => demoProjectIds.has(project.id) || demoProjectNames.has(slug(project.name))).forEach(project => {
+          if (project.clientId) demoClientIds.add(project.clientId);
+          demoProjectIds.add(project.id);
+        });
+        next.projects = next.projects.filter(project => !demoProjectIds.has(project.id) && !demoProjectNames.has(slug(project.name)));
+        next.clients = (next.clients || []).filter(client => !demoClientIds.has(client.id));
+        next.history = (next.history || []).filter(item => !demoProjectIds.has(item.projectId));
+        next.crm = next.crm || clone(defaultState.crm);
+        next.crm.leads = (next.crm.leads || []).filter(lead => lead.id !== "lead1");
+        next.crm.tasks = (next.crm.tasks || []).filter(task => task.leadId !== "lead1" && task.legacyNextActionFor !== "lead1");
+        const viewed = next.viewedStageIndexByProject || {};
+        demoProjectIds.forEach(id => delete viewed[id]);
+        next.viewedStageIndexByProject = viewed;
+        if (demoProjectIds.has(next.selectedProjectId)) next.selectedProjectId = "";
+        if (next.crm.selectedLeadId === "lead1") next.crm.selectedLeadId = "";
+        next.demoProjectCleanupVersion = 1;
+      }
       next.crm = next.crm || clone(defaultState.crm);
       if (!next.crm.uiVersion || next.crm.uiVersion < 2) {
         next.activeTab = "crm";
@@ -1569,6 +1591,12 @@
         project.scheduleMode = project.scheduleMode || "default";
         project.stagePlan = project.stagePlan || createStagePlan(next.stages, project.start || todayISO);
         project.tasks = project.tasks || createTasksFromStages(next.stages, project.start || todayISO);
+        project.tasks.forEach(task => {
+          task.automatic = task.automatic === true || (task.substageId && task.substageId !== "manual");
+          task.required = task.automatic ? task.required !== false : false;
+          task.workStatus = task.completed ? "Concluida" : (task.workStatus === "Em andamento" ? "Em andamento" : "Aberta");
+          task.checklist = Array.isArray(task.checklist) ? task.checklist.map(item => typeof item === "string" ? { id: uid("check"), text: item, completed: false } : { id: item.id || uid("check"), text: String(item.text || ""), completed: !!item.completed }).filter(item => item.text) : [];
+        });
         project.notes = project.notes || "";
         project.chat = project.chat || [];
       });
@@ -2049,12 +2077,15 @@
             name: sub.name,
             ownerId: sub.ownerId || stage.defaultOwnerId,
             required: !!sub.required,
+            automatic: true,
             minDays: Number(sub.minDays || 0),
             start: taskStart,
             due: taskDue,
             completed: false,
             completedAt: "",
-            notes: ""
+            workStatus: "Aberta",
+            notes: "",
+            checklist: []
           });
           taskCursor = taskDue;
         });
@@ -2110,6 +2141,25 @@
       return "Pendente";
     }
 
+    function taskWorkflowStatus(task) {
+      if (task.completed) return "Concluida";
+      return task.workStatus === "Em andamento" ? "Em andamento" : "Aberta";
+    }
+
+    function projectStageTasks(project, stageId) {
+      const deadlineRank = task => {
+        const status = taskStatus(project, task);
+        return status === "Atrasada" ? 0 : status === "Inicio em risco" ? 1 : status === "Proxima" ? 2 : 3;
+      };
+      return (project.tasks || []).filter(task => task.stageId === stageId).slice().sort((a, b) => {
+        if (!!a.completed !== !!b.completed) return a.completed ? 1 : -1;
+        if (!a.completed && deadlineRank(a) !== deadlineRank(b)) return deadlineRank(a) - deadlineRank(b);
+        if (!a.completed && String(a.due || "") !== String(b.due || "")) return String(a.due || "").localeCompare(String(b.due || ""));
+        const completedOrder = String(b.completedAt || "").localeCompare(String(a.completedAt || ""));
+        return completedOrder || String(a.name || "").localeCompare(String(b.name || ""), "pt-BR");
+      });
+    }
+
     function stageStartedAt(project, stageId) {
       const plan = project.stagePlan.find(item => item.stageId === stageId);
       return plan ? plan.start : project.start;
@@ -2120,7 +2170,7 @@
       if (!stage) return { ok: true, reasons: [] };
       const reasons = [];
       const tasks = project.tasks.filter(task => task.stageId === stage.id);
-      const pendingRequired = tasks.filter(task => task.required && !task.completed);
+      const pendingRequired = tasks.filter(task => task.automatic && task.required && !task.completed);
       if (stage.blocksAdvance && pendingRequired.length) {
         reasons.push("Checklist obrigatorio pendente: " + pendingRequired.map(task => task.name).join(", "));
       }
@@ -2506,50 +2556,46 @@
           </article>
         </div>
 
-        <article class="panel card">
+        <article class="panel card project-task-wall">
           <div class="panel-header">
-            <div><p class="eyebrow">Checklist da etapa atual</p><h3>Subetapas e gatilhos</h3></div>
+            <div><p class="eyebrow">Etapa atual</p><h3>Mural de tarefas</h3><p class="muted">Tarefas criadas aqui organizam o trabalho da equipe e nao bloqueiam o avanco. Regras obrigatorias sao configuradas exclusivamente na Administracao.</p></div>
+            <button class="primary" id="new-project-task" type="button">Nova tarefa</button>
           </div>
-          <div class="spacer"></div>
-          <form class="form-box" id="add-task-form">
-            <div class="grid-3">
-              <label>Tarefa/checklist
-                <input id="task-name" placeholder="Ex: Conferir ferragens antes de avancar" required />
+          <form class="form-box" id="add-task-form" hidden>
+            <div class="grid-2">
+              <label>Tarefa
+                <input id="task-name" placeholder="Ex.: Conferir ferragens" required />
               </label>
               <label>Responsavel
                 <select id="task-owner">
-                  ${state.users.filter(user => user.active).map(user => option(user.id, user.name, stage ? stage.defaultOwnerId : (state.sessionUserId || "u1"))).join("")}
-                </select>
-              </label>
-              <label>Obrigatoria
-                <select id="task-required">
-                  <option value="true" selected>Sim, bloqueia avanco</option>
-                  <option value="false">Nao, apenas controle</option>
+                  ${state.users.filter(user => user.active).map(user => option(user.id, user.name, state.sessionUserId || (stage ? stage.defaultOwnerId : "u1"))).join("")}
                 </select>
               </label>
             </div>
-            <div class="grid-3">
+            <div class="grid-2">
               <label>Inicio
                 <input id="task-start" type="date" value="${stage ? escapeHtml(stageStartedAt(project, stage.id)) : todayISO}" />
               </label>
               <label>Prazo final
                 <input id="task-due" type="date" value="${stage ? escapeHtml(addDays(stageStartedAt(project, stage.id), 1)) : todayISO}" />
               </label>
-              <label>Tempo minimo
-                <input id="task-min-days" type="number" min="0" value="0" />
-              </label>
             </div>
             <label>Observacoes
-              <textarea id="task-notes" placeholder="Requisito, gatilho, evidencia necessaria ou instrucoes para concluir"></textarea>
+              <textarea id="task-notes" placeholder="Contexto, instrucoes ou observacoes da tarefa"></textarea>
             </label>
-            <button class="primary" type="submit">+ Adicionar tarefa/checklist</button>
+            <label>Checklist (se necessario)
+              <textarea id="task-checklist" placeholder="Digite um item por linha&#10;Ex.: Separar ferragens&#10;Conferir medidas"></textarea>
+            </label>
+            <div class="inline-actions">
+              <button class="primary" type="submit">Adicionar tarefa</button>
+              <button class="secondary" id="cancel-project-task" type="button">Cancelar</button>
+            </div>
           </form>
           <div class="spacer"></div>
           <div class="task-list">
-            ${project.tasks.filter(task => stage && task.stageId === stage.id).map(taskRow).join("") || "<small>Nenhuma subetapa nesta etapa.</small>"}
+            ${stage ? (projectStageTasks(project, stage.id).map(taskRow).join("") || "<small>Nenhuma tarefa nesta etapa.</small>") : "<small>Nenhuma etapa atual.</small>"}
           </div>
         </article>
-
         <article class="panel card">
           <div class="panel-header">
             <div><p class="eyebrow">Chat interno</p><h3>Comentarios do projeto</h3></div>
@@ -2585,23 +2631,26 @@
 
     function taskRow(task) {
       const selected = selectedProject();
-      const status = taskStatus(selected, task);
+      const deadlineStatus = taskStatus(selected, task);
+      const workflowStatus = taskWorkflowStatus(task);
       const canEdit = isAdmin() || (currentUser() && currentUser().id === task.ownerId);
+      const checklist = Array.isArray(task.checklist) ? task.checklist : [];
       return `
-        <div class="subtask-row">
-          <span class="pill">${task.completed ? "Concluida" : "Aberta"}</span>
+        <div class="subtask-row ${task.completed ? "task-completed" : ""}">
+          <span class="pill">${escapeHtml(workflowStatus)}</span>
           <div>
             <strong>${escapeHtml(task.name)}</strong>
             <div class="subtask-meta">
               <span class="pill">${escapeHtml(userName(task.ownerId))}</span>
-              <span class="pill">${task.required ? "Obrigatoria" : "Opcional"}</span>
+              ${task.required ? '<span class="pill required">Obrigatoria</span>' : ""}
               <span class="pill">${formatDate(task.start)} - ${formatDate(task.due)}</span>
-              <span class="pill">${escapeHtml(status)}</span>
-              ${task.minDays ? `<span class="pill">Min. ${task.minDays}d | iniciar ate ${formatDate(addDays(task.due, -Number(task.minDays)))}</span>` : ""}
+              ${deadlineStatus !== "Pendente" && deadlineStatus !== "Concluida" ? `<span class="pill task-deadline">${escapeHtml(deadlineStatus)}</span>` : ""}
             </div>
-            ${task.notes ? `<small>${escapeHtml(task.notes)}</small>` : ""}
+            ${task.notes ? `<p class="task-note">${escapeHtml(task.notes)}</p>` : ""}
+            ${checklist.length ? `<div class="task-checklist-list">${checklist.map((item, index) => `<label><input type="checkbox" data-task-check="${task.id}:${index}" ${item.completed ? "checked" : ""} ${canEdit ? "" : "disabled"}><span>${escapeHtml(item.text)}</span></label>`).join("")}</div>` : ""}
           </div>
           <div class="inline-actions">
+            <button class="secondary" type="button" data-start-task="${task.id}" ${canEdit && !task.completed && workflowStatus !== "Em andamento" ? "" : "disabled"}>Iniciar</button>
             <button class="primary" type="button" data-complete-task="${task.id}" ${canEdit && !task.completed ? "" : "disabled"}>Concluir</button>
             <button class="secondary" type="button" data-reopen-task="${task.id}" ${canEdit && task.completed ? "" : "disabled"}>Reabrir</button>
             <button class="secondary" type="button" data-edit-task="${task.id}" ${canEdit ? "" : "disabled"}>Editar</button>
@@ -2610,7 +2659,6 @@
         </div>
       `;
     }
-
     function historyRow(item) {
       return `
         <div class="history-item">
@@ -4175,6 +4223,10 @@
       if (advance) advance.onclick = advanceProject;
       const addTaskForm = document.getElementById("add-task-form");
       if (addTaskForm) addTaskForm.onsubmit = addProjectTask;
+      const newTaskButton = document.getElementById("new-project-task");
+      if (newTaskButton && addTaskForm) newTaskButton.onclick = () => { addTaskForm.hidden = false; newTaskButton.hidden = true; document.getElementById("task-name")?.focus(); };
+      const cancelTaskButton = document.getElementById("cancel-project-task");
+      if (cancelTaskButton && addTaskForm) cancelTaskButton.onclick = () => { addTaskForm.hidden = true; if (newTaskButton) newTaskButton.hidden = false; };
       const chatForm = document.getElementById("chat-form");
       if (chatForm) chatForm.onsubmit = addChatMessage;
       const toggleHistory = document.getElementById("toggle-history");
@@ -4183,7 +4235,9 @@
         state.historyOpenProjectId = state.historyOpenProjectId === project.id ? "" : project.id;
         render();
       };
+      document.querySelectorAll("[data-start-task]").forEach(button => button.onclick = () => startTask(button.dataset.startTask));
       document.querySelectorAll("[data-complete-task]").forEach(button => button.onclick = () => completeTask(button.dataset.completeTask));
+      document.querySelectorAll("[data-task-check]").forEach(input => input.onchange = () => toggleTaskChecklist(input.dataset.taskCheck));
       document.querySelectorAll("[data-reopen-task]").forEach(button => button.onclick = () => reopenTask(button.dataset.reopenTask));
       document.querySelectorAll("[data-edit-task]").forEach(button => button.onclick = () => editTask(button.dataset.editTask));
       document.querySelectorAll("[data-remove-task]").forEach(button => button.onclick = () => removeTask(button.dataset.removeTask));
@@ -5396,13 +5450,16 @@
         substageId: "manual",
         name,
         ownerId: document.getElementById("task-owner").value || state.sessionUserId || "u1",
-        required: document.getElementById("task-required").value === "true",
-        minDays: Number(document.getElementById("task-min-days").value || 0),
+        required: false,
+        automatic: false,
+        minDays: 0,
         start,
         due,
         completed: false,
         completedAt: "",
-        notes: document.getElementById("task-notes").value.trim()
+        workStatus: "Aberta",
+        notes: document.getElementById("task-notes").value.trim(),
+        checklist: document.getElementById("task-checklist").value.split(/\r?\n/).map(text => text.trim()).filter(Boolean).map(text => ({ id: uid("check"), text, completed: false }))
       };
 
       project.tasks.push(task);
@@ -5441,22 +5498,47 @@
       if (!task) return;
       task.completed = completed;
       task.completedAt = completed ? new Date().toISOString() : "";
+      task.workStatus = completed ? "Concluida" : "Aberta";
       log(project, "Tarefa", task.name, `${completed ? "Concluida" : "Reaberta"} por ${currentUserName()}.`);
       toast(completed ? "Tarefa concluida." : "Tarefa reaberta.");
+      render();
+    }
+
+    function startTask(taskId) {
+      const project = selectedProject();
+      const task = project.tasks.find(item => item.id === taskId);
+      if (!task || task.completed) return;
+      task.workStatus = "Em andamento";
+      log(project, "Tarefa", task.name, `Tarefa iniciada por ${currentUserName()}.`);
+      toast("Tarefa em andamento.");
+      render();
+    }
+
+    function toggleTaskChecklist(payload) {
+      const [taskId, indexText] = payload.split(":");
+      const project = selectedProject();
+      const task = project.tasks.find(item => item.id === taskId);
+      const item = task && Array.isArray(task.checklist) ? task.checklist[Number(indexText)] : null;
+      if (!item) return;
+      item.completed = !item.completed;
       render();
     }
 
     function editTask(taskId) {
       const project = selectedProject();
       const task = project.tasks.find(item => item.id === taskId);
-      const notes = prompt("Observacao da tarefa:", task.notes || "");
+      if (!task) return;
+      const notes = prompt("Observacoes da tarefa:", task.notes || "");
       if (notes === null) return;
-      task.notes = notes;
-      log(project, "Tarefa", task.name, "Observacao atualizada.");
+      const checklistText = prompt("Checklist (um item por linha):", (task.checklist || []).map(item => item.text).join("\n"));
+      if (checklistText === null) return;
+      const completedByText = new Map((task.checklist || []).map(item => [String(item.text).trim().toLowerCase(), !!item.completed]));
+      task.notes = notes.trim();
+      task.checklist = checklistText.split(/\r?\n/).map(text => text.trim()).filter(Boolean).map(text => ({ id: uid("check"), text, completed: completedByText.get(text.toLowerCase()) || false }));
+      log(project, "Tarefa", task.name, "Observacoes e checklist atualizados.");
       toast("Tarefa atualizada.");
       render();
     }
-
     function removeTask(taskId) {
       const project = selectedProject();
       const task = project.tasks.find(item => item.id === taskId);
@@ -5531,8 +5613,8 @@
     initializeApp();
   </script>
   <!-- Script classico para que o MVP tambem carregue ao abrir este HTML diretamente. -->
-  <script src="./assets/saas-core.js?v=20260812-condition-gross"></script>
-  <script src="./assets/saas-extension.js?v=20260812-condition-gross"></script>
+  <script src="./assets/saas-core.js?v=20260812-project-task-wall"></script>
+  <script src="./assets/saas-extension.js?v=20260812-project-task-wall"></script>
   <script src="./assets/reports-v4.js?v=20260805-currency-live"></script>
   <script src="./assets/signatures-ui.js?v=20260810-pdf-placement"></script>
 </body>
