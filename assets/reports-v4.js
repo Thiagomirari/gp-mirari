@@ -7,6 +7,7 @@
   const dateOnly = (value) => String(value || "").slice(0, 10);
   const iso = (date) => new Date(date).toISOString().slice(0, 10);
   const dateBR = (value) => { const date = dateOnly(value); if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return String(value || "-"); const [year, month, day] = date.split("-"); return `${day}/${month}/${year}`; };
+  const list = (value) => Array.isArray(value) ? value : [];
 
   function amount(value) {
     if (typeof value === "number") return Number.isFinite(value) ? value : 0;
@@ -19,14 +20,14 @@
   }
 
   const money = (value) => amount(value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  const activeStages = () => (state.crm?.stages || []).filter((stage) => stage.active !== false);
+  const activeStages = () => list(state.crm?.stages).filter((stage) => stage.active !== false);
   const stageFor = (lead) => activeStages().find((stage) => stage.id === lead.stageId) || {};
-  const clientFor = (lead) => (state.clients || []).find((client) => client.id === lead.clientId);
-  const specifierFor = (id) => (state.specifiers || []).find((item) => item.id === id);
+  const clientFor = (lead) => list(state.clients).find((client) => client.id === lead.clientId);
+  const specifierFor = (id) => list(state.specifiers).find((item) => item.id === id);
   const firstContact = (lead) => dateOnly(lead.crmDates?.firstContact || lead.firstContactDate || lead.createdAt || lead.enteredAt);
   const inRange = (value, filters) => { const date = dateOnly(value); if (!date) return false; if (!filters.start && !filters.end) return true; return (!filters.start || date >= filters.start) && (!filters.end || date <= filters.end); };
   const periodLabel = (filters) => !filters?.start && !filters?.end ? "Todo o periodo" : `${dateBR(filters.start)} - ${dateBR(filters.end)}`;
-  const goalRecords = () => (state.salesGoals || []).filter((goal) => Number(goal.annualRevenue) > 0);
+  const goalRecords = () => list(state.salesGoals).filter((goal) => Number(goal.annualRevenue) > 0);
 
   function salesGoalSummary(filters = {}) {
     const records = goalRecords();
@@ -68,7 +69,7 @@
   function leadValue(lead) {
     const direct = amount(lead.closedValue || lead.value || lead.estimatedValue);
     if (direct) return direct;
-    return (state.proposals || []).filter((proposal) => !proposal.archivedAt && proposal.crmOpportunityRef === lead.id).reduce((max, proposal) => Math.max(max, Number(proposal.totalCents || 0) / 100), 0);
+    return list(state.proposals).filter((proposal) => !proposal.archivedAt && proposal.crmOpportunityRef === lead.id).reduce((max, proposal) => Math.max(max, Number(proposal.totalCents || 0) / 100), 0);
   }
 
   function periodFor(preset) {
@@ -103,7 +104,7 @@
   }
 
   function dataFor(filters) {
-    const all = (state.crm?.leads || []).filter(matchesGlobalFilters);
+    const all = list(state.crm?.leads).filter(matchesGlobalFilters);
     const scoped = all.filter((lead) => inRange(firstContact(lead), filters));
     const sold = all.filter((lead) => isWon(lead) && inRange(lead.crmDates?.closed || lead.updatedAt || firstContact(lead), filters));
     // Closing-period sales and lead-cohort conversion are different metrics.
@@ -111,15 +112,15 @@
     const wonCohort = scoped.filter(isWon);
     const lost = all.filter((lead) => isLost(lead) && inRange(lead.crmDates?.lost || lead.updatedAt || firstContact(lead), filters));
     const scopedLeadIds = new Set(scoped.map((lead) => lead.id));
-    const proposals = (state.proposals || []).filter((proposal) => {
+    const proposals = list(state.proposals).filter((proposal) => {
       if (proposal.archivedAt) return false;
       const opportunityId = proposal.crmOpportunityRef || proposal.leadId || proposal.opportunityId || "";
       return inRange(proposal.createdAt || proposal.updatedAt, filters) || (opportunityId && scopedLeadIds.has(opportunityId));
     });
     const stages = activeStages().map((stage) => { const leads = scoped.filter((lead) => lead.stageId === stage.id); return { id: stage.id, name: stage.name || "Etapa", count: leads.length, value: leads.reduce((sum, lead) => sum + leadValue(lead), 0), probability: Number(stage.probability || 0) }; });
     const partners = new Map();
-    sold.forEach((lead) => { const id = specifierId(lead); if (!id) return; const proposal = (state.proposals || []).filter((item) => item.crmOpportunityRef === lead.id).sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")))[0]; const row = partners.get(id) || { id, name: specifierFor(id)?.name || "Especificador", sales: 0, rt: 0 }; row.sales += leadValue(lead); row.rt += Number(proposal?.priceFormationHistory?.[0]?.analysis?.rtCents || proposal?.priceFormation?.rtCents || 0) / 100; partners.set(id, row); });
-    const team = (state.users || []).filter((user) => user.active !== false).map((user) => { const owned = scoped.filter((lead) => lead.ownerId === user.id); const sales = sold.filter((lead) => lead.ownerId === user.id); const cohortSales = wonCohort.filter((lead) => lead.ownerId === user.id); return { id: user.id, name: user.name, presented: owned.filter(isQualified).length, sold: sales.length, conversion: owned.length ? Math.round(cohortSales.length / owned.length * 100) : 0, ticket: sales.length ? sales.reduce((sum, lead) => sum + leadValue(lead), 0) / sales.length : 0, revisions: 0 }; }).filter((row) => row.presented || row.sold);
+    sold.forEach((lead) => { const id = specifierId(lead); if (!id) return; const proposal = list(state.proposals).filter((item) => item.crmOpportunityRef === lead.id).sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")))[0]; const row = partners.get(id) || { id, name: specifierFor(id)?.name || "Especificador", sales: 0, rt: 0 }; row.sales += leadValue(lead); row.rt += Number(proposal?.priceFormationHistory?.[0]?.analysis?.rtCents || proposal?.priceFormation?.rtCents || 0) / 100; partners.set(id, row); });
+    const team = list(state.users).filter((user) => user.active !== false).map((user) => { const owned = scoped.filter((lead) => lead.ownerId === user.id); const sales = sold.filter((lead) => lead.ownerId === user.id); const cohortSales = wonCohort.filter((lead) => lead.ownerId === user.id); return { id: user.id, name: user.name, presented: owned.filter(isQualified).length, sold: sales.length, conversion: owned.length ? Math.round(cohortSales.length / owned.length * 100) : 0, ticket: sales.length ? sales.reduce((sum, lead) => sum + leadValue(lead), 0) / sales.length : 0, revisions: 0 }; }).filter((row) => row.presented || row.sold);
     const previous = filters.start ? (() => { const previousStart = new Date(`${filters.start}T12:00:00`); previousStart.setMonth(previousStart.getMonth() - 1); const previousEnd = new Date(`${filters.start}T12:00:00`); previousEnd.setDate(0); return all.filter((lead) => { const date = firstContact(lead); return date >= iso(previousStart) && date <= iso(previousEnd); }); })() : [];
     const partnerRows = [...partners.values()].sort((a, b) => b.sales - a.sales);
     return { all, scoped, sold, wonCohort, lost, proposals, stages, channels: channelRows(scoped), team, partners: partnerRows, summary: { leads: scoped.length, mom: previous.length ? (scoped.length - previous.length) / previous.length * 100 : null, qualification: scoped.length ? Math.round(scoped.filter(isQualified).length / scoped.length * 100) : 0, proposalTicket: proposals.length ? proposals.reduce((sum, proposal) => sum + Number(proposal.totalCents || 0) / 100, 0) / proposals.length : 0, soldValue: sold.reduce((sum, lead) => sum + leadValue(lead), 0), salesTicket: sold.length ? sold.reduce((sum, lead) => sum + leadValue(lead), 0) / sold.length : 0, conversion: scoped.length ? Math.round(wonCohort.length / scoped.length * 100) : 0, closeDays: sold.length ? Math.round(sold.reduce((sum, lead) => sum + daysBetween(firstContact(lead), lead.crmDates?.closed || lead.updatedAt), 0) / sold.length) : 0, partnerSales: partnerRows.reduce((sum, row) => sum + row.sales, 0), partnerRt: partnerRows.reduce((sum, row) => sum + row.rt, 0) } };
@@ -159,7 +160,7 @@
 
   function taskMetrics(data, filters) {
     const leadIds = new Set(data.scoped.map((lead) => lead.id));
-    const tasks = (state.crm?.tasks || []).filter((task) => {
+    const tasks = list(state.crm?.tasks).filter((task) => {
       if (!leadIds.has(task.leadId) || task.status === "Cancelada") return false;
       return inRange(task.dueDate || task.createdAt, filters) || inRange(task.completedAt, filters);
     });
@@ -271,10 +272,10 @@
     const commercialFilter = select("report-commercial-stage", "Etapa", data.stages.map((row) => ({ value: row.id, label: row.name })), local.stage, "Todas as etapas");
     const teamFilter = select("report-team-owner", "Responsavel", data.team.map((row) => ({ value: row.id, label: row.name })), local.owner, "Toda a equipe");
     const partnerFilter = select("report-partner", "Especificador", data.partners.map((row) => ({ value: row.id, label: row.name })), local.partner, "Todos os especificadores");
-    const allUsers = (state.users || []).filter((user) => user.active !== false);
+    const allUsers = list(state.users).filter((user) => user.active !== false);
     const teamOptions = [...new Set(allUsers.map((user) => String(user.role || "Sem equipe")))].sort().map((role) => ({ value: role, label: role }));
     const ownerOptions = allUsers.map((user) => ({ value: user.id, label: user.name }));
-    const sourceOptions = [...new Set((state.crm?.leads || []).map((lead) => String(lead.source || "Nao informado")))].sort().map((source) => ({ value: source, label: source }));
+    const sourceOptions = [...new Set(list(state.crm?.leads).map((lead) => String(lead.source || "Nao informado")))].sort().map((source) => ({ value: source, label: source }));
     const stageOptions = activeStages().map((stage) => ({ value: stage.id, label: stage.name }));
 
     target.innerHTML = `<main class="reporting-workspace"><header class="reporting-header"><div><p>INTELIGENCIA COMERCIAL</p><h2>Relatorios e KPIs</h2><span>Uma visao executiva do CRM, propostas e parcerias.</span></div><div class="reporting-actions"><button class="saas-button" id="report-pdf" type="button">Gerar PDF</button><button class="saas-button primary" id="reports-refresh" type="button">Atualizar</button></div></header><section class="reporting-filterbar"><div class="reporting-date"><span>Periodo analisado</span><strong>${periodLabel(filters)}</strong></div><div class="reporting-presets">${presets.map(([id, label]) => `<button class="${filters.preset === id ? "is-active" : ""}" data-report-preset="${id}" type="button">${label}</button>`).join("")}</div>${custom ? `<div class="reporting-custom-dates"><label>Inicio<input id="report-start" type="date" value="${esc(filters.start)}"></label><label>Fim<input id="report-end" type="date" value="${esc(filters.end)}"></label><button class="saas-button primary" id="reports-apply-period" type="button">Aplicar</button></div>` : ""}</section><section class="reporting-kpis">${metric("leads", "Total de leads", data.summary.leads, data.summary.mom === null ? "Sem comparativo anterior" : `${data.summary.mom >= 0 ? "+" : ""}${data.summary.mom.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% vs. mes anterior`, "#")}${metric("pipeline", "Valor no funil", money(openPipeline), `${commercialLeads.length} oportunidade(s) no periodo`, "R$")}${metric("ticket", "Ticket medio do funil", money(commercialFunnelTicket), "Media dos cartoes no funil", "TM")}${metric("proposal", "Ticket medio de orcamentos", money(commercialProposalTicket), `${commercialProposals.length} proposta(s)`, "OR")}${metric("sold", "Valor vendido", money(commercialSoldValue), `${commercialSold.length} venda(s) fechada(s)`, "R$")}${metric("conversion", "Conversao comercial", `${commercialConversion}%`, `${data.lost.length} negocio(s) perdido(s)`, "%")}</section><section class="reporting-section"><header class="reporting-section-head"><div><span>01</span><div><p>MARKETING</p><h3>Atracao e topo de funil</h3></div></div>${marketingFilter}</header><div class="reporting-grid marketing"><article class="report-panel">${panelHead("ORIGEM", "Leads por canal", "Distribuicao das oportunidades no periodo.")}${donutChart(marketingRows)}</article><article class="report-panel">${panelHead("VOLUME", "Canais de aquisicao", "Comparativo visual de entrada de leads.")}${channelBars(marketingRows)}</article><article class="report-side-kpi"><span>Qualificacao</span><strong>${data.summary.qualification}%</strong><p>Leads que avancaram para briefing, medicao ou etapa posterior.</p><i><b style="width:${data.summary.qualification}%"></b></i></article></div></section><section class="reporting-section"><header class="reporting-section-head"><div><span>02</span><div><p>COMERCIAL</p><h3>Desempenho e funil de vendas</h3></div></div>${commercialFilter}</header><div class="reporting-grid commercial"><article class="report-panel report-panel-wide">${panelHead("PIPELINE", "Funil de vendas", "Quantidade de oportunidades e valor por etapa.")}${funnel(commercialStages)}</article><article class="report-panel report-closing-panel">${panelHead("FECHAMENTO", "Indicadores de venda", "Leitura rapida do periodo filtrado.")}<div class="report-closing-list"><div><span>Ticket medio vendido</span><strong>${money(commercialTicket)}</strong></div><div><span>Tempo medio de fechamento</span><strong>${data.summary.closeDays} dias</strong></div><div><span>Negocios perdidos</span><strong>${data.lost.length}</strong></div></div></article></div><article class="report-panel report-table-panel">${panelHead("CANAIS", "Performance por canal", "Leads, vendas, conversao e ticket medio.")}<div class="report-table-scroll"><table class="report-table"><thead><tr><th>Canal</th><th>Leads</th><th>Vendas</th><th>Conversao</th><th>Ticket medio</th></tr></thead><tbody>${channelRows(commercialLeads).map((row) => `<tr><td><span class="report-table-dot"></span><strong>${esc(row.name)}</strong></td><td>${row.leads}</td><td>${row.won}</td><td><span class="report-percent">${row.leads ? Math.round(row.won / row.leads * 100) : 0}%</span></td><td>${row.won ? money(row.value / row.won) : "-"}</td></tr>`).join("") || '<tr><td colspan="5" class="report-table-empty">Nenhum canal para o filtro selecionado.</td></tr>'}</tbody></table></div></article></section><section class="reporting-section"><header class="reporting-section-head"><div><span>03</span><div><p>EQUIPE E PARCERIAS</p><h3>Produtividade comercial</h3></div></div><div class="reporting-section-filters">${teamFilter}${partnerFilter}</div></header><div class="reporting-grid productivity"><article class="report-panel report-team-panel">${panelHead("EQUIPE", "Performance por projetista ou consultor", "Revisoes serao alimentadas pelos projetos relacionais futuramente.")}<div class="report-table-scroll"><table class="report-table"><thead><tr><th>Responsavel</th><th>Apresentados</th><th>Vendidos</th><th>Conversao</th><th>Ticket medio</th><th>Revisoes</th></tr></thead><tbody>${teamRows.map((row) => `<tr><td><strong>${esc(row.name)}</strong></td><td>${row.presented}</td><td>${row.sold}</td><td><span class="report-percent">${row.conversion}%</span></td><td>${money(row.ticket)}</td><td>${row.revisions}</td></tr>`).join("") || '<tr><td colspan="6" class="report-table-empty">Nenhum responsavel com atividade no periodo.</td></tr>'}</tbody></table></div></article><article class="report-panel report-partner-panel">${panelHead("TOP 5", "Arquitetos e especificadores", "Vendido e RT estimada no periodo.")}${rankedBars(partnerRows)}</article></div><div class="reporting-partner-kpis">${metric("partner", "Vendas por parcerias", money(partnerRows.reduce((sum, row) => sum + row.sales, 0)), "Especificadores vinculados", "R$")}${metric("rt", "RT / comissao estimada", money(partnerRows.reduce((sum, row) => sum + row.rt, 0)), "Analises de preco salvas", "RT")}</div></section><section class="reporting-section reporting-future"><header class="reporting-section-head"><div><span>04</span><div><p>PREPARACAO FUTURA</p><h3>Operacao, qualidade e pos-venda</h3></div></div><span class="report-future-badge">Aguardando dados operacionais</span></header><div class="reporting-future-grid"><div><span>Assistencia tecnica / avarias</span><strong>-</strong><small>Chamados por projeto vendido</small></div><div><span>Lead time de entrega e montagem</span><strong>-</strong><small>Fechamento ate montagem concluida</small></div><div><span>NPS / satisfacao</span><strong>-</strong><small>Pesquisa apos a montagem</small></div></div></section><footer class="reporting-source">Fonte: CRM, propostas, usuarios e especificadores. Atualizado conforme os filtros selecionados.</footer></main>`;

@@ -21,9 +21,10 @@ assert.ok(
 );
 assert.match(index, /saas-core\.js/);
 assert.match(index, /saas-extension\.js/);
-assert.match(index, /saas-extension\.js\?v=20260816-proposal-draft-safety/);
+assert.match(index, /saas-extension\.js\?v=20260816-reports-crash-guard/);
 assert.match(index, /saas-theme\.css\?v=20260816-proposal-draft-safety/);
 assert.match(index, /saas-core\.js\?v=20260816-proposal-draft-safety/);
+assert.match(index, /reports-v4\.js\?v=20260816-reports-crash-guard/);
 assert.match(index, /demoProjectCleanupVersion/, "A limpeza controlada dos projetos demonstrativos deve ser versionada.");
 assert.match(index, /defaultState\.projects = \[\]/, "Novas instalacoes nao devem recriar projetos demonstrativos.");
 assert.match(index, /Mural de tarefas/, "Projetos devem exibir o mural simplificado de tarefas.");
@@ -38,6 +39,8 @@ assert.doesNotMatch(index, /Checklist opcional/, "A interface nao deve exibir o 
 assert.match(index, /cloudStateUpdatedAt/, "O estado compartilhado deve rastrear sua revisao remota.");
 assert.match(index, /state_conflict/, "Atualizacoes concorrentes devem ser bloqueadas.");
 assert.match(index, /\.eq\("updated_at", cloudStateUpdatedAt\)/, "O salvamento deve usar controle otimista de concorrencia.");
+assert.match(index, /cloudWriteQueue/, "Gravacoes do mesmo navegador devem ser serializadas.");
+assert.match(index, /function queueStateWrite\(\)/, "A fila de sincronizacao precisa proteger contra falsos conflitos locais.");
 assert.match(index, /proposalDraftSnapshots/, "Rascunhos recuperaveis devem ser mantidos no estado.");
 assert.match(ui, /recordProposalDraftSnapshot/, "Cada rascunho de proposta deve criar uma copia recuperavel.");
 assert.match(ui, /proposal-draft-history/, "A proposta deve permitir abrir o historico de rascunhos.");

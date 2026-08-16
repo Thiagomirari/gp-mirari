@@ -1354,6 +1354,7 @@
     let cloudClient = null;
     let cloudSyncEnabled = false;
     let cloudSaveTimer = null;
+    let cloudWriteQueue = Promise.resolve();
     let cloudStateUpdatedAt = "";
     let cloudSyncConflict = false;
     const todayISO = new Date().toISOString().slice(0, 10);
@@ -1755,10 +1756,19 @@
       cloudSyncConflict = false;
     }
 
+    function queueStateWrite() {
+      const pendingWrite = cloudWriteQueue.then(() => {
+        if (cloudSyncConflict) throw cloudStateConflictError();
+        return writeStateToCloud();
+      });
+      cloudWriteQueue = pendingWrite.catch(() => undefined);
+      return pendingWrite;
+    }
+
     async function saveStateToCloud() {
       if (!cloudSyncEnabled || !getCloudClient() || cloudSyncConflict) return;
       try {
-        await writeStateToCloud();
+        await queueStateWrite();
       } catch (error) {
         console.warn("Falha ao salvar no Supabase:", error.message);
         if (isCloudStateConflict(error)) {
@@ -1771,7 +1781,7 @@
     }
 
     async function saveStateToCloudStrict() {
-      await writeStateToCloud();
+      await queueStateWrite();
     }
 
     async function loadStateFromCloud() {
@@ -5667,8 +5677,8 @@
   </script>
   <!-- Script classico para que o MVP tambem carregue ao abrir este HTML diretamente. -->
   <script src="./assets/saas-core.js?v=20260816-proposal-draft-safety"></script>
-  <script src="./assets/saas-extension.js?v=20260816-proposal-draft-safety"></script>
-  <script src="./assets/reports-v4.js?v=20260805-currency-live"></script>
+  <script src="./assets/saas-extension.js?v=20260816-reports-crash-guard"></script>
+  <script src="./assets/reports-v4.js?v=20260816-reports-crash-guard"></script>
   <script src="./assets/signatures-ui.js?v=20260810-pdf-placement"></script>
 </body>
 </html>
