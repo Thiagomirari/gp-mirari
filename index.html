@@ -1088,7 +1088,7 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
   <script src="./supabase-config.js?v=20260730-crm-tarefas-obrigatorias"></script>
-  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260812-project-task-wall" />
+  <link rel="stylesheet" href="./assets/saas-theme.css?v=20260816-proposal-draft-safety" />
 </head>
 <body>
   <main class="app-shell">
@@ -1354,6 +1354,8 @@
     let cloudClient = null;
     let cloudSyncEnabled = false;
     let cloudSaveTimer = null;
+    let cloudStateUpdatedAt = "";
+    let cloudSyncConflict = false;
     const todayISO = new Date().toISOString().slice(0, 10);
     const nowISO = () => new Date().toISOString();
 
@@ -1622,6 +1624,7 @@
       next.adminEditingSubstage = next.adminEditingSubstage || null;
       next.adminSubstageDraft = next.adminSubstageDraft || null;
       next.viewedStageIndexByProject = next.viewedStageIndexByProject || {};
+      next.proposalDraftSnapshots = Array.isArray(next.proposalDraftSnapshots) ? next.proposalDraftSnapshots.filter(snapshot => snapshot && snapshot.proposalId && snapshot.data).slice(0, 180) : [];
       next.salesGoals = Array.isArray(next.salesGoals) ? next.salesGoals.map(goal => ({ year: Number(goal.year) || new Date().getFullYear(), annualRevenue: Math.max(0, Number(goal.annualRevenue) || 0), updatedAt: goal.updatedAt || "" })) : [];
       return next;
     }
@@ -1692,7 +1695,10 @@
       const sessionUserId = state.sessionUserId;
       const sessionVersionAtLogin = state.sessionVersionAtLogin;
       const activeTab = state.activeTab;
+      const localDraftSnapshots = Array.isArray(state.proposalDraftSnapshots) ? state.proposalDraftSnapshots : [];
       const merged = normalizeState(remoteState || clone(defaultState));
+      const remoteSnapshotIds = new Set((merged.proposalDraftSnapshots || []).map(snapshot => snapshot.id));
+      merged.proposalDraftSnapshots = [...localDraftSnapshots.filter(snapshot => !remoteSnapshotIds.has(snapshot.id)), ...(merged.proposalDraftSnapshots || [])].slice(0, 180);
       merged.sessionUserId = sessionUserId;
       merged.sessionVersionAtLogin = sessionVersionAtLogin;
       merged.activeTab = activeTab || "projects";
@@ -1700,47 +1706,94 @@
     }
 
     function scheduleCloudSave() {
-      if (!cloudSyncEnabled || !getCloudClient()) return;
+      if (!cloudSyncEnabled || !getCloudClient() || cloudSyncConflict) return;
       window.clearTimeout(cloudSaveTimer);
       cloudSaveTimer = window.setTimeout(saveStateToCloud, 700);
     }
 
-    async function saveStateToCloud() {
-      if (!cloudSyncEnabled || !getCloudClient()) return;
-      const { error } = await getCloudClient()
+    function cloudStateConflictError() {
+      const error = new Error("O estado compartilhado foi alterado em outra sessao.");
+      error.code = "state_conflict";
+      return error;
+    }
+
+    function isCloudStateConflict(error) {
+      return !!error && error.code === "state_conflict";
+    }
+
+    async function writeStateToCloud() {
+      if (!getCloudClient()) throw new Error("Supabase nao configurado.");
+      const client = getCloudClient();
+      const snapshot = sharedStateSnapshot();
+      if (!cloudStateUpdatedAt) {
+        const { data, error } = await client.from("gp_app_settings").select("updated_at").eq("key", cloudStateKey).maybeSingle();
+        if (error) throw error;
+        if (data && data.updated_at) {
+          cloudStateUpdatedAt = data.updated_at;
+          throw cloudStateConflictError();
+        }
+        const created = await client.from("gp_app_settings")
+          .upsert({ key: cloudStateKey, value: snapshot, updated_at: new Date().toISOString() })
+          .select("updated_at")
+          .maybeSingle();
+        if (created.error) throw created.error;
+        if (!created.data) throw new Error("Nao foi possivel iniciar o estado compartilhado.");
+        cloudStateUpdatedAt = created.data.updated_at;
+        cloudSyncConflict = false;
+        return;
+      }
+      const { data, error } = await client
         .from("gp_app_settings")
-        .upsert({ key: cloudStateKey, value: sharedStateSnapshot(), updated_at: new Date().toISOString() });
-      if (error) {
+        .update({ value: snapshot, updated_at: new Date().toISOString() })
+        .eq("key", cloudStateKey)
+        .eq("updated_at", cloudStateUpdatedAt)
+        .select("updated_at")
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw cloudStateConflictError();
+      cloudStateUpdatedAt = data.updated_at;
+      cloudSyncConflict = false;
+    }
+
+    async function saveStateToCloud() {
+      if (!cloudSyncEnabled || !getCloudClient() || cloudSyncConflict) return;
+      try {
+        await writeStateToCloud();
+      } catch (error) {
         console.warn("Falha ao salvar no Supabase:", error.message);
-        toast("Nao foi possivel sincronizar com o Supabase.");
+        if (isCloudStateConflict(error)) {
+          cloudSyncConflict = true;
+          toast("Outra sessao atualizou o sistema. Seu rascunho ficou protegido neste navegador; recarregue antes de continuar.");
+        } else {
+          toast("Nao foi possivel sincronizar com o Supabase.");
+        }
       }
     }
 
     async function saveStateToCloudStrict() {
-      if (!getCloudClient()) throw new Error("Supabase nao configurado.");
-      const { error } = await getCloudClient()
-        .from("gp_app_settings")
-        .upsert({ key: cloudStateKey, value: sharedStateSnapshot(), updated_at: new Date().toISOString() });
-      if (error) throw error;
+      await writeStateToCloud();
     }
 
     async function loadStateFromCloud() {
       if (!getCloudClient()) return;
       const { data, error } = await getCloudClient()
         .from("gp_app_settings")
-        .select("value")
+        .select("value, updated_at")
         .eq("key", cloudStateKey)
         .maybeSingle();
       if (error) {
-        console.warn("Falha ao carregar do Supabase:", error.message);
+        console.warn("Falha ao carregar dados do Supabase:", error.message);
         toast("Nao foi possivel carregar dados do Supabase.");
         return;
       }
       if (data && data.value) {
+        cloudStateUpdatedAt = data.updated_at || "";
+        cloudSyncConflict = false;
         state = mergeCloudState(data.value);
         localStorage.setItem(storageKey, JSON.stringify(state));
       } else {
-        await saveStateToCloud();
+        cloudStateUpdatedAt = "";
+        await saveStateToCloudStrict();
       }
     }
 
@@ -5613,8 +5666,8 @@
     initializeApp();
   </script>
   <!-- Script classico para que o MVP tambem carregue ao abrir este HTML diretamente. -->
-  <script src="./assets/saas-core.js?v=20260812-project-task-wall"></script>
-  <script src="./assets/saas-extension.js?v=20260812-project-task-wall"></script>
+  <script src="./assets/saas-core.js?v=20260816-proposal-draft-safety"></script>
+  <script src="./assets/saas-extension.js?v=20260816-proposal-draft-safety"></script>
   <script src="./assets/reports-v4.js?v=20260805-currency-live"></script>
   <script src="./assets/signatures-ui.js?v=20260810-pdf-placement"></script>
 </body>

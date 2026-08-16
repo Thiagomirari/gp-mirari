@@ -21,9 +21,9 @@ assert.ok(
 );
 assert.match(index, /saas-core\.js/);
 assert.match(index, /saas-extension\.js/);
-assert.match(index, /saas-extension\.js\?v=20260812-project-task-wall/);
-assert.match(index, /saas-theme\.css\?v=20260812-project-task-wall/);
-assert.match(index, /saas-core\.js\?v=20260812-project-task-wall/);
+assert.match(index, /saas-extension\.js\?v=20260816-proposal-draft-safety/);
+assert.match(index, /saas-theme\.css\?v=20260816-proposal-draft-safety/);
+assert.match(index, /saas-core\.js\?v=20260816-proposal-draft-safety/);
 assert.match(index, /demoProjectCleanupVersion/, "A limpeza controlada dos projetos demonstrativos deve ser versionada.");
 assert.match(index, /defaultState\.projects = \[\]/, "Novas instalacoes nao devem recriar projetos demonstrativos.");
 assert.match(index, /Mural de tarefas/, "Projetos devem exibir o mural simplificado de tarefas.");
@@ -35,6 +35,13 @@ assert.match(index, /task\.workStatus = "Em andamento"/, "O mural deve suportar 
 assert.match(index, /data-task-check/, "Tarefas devem aceitar checklist em lista.");
 assert.doesNotMatch(index, /id="task-required"/, "Obrigatoriedade nao deve ser configuravel no mural.");
 assert.doesNotMatch(index, /Checklist opcional/, "A interface nao deve exibir o rotulo opcional.");
+assert.match(index, /cloudStateUpdatedAt/, "O estado compartilhado deve rastrear sua revisao remota.");
+assert.match(index, /state_conflict/, "Atualizacoes concorrentes devem ser bloqueadas.");
+assert.match(index, /\.eq\("updated_at", cloudStateUpdatedAt\)/, "O salvamento deve usar controle otimista de concorrencia.");
+assert.match(index, /proposalDraftSnapshots/, "Rascunhos recuperaveis devem ser mantidos no estado.");
+assert.match(ui, /recordProposalDraftSnapshot/, "Cada rascunho de proposta deve criar uma copia recuperavel.");
+assert.match(ui, /proposal-draft-history/, "A proposta deve permitir abrir o historico de rascunhos.");
+assert.match(ui, /draft_restored/, "A restauracao de rascunho deve ficar registrada no historico.");
 assert.match(index, /crm-optional-fields/);
 assert.match(index, /Data do primeiro contato/);
 assert.match(index, /Proxima tarefa/);
