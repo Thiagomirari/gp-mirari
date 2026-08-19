@@ -212,6 +212,15 @@
 .report-channel-detail-panel h4 { margin:0; color:#2F2F2F; font-size:15px; }
 .report-channel-detail-panel p { margin:0; color:#6D6A67; font-size:11px; }
 .report-channel-detail-panel small { color:#8B8585; font-size:10px; }
+.report-print-channel-details { display:none; }
+.report-print-options-modal .modal-box { max-width:650px; }
+.report-print-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+.report-print-options label { display:flex; align-items:flex-start; gap:9px; min-height:72px; padding:11px; border:1px solid #EAE6E1; border-radius:8px; background:#FCFCFB; cursor:pointer; }
+.report-print-options label:hover { border-color:#D8AA7F; background:#FFF9F4; }
+.report-print-options input { width:17px; height:17px; margin:1px 0 0; accent-color:#9A7356; }
+.report-print-options span { display:grid; gap:4px; }
+.report-print-options strong { color:#2F2F2F; font-size:12px; }
+.report-print-options small { color:#6D6A67; font-size:10px; line-height:1.35; }
 .report-evolution-section .report-panel { padding-bottom:12px; }
 .report-line-legend { display:flex; justify-content:flex-end; gap:16px; margin:-4px 4px 5px; color:#6D6A67; font-size:10px; font-weight:750; }
 .report-line-legend span { display:flex; align-items:center; gap:6px; }
@@ -234,7 +243,7 @@
 .report-goal small { color:#6D6A67; font-size:10px; font-weight:800; text-align:right; }
 @media (max-width:1500px) { .report-global-filters { grid-template-columns:1fr; }.report-global-filter-actions { justify-content:flex-end; }.report-finance-strip { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:860px) { .report-global-filter-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }.report-alert-strip { grid-template-columns:1fr; }.report-detail-drawer { align-items:start; }.report-line-chart { min-width:620px; }.report-evolution-section .report-panel { overflow-x:auto; } }
-@media (max-width:560px) { .report-global-filter-grid,.report-finance-strip { grid-template-columns:1fr; }.report-global-filter-actions { display:grid; grid-template-columns:1fr 1fr; }.report-global-filter-actions .saas-button { width:100%; }.report-detail-drawer,.report-channel-detail-panel > header { display:grid; }.report-detail-drawer .saas-button,.report-channel-detail-panel > header .saas-button { width:100%; }.report-alert-strip > div { grid-template-columns:auto minmax(0,1fr); } }
+@media (max-width:560px) { .report-global-filter-grid,.report-finance-strip,.report-print-options { grid-template-columns:1fr; }.report-global-filter-actions { display:grid; grid-template-columns:1fr 1fr; }.report-global-filter-actions .saas-button { width:100%; }.report-detail-drawer,.report-channel-detail-panel > header { display:grid; }.report-detail-drawer .saas-button,.report-channel-detail-panel > header .saas-button { width:100%; }.report-alert-strip > div { grid-template-columns:auto minmax(0,1fr); } }
 
 /* CRM v5: modern commercial workspace, scoped to the CRM tab. */
 .crm-saas-workspace { display:grid; gap:18px; padding:0 !important; border:0 !important; background:transparent !important; box-shadow:none !important; }

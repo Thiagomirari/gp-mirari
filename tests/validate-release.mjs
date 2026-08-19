@@ -22,9 +22,9 @@ assert.ok(
 assert.match(index, /saas-core\.js/);
 assert.match(index, /saas-extension\.js/);
 assert.match(index, /saas-extension\.js\?v=20260816-reports-crash-guard/);
-assert.match(index, /saas-theme\.css\?v=20260819-report-channel-drilldown/);
+assert.match(index, /saas-theme\.css\?v=20260819-report-pdf-sections/);
 assert.match(index, /saas-core\.js\?v=20260816-proposal-draft-safety/);
-assert.match(index, /reports-v4\.js\?v=20260819-report-channel-drilldown/);
+assert.match(index, /reports-v4\.js\?v=20260819-report-pdf-sections/);
 assert.match(index, /demoProjectCleanupVersion/, "A limpeza controlada dos projetos demonstrativos deve ser versionada.");
 assert.match(index, /defaultState\.projects = \[\]/, "Novas instalacoes nao devem recriar projetos demonstrativos.");
 assert.match(index, /Mural de tarefas/, "Projetos devem exibir o mural simplificado de tarefas.");

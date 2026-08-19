@@ -127,6 +127,7 @@
   }
 
   const palette = ["#D8AA7F", "#5E7484", "#6F8A7B", "#B99058", "#A87878", "#8B8585"];
+  const defaultPdfSections = ["summary", "goals", "marketing", "evolution", "commercial", "productivity", "future"];
   const emptyChart = (text) => `<div class="report-empty-chart"><span>Sem dados</span><small>${esc(text)}</small></div>`;
   const metric = (tone, label, value, detail, mark) => `<article class="report-metric report-metric-${tone}"><span class="report-metric-mark">${esc(mark)}</span><div><p>${esc(label)}</p><strong>${esc(value)}</strong><small>${esc(detail)}</small></div></article>`;
   const panelHead = (eyebrow, title, detail, control = "") => `<header class="report-panel-head"><div><span>${esc(eyebrow)}</span><h3>${esc(title)}</h3><p>${esc(detail)}</p></div>${control}</header>`;
@@ -217,13 +218,23 @@
     popup.document.close();
   }
 
-  function printReport() {
+  function channelPrintDetails(leads) {
+    const channels = channelRows(leads);
+    return `<section class="report-print-channel-details" data-report-print-section="channel-detail"><header class="reporting-section-head"><div><span>01A</span><div><p>MARKETING</p><h3>Detalhamento de oportunidades por canal</h3></div></div><span class="report-future-badge">Opcional no PDF</span></header>${channels.map((channel) => { const rows = leads.filter((lead) => String(lead.source || "Nao informado") === channel.name); return `<article class="report-panel"><header class="report-panel-head"><div><span>CANAL</span><h3>${esc(channel.name)}</h3><p>${rows.length} oportunidade(s) no periodo.</p></div></header><div class="report-table-scroll"><table class="report-table"><thead><tr><th>Oportunidade</th><th>Etapa</th><th>Responsavel</th><th>Valor</th></tr></thead><tbody>${rows.map((lead) => `<tr><td><strong>${esc(lead.client || lead.interest || "Oportunidade sem nome")}</strong><br><small>${esc(lead.interest || "Sem interesse informado")} · ${dateBR(firstContact(lead))}</small></td><td>${esc(stageFor(lead).name || lead.status || "Sem etapa")}</td><td>${esc(reportUser(lead.ownerId).name || "Nao informado")}</td><td>${money(leadValue(lead))}</td></tr>`).join("")}</tbody></table></div></article>`; }).join("") || `<article class="report-panel"><p>Nenhuma oportunidade para os filtros selecionados.</p></article>`}</section>`;
+  }
+
+  function printReport(selectedSections = defaultPdfSections) {
     const source = document.querySelector("#tab-reports .reporting-workspace");
     if (!source) return;
     const popup = window.open("", "_blank", "width=1280,height=860");
     if (!popup) return;
 
+    const selected = new Set(selectedSections);
+    if (selected.has("channel-detail")) selected.add("marketing");
     const snapshot = source.cloneNode(true);
+    snapshot.querySelectorAll("[data-report-print-section]").forEach((element) => {
+      if (!selected.has(element.dataset.reportPrintSection)) element.remove();
+    });
     const sourceFields = [...source.querySelectorAll("select, input")];
     [...snapshot.querySelectorAll("select, input")].forEach((field, index) => {
       const original = sourceFields[index];
@@ -235,7 +246,7 @@
       printable.textContent = value || "Todos";
       field.replaceWith(printable);
     });
-    snapshot.querySelectorAll("button, .reporting-actions, .reporting-presets, .report-global-filter-actions, .report-detail-drawer").forEach((element) => element.remove());
+    snapshot.querySelectorAll("button, .reporting-actions, .reporting-presets, .report-global-filter-actions, .report-detail-drawer, .report-channel-detail-panel").forEach((element) => element.remove());
     snapshot.querySelectorAll("[tabindex], [role=button]").forEach((element) => {
       element.removeAttribute("tabindex");
       element.removeAttribute("role");
@@ -246,9 +257,38 @@
     snapshot.querySelector(".reporting-header > div")?.appendChild(generated);
 
     const headAssets = [...document.head.querySelectorAll('style, link[rel="stylesheet"]')].map((node) => node.outerHTML).join("");
-    popup.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base href="${esc(document.baseURI)}"><title>Relatorios e KPIs - GP Mirari</title>${headAssets}<style>@page{size:A4 landscape;margin:8mm}html,body{background:#fff!important}body{margin:0!important;padding:0!important;color:#2f2f2f!important}.reporting-workspace{width:100%!important;max-width:none!important;margin:0!important;gap:14px!important;animation:none!important}.reporting-header{padding-bottom:10px!important}.reporting-header h2{font-size:24px!important}.reporting-actions,.reporting-presets,.report-global-filter-actions,.report-detail-drawer,button{display:none!important}.reporting-filterbar{padding:12px!important;break-inside:avoid}.report-global-filters{margin:0!important;padding:0!important;border:0!important}.report-global-filter-grid{gap:8px!important}.report-global-select{min-width:0!important}.report-print-filter-value{display:block;padding:7px 9px;border:1px solid #e2ddd7;border-radius:7px;background:#fff;color:#2f2f2f;font-weight:700}.report-print-generated{display:block;margin-top:6px;color:#8b8585;font-size:10px}.reporting-kpis,.report-finance-strip,.reporting-partner-kpis{gap:8px!important}.report-metric,.report-panel,.report-side-kpi,.reporting-future-grid>div,tr{break-inside:avoid}.reporting-section{margin-top:2px!important}.reporting-section-head{margin-bottom:8px!important}.report-table-scroll{overflow:visible!important}.report-table{font-size:10px!important}thead{display:table-header-group}svg{max-width:100%!important}.reporting-source{margin-top:8px!important}.report-print-toolbar{position:fixed;right:18px;bottom:18px;z-index:10}.report-print-toolbar button{display:block!important;border:0;border-radius:8px;background:#d8aa7f;color:#fff;padding:11px 16px;font:700 12px Inter,Arial,sans-serif;cursor:pointer}@media print{.report-print-toolbar{display:none!important}}</style></head><body>${snapshot.outerHTML}<div class="report-print-toolbar"><button type="button" onclick="window.print()">Imprimir / salvar PDF</button></div></body></html>`);
+    popup.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base href="${esc(document.baseURI)}"><title>Relatorios e KPIs - GP Mirari</title>${headAssets}<style>@page{size:A4 landscape;margin:8mm}html,body{background:#fff!important}body{margin:0!important;padding:0!important;color:#2f2f2f!important}.reporting-workspace{width:100%!important;max-width:none!important;margin:0!important;gap:14px!important;animation:none!important}.reporting-header{padding-bottom:10px!important}.reporting-header h2{font-size:24px!important}.reporting-actions,.reporting-presets,.report-global-filter-actions,.report-detail-drawer,button{display:none!important}.reporting-filterbar{padding:12px!important;break-inside:avoid}.report-global-filters{margin:0!important;padding:0!important;border:0!important}.report-global-filter-grid{gap:8px!important}.report-global-select{min-width:0!important}.report-print-filter-value{display:block;padding:7px 9px;border:1px solid #e2ddd7;border-radius:7px;background:#fff;color:#2f2f2f;font-weight:700}.report-print-generated{display:block;margin-top:6px;color:#8b8585;font-size:10px}.reporting-kpis,.report-finance-strip,.reporting-partner-kpis{gap:8px!important}.report-metric,.report-panel,.report-side-kpi,.reporting-future-grid>div,tr{break-inside:avoid}.reporting-section{margin-top:2px!important}.reporting-section-head{margin-bottom:8px!important}.report-table-scroll{overflow:visible!important}.report-table{font-size:10px!important}thead{display:table-header-group}svg{max-width:100%!important}.report-print-channel-details{display:grid!important;gap:12px!important}.reporting-source{margin-top:8px!important}.report-print-toolbar{position:fixed;right:18px;bottom:18px;z-index:10}.report-print-toolbar button{display:block!important;border:0;border-radius:8px;background:#d8aa7f;color:#fff;padding:11px 16px;font:700 12px Inter,Arial,sans-serif;cursor:pointer}@media print{.report-print-toolbar{display:none!important}}</style></head><body>${snapshot.outerHTML}<div class="report-print-toolbar"><button type="button" onclick="window.print()">Imprimir / salvar PDF</button></div></body></html>`);
     popup.document.close();
     popup.focus();
+  }
+
+  function openReportPrintOptions() {
+    const selected = new Set(Array.isArray(window.reportPrintSections) ? window.reportPrintSections : defaultPdfSections);
+    const options = [
+      ["summary", "Resumo executivo", "Indicadores principais e filtros aplicados"],
+      ["goals", "Metas comerciais", "Meta, atingimento e referências de período"],
+      ["marketing", "Marketing", "Atração e topo de funil"],
+      ["channel-detail", "Detalhamento por canal", "Lista de oportunidades por canal; desmarcado por padrão"],
+      ["evolution", "Evolução", "Movimentação de leads e vendas"],
+      ["commercial", "Comercial", "Funil, indicadores e performance por canal"],
+      ["productivity", "Equipe e parcerias", "Performance comercial e especificadores"],
+      ["future", "Operação e pós-venda", "Bloco de preparação futura"]
+    ];
+    const modal = document.createElement("div");
+    modal.className = "modal open report-print-options-modal";
+    modal.setAttribute("aria-hidden", "false");
+    modal.innerHTML = `<div class="modal-box"><div class="panel-header"><div><p class="eyebrow">Relatórios</p><h2>Selecionar conteúdo do PDF</h2></div><button class="ghost" type="button" data-close-report-print>Fechar</button></div><form class="form-box" id="report-print-options-form"><p class="muted">Escolha as seções que deseja incluir. O detalhamento de oportunidades por canal é opcional e inicia desmarcado.</p><div class="report-print-options">${options.map(([id, title, detail]) => `<label><input type="checkbox" name="report-print-section" value="${id}" ${selected.has(id) ? "checked" : ""}><span><strong>${esc(title)}</strong><small>${esc(detail)}</small></span></label>`).join("")}</div><div class="actions"><button class="secondary" type="button" data-close-report-print>Cancelar</button><button class="primary" type="submit">Gerar PDF</button></div></form></div>`;
+    document.body.appendChild(modal);
+    modal.querySelectorAll("[data-close-report-print]").forEach((button) => button.addEventListener("click", () => modal.remove()));
+    modal.querySelector("#report-print-options-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const sections = [...modal.querySelectorAll('input[name="report-print-section"]:checked')].map((input) => input.value);
+      if (!sections.length) return toast("Selecione ao menos uma seção para gerar o PDF.");
+      if (sections.includes("channel-detail") && !sections.includes("marketing")) sections.push("marketing");
+      window.reportPrintSections = sections;
+      modal.remove();
+      printReport(sections);
+    });
   }
 
   function dashboardMetrics() {
@@ -301,17 +341,23 @@
     target.querySelectorAll(".reporting-section-head > .report-select, .reporting-section-filters").forEach((element) => element.remove());
 
     const executiveKpis = target.querySelector(".reporting-kpis");
+    executiveKpis?.setAttribute("data-report-print-section", "summary");
     if (executiveKpis) executiveKpis.innerHTML = `${operationalMetric("leads", "leads", "Total de leads", data.summary.leads, data.summary.mom === null ? "Sem comparativo anterior" : `${data.summary.mom >= 0 ? "+" : ""}${data.summary.mom.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% vs. periodo anterior`, "#")}${operationalMetric("pipeline", "pipeline", "Valor no funil", money(openPipeline), `${commercialLeads.length} oportunidade(s) no periodo`, "R$")}${operationalMetric("funnel-ticket", "ticket", "Ticket medio do funil", money(commercialFunnelTicket), "Media das oportunidades", "TM")}${operationalMetric("sold", "sold", "Valor vendido", money(commercialSoldValue), `${commercialSold.length} venda(s) fechada(s)`, "R$")}${operationalMetric("sales-ticket", "proposal", "Ticket medio vendido", money(commercialTicket), "Media das vendas fechadas", "TV")}${operationalMetric("conversion", "conversion", "Conversao comercial", `${commercialConversion}%`, `${data.lost.length} negocio(s) perdido(s)`, "%")}`;
 
     executiveKpis?.insertAdjacentHTML("afterend", goalDashboard(data, filters));
+    target.querySelector(".reporting-goals")?.setAttribute("data-report-print-section", "goals");
 
     executiveKpis?.insertAdjacentHTML("afterend", `<section class="report-detail-drawer" id="report-detail-drawer" hidden></section>`);
     const sections = target.querySelectorAll(".reporting-section");
     const marketingSection = sections.length ? sections[0] : null;
+    marketingSection?.setAttribute("data-report-print-section", "marketing");
     const marketingChannels = channelRows(data.scoped);
-    marketingSection?.insertAdjacentHTML("beforeend", `<article class="report-panel report-channel-explorer"><header class="report-panel-head"><div><span>VERIFICACAO</span><h3>Oportunidades por canal</h3><p>Abra um canal para conferir seus registros e corrigir a origem diretamente no CRM.</p></div></header><div class="report-table-scroll"><table class="report-table"><thead><tr><th>Canal</th><th>Oportunidades</th><th></th></tr></thead><tbody>${marketingChannels.map((row) => `<tr><td><span class="report-table-dot"></span><strong>${esc(row.name)}</strong></td><td>${row.leads}</td><td><button class="saas-button report-channel-detail-button" data-report-channel-detail="${esc(row.name)}" type="button">Ver oportunidades</button></td></tr>`).join("") || '<tr><td colspan="3" class="report-table-empty">Nenhuma oportunidade para os filtros selecionados.</td></tr>'}</tbody></table></div><section class="report-channel-detail-panel" id="report-channel-detail-panel" hidden></section></article>`);
-    marketingSection?.insertAdjacentHTML("afterend", `<section class="reporting-section report-evolution-section"><header class="reporting-section-head"><div><span>+</span><div><p>EVOLUCAO</p><h3>Movimentacao no periodo</h3></div></div></header><article class="report-panel">${panelHead("TENDENCIA", "Leads e vendas ao longo do tempo", "Passe o mouse sobre os pontos para visualizar os valores.")}${lineChart(timeline)}</article></section>`);
+    marketingSection?.insertAdjacentHTML("beforeend", `<article class="report-panel report-channel-explorer"><header class="report-panel-head"><div><span>VERIFICACAO</span><h3>Oportunidades por canal</h3><p>Abra um canal para conferir seus registros e corrigir a origem diretamente no CRM.</p></div></header><div class="report-table-scroll"><table class="report-table"><thead><tr><th>Canal</th><th>Oportunidades</th><th></th></tr></thead><tbody>${marketingChannels.map((row) => `<tr><td><span class="report-table-dot"></span><strong>${esc(row.name)}</strong></td><td>${row.leads}</td><td><button class="saas-button report-channel-detail-button" data-report-channel-detail="${esc(row.name)}" type="button">Ver oportunidades</button></td></tr>`).join("") || '<tr><td colspan="3" class="report-table-empty">Nenhuma oportunidade para os filtros selecionados.</td></tr>'}</tbody></table></div><section class="report-channel-detail-panel" id="report-channel-detail-panel" hidden></section></article>${channelPrintDetails(data.scoped)}`);
+    marketingSection?.insertAdjacentHTML("afterend", `<section class="reporting-section report-evolution-section" data-report-print-section="evolution"><header class="reporting-section-head"><div><span>+</span><div><p>EVOLUCAO</p><h3>Movimentacao no periodo</h3></div></div></header><article class="report-panel">${panelHead("TENDENCIA", "Leads e vendas ao longo do tempo", "Passe o mouse sobre os pontos para visualizar os valores.")}${lineChart(timeline)}</article></section>`);
     const commercialSection = sections.length > 1 ? sections[1] : null;
+    commercialSection?.setAttribute("data-report-print-section", "commercial");
+    sections[2]?.setAttribute("data-report-print-section", "productivity");
+    sections[3]?.setAttribute("data-report-print-section", "future");
     commercialSection?.querySelector(".reporting-grid.commercial")?.insertAdjacentHTML("beforebegin", `<div class="report-finance-strip">${metric("ticket", "Ticket medio do funil", money(commercialFunnelTicket), `${commercialLeads.length} oportunidade(s)`, "TM")}${metric("proposal", "Ticket medio de orcamentos", money(commercialProposalTicket), `${commercialProposals.length} proposta(s)`, "OR")}${metric("sold", "Ticket medio vendido", money(commercialTicket), `${commercialSold.length} venda(s)`, "TV")}${metric("pipeline", "Valor vendido", money(commercialSoldValue), "Fechamentos do periodo", "R$")}</div>`);
 
     const teamTable = target.querySelector(".report-team-panel .report-table-scroll");
@@ -359,7 +405,7 @@
     document.querySelectorAll("[data-report-preset]").forEach((button) => button.onclick = () => { window.reportFilters = button.dataset.reportPreset === "custom" ? { ...filters, preset: "custom" } : periodFor(button.dataset.reportPreset); refreshApp(); });
     $("reports-apply-period")?.addEventListener("click", () => { window.reportFilters = { preset: "custom", start: $("report-start").value || filters.start, end: $("report-end").value || filters.end }; refreshApp(); });
     $("reports-refresh").onclick = refreshApp;
-    $("report-pdf").onclick = printReport;
+    $("report-pdf").onclick = openReportPrintOptions;
     $("report-marketing-channel")?.addEventListener("change", (event) => { window.reportBlockFilters = { ...local, channel: event.target.value }; render(); });
     $("report-commercial-stage")?.addEventListener("change", (event) => { window.reportBlockFilters = { ...local, stage: event.target.value }; render(); });
     $("report-team-owner")?.addEventListener("change", (event) => { window.reportBlockFilters = { ...local, owner: event.target.value }; render(); });

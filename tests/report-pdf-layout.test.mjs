@@ -10,7 +10,9 @@ for (const marker of ["Relatorio executivo", "Visao consolidada", "Periodo anali
 assert.match(source, /source\.cloneNode\(true\)/, "O PDF deve partir da tela atual de Relatorios.");
 assert.match(source, /snapshot\.outerHTML/, "O PDF deve preservar os mesmos blocos exibidos no painel.");
 assert.match(source, /@page\{size:A4 landscape/, "O painel completo deve ser impresso em A4 horizontal.");
-assert.match(source, /\$\("report-pdf"\)\.onclick = printReport/, "O botao deve imprimir o painel corrente, com seus filtros aplicados.");
+assert.match(source, /\$\("report-pdf"\)\.onclick = openReportPrintOptions/, "O botao deve permitir selecionar o conteudo antes de gerar o PDF.");
+assert.match(source, /snapshot\.querySelectorAll\("\[data-report-print-section\]"\)/, "O PDF deve remover as secoes que nao foram selecionadas.");
+assert.match(source, /Detalhamento por canal/, "O detalhamento por canal deve ser opcional no PDF.");
 for (const selector of ["reporting-kpis", "report-evolution-section", "report-finance-strip", "report-team-panel", "report-partner-panel", "reporting-future"]) {
   assert.match(source, new RegExp(selector), `O PDF deve incluir o bloco ${selector} exibido na tela.`);
 }
