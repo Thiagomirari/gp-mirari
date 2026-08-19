@@ -308,6 +308,8 @@
     executiveKpis?.insertAdjacentHTML("afterend", `<section class="report-detail-drawer" id="report-detail-drawer" hidden></section>`);
     const sections = target.querySelectorAll(".reporting-section");
     const marketingSection = sections.length ? sections[0] : null;
+    const marketingChannels = channelRows(data.scoped);
+    marketingSection?.insertAdjacentHTML("beforeend", `<article class="report-panel report-channel-explorer"><header class="report-panel-head"><div><span>VERIFICACAO</span><h3>Oportunidades por canal</h3><p>Abra um canal para conferir seus registros e corrigir a origem diretamente no CRM.</p></div></header><div class="report-table-scroll"><table class="report-table"><thead><tr><th>Canal</th><th>Oportunidades</th><th></th></tr></thead><tbody>${marketingChannels.map((row) => `<tr><td><span class="report-table-dot"></span><strong>${esc(row.name)}</strong></td><td>${row.leads}</td><td><button class="saas-button report-channel-detail-button" data-report-channel-detail="${esc(row.name)}" type="button">Ver oportunidades</button></td></tr>`).join("") || '<tr><td colspan="3" class="report-table-empty">Nenhuma oportunidade para os filtros selecionados.</td></tr>'}</tbody></table></div><section class="report-channel-detail-panel" id="report-channel-detail-panel" hidden></section></article>`);
     marketingSection?.insertAdjacentHTML("afterend", `<section class="reporting-section report-evolution-section"><header class="reporting-section-head"><div><span>+</span><div><p>EVOLUCAO</p><h3>Movimentacao no periodo</h3></div></div></header><article class="report-panel">${panelHead("TENDENCIA", "Leads e vendas ao longo do tempo", "Passe o mouse sobre os pontos para visualizar os valores.")}${lineChart(timeline)}</article></section>`);
     const commercialSection = sections.length > 1 ? sections[1] : null;
     commercialSection?.querySelector(".reporting-grid.commercial")?.insertAdjacentHTML("beforebegin", `<div class="report-finance-strip">${metric("ticket", "Ticket medio do funil", money(commercialFunnelTicket), `${commercialLeads.length} oportunidade(s)`, "TM")}${metric("proposal", "Ticket medio de orcamentos", money(commercialProposalTicket), `${commercialProposals.length} proposta(s)`, "OR")}${metric("sold", "Ticket medio vendido", money(commercialTicket), `${commercialSold.length} venda(s)`, "TV")}${metric("pipeline", "Valor vendido", money(commercialSoldValue), "Fechamentos do periodo", "R$")}</div>`);
@@ -327,6 +329,29 @@
       const open = () => { const detail = detailMessages[item.dataset.reportDetail]; const drawer = $("report-detail-drawer"); if (!drawer || !detail) return; drawer.hidden = false; drawer.innerHTML = `<div><span>DETALHAMENTO</span><strong>${esc(detail[0])}</strong><p>${esc(detail[1])}</p></div><button class="saas-button" id="report-close-detail" type="button">Fechar</button>`; $("report-close-detail").onclick = () => { drawer.hidden = true; }; };
       item.onclick = open;
       item.onkeydown = (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); } };
+    });
+
+    const channelDetailPanel = $("report-channel-detail-panel");
+    const openLeadInCRM = (leadId) => {
+      const lead = list(state.crm?.leads).find((item) => item.id === leadId);
+      if (!lead) return;
+      const leadStage = list(state.crm?.stages).find((stage) => stage.id === lead.stageId);
+      if (leadStage?.funnelId) state.crm.activeFunnelId = leadStage.funnelId;
+      state.crm.selectedLeadId = lead.id;
+      state.crm.expandedLeadId = lead.id;
+      state.activeTab = "crm";
+      refreshApp();
+    };
+    target.querySelectorAll("[data-report-channel-detail]").forEach((button) => {
+      button.onclick = () => {
+        const channel = button.dataset.reportChannelDetail || "Nao informado";
+        const leads = data.scoped.filter((lead) => String(lead.source || "Nao informado") === channel);
+        if (!channelDetailPanel) return;
+        channelDetailPanel.hidden = false;
+        channelDetailPanel.innerHTML = `<header><div><span>CANAL SELECIONADO</span><h4>${esc(channel)}</h4><p>${leads.length} oportunidade(s) no periodo e filtros atuais.</p></div><button class="saas-button" id="report-close-channel-detail" type="button">Fechar</button></header><div class="report-table-scroll"><table class="report-table"><thead><tr><th>Oportunidade</th><th>Etapa</th><th>Responsavel</th><th>Valor</th><th></th></tr></thead><tbody>${leads.map((lead) => `<tr><td><strong>${esc(lead.client || lead.interest || "Oportunidade sem nome")}</strong><br><small>${esc(lead.interest || "Sem interesse informado")} · ${dateBR(firstContact(lead))}</small></td><td>${esc(stageFor(lead).name || lead.status || "Sem etapa")}</td><td>${esc(reportUser(lead.ownerId).name || "Nao informado")}</td><td>${money(leadValue(lead))}</td><td><button class="saas-button primary" data-report-open-crm-lead="${esc(lead.id)}" type="button">Abrir no CRM</button></td></tr>`).join("") || '<tr><td colspan="5" class="report-table-empty">Nenhuma oportunidade encontrada neste canal.</td></tr>'}</tbody></table></div>`;
+        $("report-close-channel-detail")?.addEventListener("click", () => { channelDetailPanel.hidden = true; channelDetailPanel.replaceChildren(); });
+        channelDetailPanel.querySelectorAll("[data-report-open-crm-lead]").forEach((leadButton) => leadButton.addEventListener("click", () => openLeadInCRM(leadButton.dataset.reportOpenCrmLead)));
+      };
     });
 
     $("report-apply-filters")?.addEventListener("click", () => { window.reportGlobalFilters = { team: $("report-global-team").value, owner: $("report-global-owner").value, stage: $("report-global-stage").value, source: $("report-global-source").value }; refreshApp(); });
