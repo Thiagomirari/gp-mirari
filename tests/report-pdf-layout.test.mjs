@@ -7,6 +7,14 @@ for (const marker of ["Relatorio executivo", "Visao consolidada", "Periodo anali
   assert.match(source, new RegExp(marker), `Secao visual ausente no PDF: ${marker}`);
 }
 
+assert.match(source, /source\.cloneNode\(true\)/, "O PDF deve partir da tela atual de Relatorios.");
+assert.match(source, /snapshot\.outerHTML/, "O PDF deve preservar os mesmos blocos exibidos no painel.");
+assert.match(source, /@page\{size:A4 landscape/, "O painel completo deve ser impresso em A4 horizontal.");
+assert.match(source, /\$\("report-pdf"\)\.onclick = printReport/, "O botao deve imprimir o painel corrente, com seus filtros aplicados.");
+for (const selector of ["reporting-kpis", "report-alert-strip", "report-evolution-section", "report-finance-strip", "report-team-panel", "report-partner-panel", "reporting-future"]) {
+  assert.match(source, new RegExp(selector), `O PDF deve incluir o bloco ${selector} exibido na tela.`);
+}
+
 assert.match(source, /data\.summary\.soldValue/, "O valor vendido precisa permanecer no PDF.");
 assert.match(source, /data\.summary\.conversion/, "A conversao precisa permanecer no PDF.");
 assert.match(source, /data\.partners/, "Os parceiros precisam permanecer no PDF.");
