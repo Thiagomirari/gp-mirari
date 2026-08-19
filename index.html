@@ -4727,7 +4727,7 @@
       const won = document.getElementById("mark-crm-won");
       if (won) won.onclick = closeCRMAsWon;
       const lost = document.getElementById("mark-crm-lost");
-      if (lost) lost.onclick = closeCRMAsLost;
+      if (lost) lost.onclick = () => closeCRMAsLost();
       const remove = document.getElementById("remove-crm-lead");
       if (remove) remove.onclick = () => {
         const lead = selectedLead();
@@ -4984,26 +4984,25 @@
       modal.querySelector("#confirm-crm-lost").onclick = () => {
         const reason = document.getElementById("crm-lost-reason").value;
         const comment = document.getElementById("crm-lost-comment").value.trim();
-        closeCRMAsLost(reason, comment);
-        modal.remove();
+        if (closeCRMAsLost(reason, comment)) modal.remove();
       };
     }
 
     function closeCRMAsLost(reasonValue = "", commentValue = "") {
       const lead = selectedLead();
-      if (!lead) return;
+      if (!lead) return false;
       const lostStage = crmLostStage();
-      const reason = String(reasonValue || "").trim();
+      const reason = typeof reasonValue === "string" ? reasonValue.trim() : "";
       if (!reason) {
         openCRMLostModal();
-        return;
+        return false;
       }
       if (!crmLossReasons.includes(reason)) {
         alert("Selecione um motivo padronizado para a perda.");
-        return;
+        return false;
       }
-      if (!crmCanLeaveCurrentStage(lead)) return;
-      if (!confirm("Confirmar negocio perdido?")) return;
+      if (!crmCanLeaveCurrentStage(lead)) return false;
+      if (!confirm("Confirmar negocio perdido?")) return false;
       const oldStage = lead.stageId;
       const at = nowISO();
       lead.lostReasonCategory = reason;
@@ -5019,6 +5018,7 @@
       lead.history.push({ at, userId: currentUser() ? currentUser().id : "", text: `Negocio perdido. Motivo: ${lead.lostReasonCategory}${lead.lostComment ? ` | ${lead.lostComment}` : ""}` });
       toast("Negocio marcado como perdido.");
       render();
+      return true;
     }
 
     function quickAddCRMStage(afterStageId) {
