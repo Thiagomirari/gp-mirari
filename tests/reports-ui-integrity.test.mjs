@@ -18,6 +18,7 @@ assert.ok(source.includes("data-report-open-crm-lead"), "channel drilldown must 
 assert.ok(source.includes("state.activeTab = \"crm\""), "the correction shortcut must return to CRM");
 assert.ok(source.includes("Selecionar conteúdo do PDF"), "PDF generation must present section selection");
 assert.ok(source.includes("channel-detail"), "channel detail must be independently selectable for PDF output");
+assert.ok(source.includes('report-channel-explorer" data-report-print-section="channel-detail"'), "verification by channel must be emitted only with the optional PDF detail");
 assert.ok(source.includes("reportPrintSections"), "PDF section choices must persist during the session");
 assert.ok(extension.includes("function renderReportsSafely()"), "reports must have an isolated render boundary");
 assert.ok(extension.includes('typeof renderModuleFailure==="function"'), "report failures must use the recoverable module state");
