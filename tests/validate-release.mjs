@@ -30,6 +30,9 @@ assert.match(index, /defaultState\.projects = \[\]/, "Novas instalacoes nao deve
 assert.match(index, /Mural de tarefas/, "Projetos devem exibir o mural simplificado de tarefas.");
 assert.match(index, /id="add-task-form" hidden/, "O cadastro de tarefa deve iniciar recolhido.");
 assert.match(index, /function projectStageTasks\(/, "Tarefas devem usar ordenacao por andamento e prazo.");
+assert.match(index, /name: "Thiago", username: "ADM"/, "O perfil principal deve manter o login ADM e exibir o nome do responsavel.");
+assert.match(index, /user\.primary \? '<span class="pill">Principal<\/span>'/, "O usuario principal deve ser identificado na administracao.");
+assert.match(index, /user\.primary \? user\.username : prompt/, "O login do usuario principal nao deve ser alterado pela edicao de perfil.");
 assert.match(index, /task\.automatic && task\.required && !task\.completed/, "Somente regras administrativas obrigatorias podem bloquear o avanco.");
 assert.match(index, /required: false,\s+automatic: false/, "Tarefas manuais nao podem bloquear o projeto.");
 assert.match(index, /task\.workStatus = "Em andamento"/, "O mural deve suportar tarefas em andamento.");

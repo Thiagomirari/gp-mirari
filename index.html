@@ -1375,7 +1375,7 @@
       salesGoals: [],
       filters: { query: "", calendarView: "timeline", calendarStage: "all", calendarOwner: "all", calendarStatus: "all", calendarPriority: "all", from: "", to: "", taskProject: "all", taskOwner: "all", taskStatus: "all", taskFrom: "", taskTo: "", crmQuery: "", crmStage: "all", crmOwner: "all", crmStatus: "all", crmFrom: "", crmTo: "", crmPeriodPreset: "all", commercialView: "list", commercialOwner: "all", commercialStatus: "all", commercialPriority: "all", commercialOpportunity: "all", commercialFrom: "", commercialTo: "" },
       users: [
-        { id: "u1", name: "Administrador", username: "ADM", password: "", mustChangePassword: false, sessionVersion: 1, role: "Gestor ADM", permission: "ADM", active: true },
+        { id: "u1", name: "Thiago", username: "ADM", password: "", mustChangePassword: false, sessionVersion: 1, role: "Gestor ADM", permission: "ADM", active: true, primary: true },
         { id: "u2", name: "Daniel", username: "daniel", password: "", mustChangePassword: false, sessionVersion: 1, role: "Tecnico", permission: "Operacional", active: true },
         { id: "u3", name: "Lais", username: "lais", password: "", mustChangePassword: false, sessionVersion: 1, role: "Projetista", permission: "Operacional", active: true },
         { id: "u4", name: "Equipe montagem", username: "montagem", password: "", mustChangePassword: false, sessionVersion: 1, role: "Montagem", permission: "Operacional", active: true }
@@ -1614,8 +1614,10 @@
         user.authMethods = Array.isArray(user.authMethods) && user.authMethods.length ? user.authMethods : [user.googleEnabled ? "google" : "password"];
       });
       if (!next.users.some(user => user.username === "ADM")) {
-        next.users.unshift({ id: uid("u"), name: "Administrador", username: "ADM", password: "", mustChangePassword: false, sessionVersion: 1, role: "Gestor ADM", permission: "ADM", active: true });
+        next.users.unshift({ id: uid("u"), name: "Thiago", username: "ADM", password: "", mustChangePassword: false, sessionVersion: 1, role: "Gestor ADM", permission: "ADM", active: true, primary: true });
       }
+      const primaryAdmin = next.users.find(user => String(user.username || "").trim().toLowerCase() === "adm") || next.users.find(user => user.permission === "ADM");
+      next.users.forEach(user => { user.primary = !!primaryAdmin && user.id === primaryAdmin.id; });
       next.sessionUserId = next.sessionUserId || "";
       next.sessionVersionAtLogin = Number(next.sessionVersionAtLogin || 0);
       next.historyOpenProjectId = next.historyOpenProjectId || "";
@@ -3905,12 +3907,12 @@
     function userCard(user) {
       return `
         <div class="user-card">
-          <div><strong>${escapeHtml(user.name)}</strong><br><small>Login: ${escapeHtml(user.username)} | ${escapeHtml(user.role)} | ${escapeHtml(user.permission)} | ${user.active ? "Ativo" : "Inativo"}</small></div>
+          <div><strong>${escapeHtml(user.name)} ${user.primary ? '<span class="pill">Principal</span>' : ""}</strong><br><small>Login: ${escapeHtml(user.username)} | ${escapeHtml(user.role)} | ${escapeHtml(user.permission)} | ${user.active ? "Ativo" : "Inativo"}</small></div>
           <div class="inline-actions">
             <button class="secondary" data-edit-user="${user.id}" ${!isAdmin() ? "disabled" : ""} type="button">Editar</button>
-            <button class="secondary" data-toggle-user="${user.id}" ${!isAdmin() ? "disabled" : ""} type="button">${user.active ? "Inativar" : "Ativar"}</button>
+            <button class="secondary" data-toggle-user="${user.id}" ${!isAdmin() || user.primary ? "disabled" : ""} type="button">${user.active ? "Inativar" : "Ativar"}</button>
             <button class="secondary" data-reset-password="${user.id}" ${!isAdmin() ? "disabled" : ""} type="button">Alterar senha</button>
-            <button class="danger" data-remove-user="${user.id}" ${!isAdmin() || user.id === state.sessionUserId ? "disabled" : ""} type="button">Remover</button>
+            <button class="danger" data-remove-user="${user.id}" ${!isAdmin() || user.primary || user.id === state.sessionUserId ? "disabled" : ""} type="button">Remover</button>
           </div>
         </div>
       `;
@@ -5196,18 +5198,18 @@
         if (!user) return;
         const name = prompt("Nome do usuario:", user.name);
         if (name === null) return;
-        const username = prompt("Usuario de login:", user.username);
+        const username = user.primary ? user.username : prompt("Usuario de login:", user.username);
         if (username === null) return;
         const role = prompt("Funcao:", user.role || "Operacional");
         if (role === null) return;
-        const permission = prompt("Permissao (ADM ou Operacional):", user.permission);
+        const permission = user.primary ? "ADM" : prompt("Permissao (ADM ou Operacional):", user.permission);
         if (permission === null) return;
         const googleEnabled = confirm("Liberar entrada com Google para este usuario?");
         if (googleEnabled && !username.includes("@")) {
           alert("Para entrada com Google, informe o e-mail completo do usuario.");
           return;
         }
-        const nextUser = { ...user, name: name.trim(), username: username.trim(), googleEnabled, authMethods: [user.password ? "password" : "", googleEnabled ? "google" : ""].filter(Boolean), role: role.trim(), permission: permission === "ADM" ? "ADM" : "Operacional" };
+        const nextUser = { ...user, name: name.trim(), username: username.trim(), googleEnabled, authMethods: [user.password ? "password" : "", googleEnabled ? "google" : ""].filter(Boolean), role: role.trim(), permission: permission === "ADM" ? "ADM" : "Operacional", active: user.primary ? true : user.active, primary: !!user.primary };
         touchUserSessions(nextUser);
         if (isCloudConfigured()) {
           try {

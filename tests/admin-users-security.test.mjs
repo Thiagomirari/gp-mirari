@@ -15,5 +15,7 @@ assert.match(source, /A organizacao precisa manter pelo menos um owner ativo/, "
 assert.ok(!source.includes('"Access-Control-Allow-Origin": "*"'), "administrative CORS must not be wildcarded");
 assert.match(source, /if \(password \|\| googleEnabled\)/, "Google-only users must also be provisioned in Supabase Auth");
 assert.match(source, /authUserId\?: string/, "legacy user IDs must be separated from auth IDs during migration");
+assert.match(source, /primary \? true/, "the primary administrator must remain active");
+assert.match(source, /O usuario principal nao pode ser removido/, "the primary administrator must not be removable");
 
 console.log("admin-users-security: ok");

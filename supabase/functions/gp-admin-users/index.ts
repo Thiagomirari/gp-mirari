@@ -18,6 +18,7 @@ type AppUser = {
   googleEnabled?: boolean;
   authMethods?: string[];
   sessionVersion?: number;
+  primary?: boolean;
 };
 
 function passwordError(password: string) {
@@ -68,6 +69,7 @@ function cleanUser(user: AppUser) {
     authMethods: Array.isArray(user.authMethods) && user.authMethods.length
       ? user.authMethods
       : [user.googleEnabled ? "google" : "password"],
+    primary: !!user.primary,
   };
 }
 
@@ -271,7 +273,8 @@ Deno.serve(async (req) => {
       const index = stateUsers.findIndex((user) => user.id === id);
       if (index < 0) return json({ error: "Usuario nao encontrado." }, 404);
       const current = stateUsers[index];
-      const username = storedUsername(payload.username || current.username);
+      const primary = !!current.primary || storedUsername(current.username) === "adm";
+      const username = primary ? storedUsername(current.username) : storedUsername(payload.username || current.username);
       const googleEnabled = typeof payload.googleEnabled === "boolean" ? payload.googleEnabled : !!current.googleEnabled;
       if (googleEnabled && !username.includes("@")) return json({ error: "Para Google, informe o e-mail completo." }, 400);
 
@@ -293,7 +296,7 @@ Deno.serve(async (req) => {
       }
 
       let authUserId = await resolveAuthUserId(adminClient, current);
-      const targetWillBeActive = typeof payload.active === "boolean" ? payload.active : current.active;
+      const targetWillBeActive = primary ? true : (typeof payload.active === "boolean" ? payload.active : current.active);
       await assertOwnerMutation(
         adminClient,
         organizationId,
@@ -332,11 +335,12 @@ Deno.serve(async (req) => {
         name: String(payload.name || current.name),
         username,
         role: String(payload.role || current.role || "Operacional"),
-        permission: payload.permission === "ADM" ? "ADM" : (payload.permission === "Operacional" ? "Operacional" : current.permission),
-        active: typeof payload.active === "boolean" ? payload.active : current.active,
+        permission: primary ? "ADM" : (payload.permission === "ADM" ? "ADM" : (payload.permission === "Operacional" ? "Operacional" : current.permission)),
+        active: primary ? true : (typeof payload.active === "boolean" ? payload.active : current.active),
         googleEnabled,
         authMethods,
         sessionVersion: Number(payload.sessionVersion || current.sessionVersion || 1),
+        primary,
       });
       await syncProfile(adminClient, nextUser);
       await syncMembership(adminClient, organizationId, nextUser);
@@ -348,6 +352,7 @@ Deno.serve(async (req) => {
       const index = stateUsers.findIndex((user) => user.id === id);
       if (index < 0) return json({ error: "Usuario nao encontrado." }, 404);
       const target = stateUsers[index];
+      if (target.primary || storedUsername(target.username) === "adm") return json({ error: "O usuario principal nao pode ser removido." }, 400);
       const authUserId = await resolveAuthUserId(adminClient, target);
       await assertOwnerMutation(
         adminClient,
