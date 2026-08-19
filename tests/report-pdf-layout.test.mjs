@@ -11,8 +11,11 @@ assert.match(source, /source\.cloneNode\(true\)/, "O PDF deve partir da tela atu
 assert.match(source, /snapshot\.outerHTML/, "O PDF deve preservar os mesmos blocos exibidos no painel.");
 assert.match(source, /@page\{size:A4 landscape/, "O painel completo deve ser impresso em A4 horizontal.");
 assert.match(source, /\$\("report-pdf"\)\.onclick = printReport/, "O botao deve imprimir o painel corrente, com seus filtros aplicados.");
-for (const selector of ["reporting-kpis", "report-alert-strip", "report-evolution-section", "report-finance-strip", "report-team-panel", "report-partner-panel", "reporting-future"]) {
+for (const selector of ["reporting-kpis", "report-evolution-section", "report-finance-strip", "report-team-panel", "report-partner-panel", "reporting-future"]) {
   assert.match(source, new RegExp(selector), `O PDF deve incluir o bloco ${selector} exibido na tela.`);
+}
+for (const taskMarker of ["taskMetrics", "Tarefas pendentes", "Tarefas concluidas", "SLA de tarefas", "report-alert-strip"]) {
+  assert.doesNotMatch(source, new RegExp(taskMarker), `Relatorios nao deve exibir informacoes do modulo de tarefas: ${taskMarker}`);
 }
 
 assert.match(source, /data\.summary\.soldValue/, "O valor vendido precisa permanecer no PDF.");

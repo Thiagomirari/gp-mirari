@@ -158,23 +158,6 @@
     return `<div class="report-ranked-bars">${rows.slice(0, 5).map((row, index) => `<div><span>${index + 1}</span><section><header><strong>${esc(row.name)}</strong><small>${money(row.sales)}</small></header><i><b style="width:${Math.max(4, Math.round(row.sales / max * 100))}%"></b></i></section><em>RT ${money(row.rt)}</em></div>`).join("")}</div>`;
   }
 
-  function taskMetrics(data, filters) {
-    const leadIds = new Set(data.scoped.map((lead) => lead.id));
-    const tasks = list(state.crm?.tasks).filter((task) => {
-      if (!leadIds.has(task.leadId) || task.status === "Cancelada") return false;
-      return inRange(task.dueDate || task.createdAt, filters) || inRange(task.completedAt, filters);
-    });
-    const completed = tasks.filter((task) => task.status === "Concluida" || task.completedAt);
-    const pending = tasks.filter((task) => task.status !== "Concluida" && !task.completedAt);
-    const today = iso(new Date());
-    const overdue = pending.filter((task) => dateOnly(task.dueDate) && dateOnly(task.dueDate) < today);
-    const onTime = completed.filter((task) => !task.dueDate || dateOnly(task.completedAt) <= dateOnly(task.dueDate));
-    const openLeads = data.scoped.filter((lead) => !isWon(lead) && !isLost(lead));
-    const withNextTask = new Set(pending.map((task) => task.leadId));
-    const withoutTask = openLeads.filter((lead) => !withNextTask.has(lead.id));
-    return { tasks, completed, pending, overdue, openLeads, withoutTask, sla: completed.length ? Math.round(onTime.length / completed.length * 100) : null };
-  }
-
   function timelineRows(data, filters) {
     const dates = [...data.scoped.map(firstContact), ...data.sold.map((lead) => dateOnly(lead.crmDates?.closed || lead.updatedAt))].filter(Boolean).sort();
     if (!dates.length) return [];
@@ -263,7 +246,7 @@
     snapshot.querySelector(".reporting-header > div")?.appendChild(generated);
 
     const headAssets = [...document.head.querySelectorAll('style, link[rel="stylesheet"]')].map((node) => node.outerHTML).join("");
-    popup.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base href="${esc(document.baseURI)}"><title>Relatorios e KPIs - GP Mirari</title>${headAssets}<style>@page{size:A4 landscape;margin:8mm}html,body{background:#fff!important}body{margin:0!important;padding:0!important;color:#2f2f2f!important}.reporting-workspace{width:100%!important;max-width:none!important;margin:0!important;gap:14px!important;animation:none!important}.reporting-header{padding-bottom:10px!important}.reporting-header h2{font-size:24px!important}.reporting-actions,.reporting-presets,.report-global-filter-actions,.report-detail-drawer,button{display:none!important}.reporting-filterbar{padding:12px!important;break-inside:avoid}.report-global-filters{margin:0!important;padding:0!important;border:0!important}.report-global-filter-grid{gap:8px!important}.report-global-select{min-width:0!important}.report-print-filter-value{display:block;padding:7px 9px;border:1px solid #e2ddd7;border-radius:7px;background:#fff;color:#2f2f2f;font-weight:700}.report-print-generated{display:block;margin-top:6px;color:#8b8585;font-size:10px}.reporting-kpis,.report-finance-strip,.reporting-partner-kpis{gap:8px!important}.report-metric,.report-panel,.report-side-kpi,.report-alert-strip>div,.reporting-future-grid>div,tr{break-inside:avoid}.reporting-section{margin-top:2px!important}.reporting-section-head{margin-bottom:8px!important}.report-table-scroll{overflow:visible!important}.report-table{font-size:10px!important}thead{display:table-header-group}svg{max-width:100%!important}.reporting-source{margin-top:8px!important}.report-print-toolbar{position:fixed;right:18px;bottom:18px;z-index:10}.report-print-toolbar button{display:block!important;border:0;border-radius:8px;background:#d8aa7f;color:#fff;padding:11px 16px;font:700 12px Inter,Arial,sans-serif;cursor:pointer}@media print{.report-print-toolbar{display:none!important}}</style></head><body>${snapshot.outerHTML}<div class="report-print-toolbar"><button type="button" onclick="window.print()">Imprimir / salvar PDF</button></div></body></html>`);
+    popup.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><base href="${esc(document.baseURI)}"><title>Relatorios e KPIs - GP Mirari</title>${headAssets}<style>@page{size:A4 landscape;margin:8mm}html,body{background:#fff!important}body{margin:0!important;padding:0!important;color:#2f2f2f!important}.reporting-workspace{width:100%!important;max-width:none!important;margin:0!important;gap:14px!important;animation:none!important}.reporting-header{padding-bottom:10px!important}.reporting-header h2{font-size:24px!important}.reporting-actions,.reporting-presets,.report-global-filter-actions,.report-detail-drawer,button{display:none!important}.reporting-filterbar{padding:12px!important;break-inside:avoid}.report-global-filters{margin:0!important;padding:0!important;border:0!important}.report-global-filter-grid{gap:8px!important}.report-global-select{min-width:0!important}.report-print-filter-value{display:block;padding:7px 9px;border:1px solid #e2ddd7;border-radius:7px;background:#fff;color:#2f2f2f;font-weight:700}.report-print-generated{display:block;margin-top:6px;color:#8b8585;font-size:10px}.reporting-kpis,.report-finance-strip,.reporting-partner-kpis{gap:8px!important}.report-metric,.report-panel,.report-side-kpi,.reporting-future-grid>div,tr{break-inside:avoid}.reporting-section{margin-top:2px!important}.reporting-section-head{margin-bottom:8px!important}.report-table-scroll{overflow:visible!important}.report-table{font-size:10px!important}thead{display:table-header-group}svg{max-width:100%!important}.reporting-source{margin-top:8px!important}.report-print-toolbar{position:fixed;right:18px;bottom:18px;z-index:10}.report-print-toolbar button{display:block!important;border:0;border-radius:8px;background:#d8aa7f;color:#fff;padding:11px 16px;font:700 12px Inter,Arial,sans-serif;cursor:pointer}@media print{.report-print-toolbar{display:none!important}}</style></head><body>${snapshot.outerHTML}<div class="report-print-toolbar"><button type="button" onclick="window.print()">Imprimir / salvar PDF</button></div></body></html>`);
     popup.document.close();
     popup.focus();
   }
@@ -283,7 +266,6 @@
     const local = window.reportBlockFilters || {};
     const data = dataFor(filters);
     const global = window.reportGlobalFilters || {};
-    const operations = taskMetrics(data, filters);
     const timeline = timelineRows(data, filters);
     const commercialLeads = local.stage && local.stage !== "all" ? data.scoped.filter((lead) => stageFor(lead).id === local.stage) : data.scoped;
     const commercialSold = local.stage && local.stage !== "all" ? data.sold.filter((lead) => stageFor(lead).id === local.stage) : data.sold;
@@ -319,13 +301,9 @@
     target.querySelectorAll(".reporting-section-head > .report-select, .reporting-section-filters").forEach((element) => element.remove());
 
     const executiveKpis = target.querySelector(".reporting-kpis");
-    if (executiveKpis) executiveKpis.innerHTML = `${operationalMetric("leads", "leads", "Total de leads", data.summary.leads, data.summary.mom === null ? "Sem comparativo anterior" : `${data.summary.mom >= 0 ? "+" : ""}${data.summary.mom.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% vs. periodo anterior`, "#")}${operationalMetric("pending", "proposal", "Tarefas pendentes", operations.pending.length, `${operations.overdue.length} atrasada(s)`, "TP")}${operationalMetric("progress", "ticket", "Em andamento", operations.openLeads.length, "Oportunidades abertas", "EA")}${operationalMetric("completed", "sold", "Tarefas concluidas", operations.completed.length, "No periodo selecionado", "OK")}${operationalMetric("sla", "pipeline", "SLA de tarefas", operations.sla === null ? "-" : `${operations.sla}%`, operations.sla === null ? "Sem tarefas concluidas com prazo" : "Concluidas dentro do prazo", "SL")}${operationalMetric("conversion", "conversion", "Conversao comercial", `${commercialConversion}%`, `${commercialSold.length} venda(s) fechada(s)`, "%")}`;
+    if (executiveKpis) executiveKpis.innerHTML = `${operationalMetric("leads", "leads", "Total de leads", data.summary.leads, data.summary.mom === null ? "Sem comparativo anterior" : `${data.summary.mom >= 0 ? "+" : ""}${data.summary.mom.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% vs. periodo anterior`, "#")}${operationalMetric("pipeline", "pipeline", "Valor no funil", money(openPipeline), `${commercialLeads.length} oportunidade(s) no periodo`, "R$")}${operationalMetric("funnel-ticket", "ticket", "Ticket medio do funil", money(commercialFunnelTicket), "Media das oportunidades", "TM")}${operationalMetric("sold", "sold", "Valor vendido", money(commercialSoldValue), `${commercialSold.length} venda(s) fechada(s)`, "R$")}${operationalMetric("sales-ticket", "proposal", "Ticket medio vendido", money(commercialTicket), "Media das vendas fechadas", "TV")}${operationalMetric("conversion", "conversion", "Conversao comercial", `${commercialConversion}%`, `${data.lost.length} negocio(s) perdido(s)`, "%")}`;
 
     executiveKpis?.insertAdjacentHTML("afterend", goalDashboard(data, filters));
-
-    if (operations.overdue.length || operations.withoutTask.length || (data.summary.mom !== null && data.summary.mom < 0)) {
-      filterbar?.insertAdjacentHTML("afterend", `<section class="report-alert-strip" aria-label="Pontos de atencao">${operations.overdue.length ? `<div class="danger"><span>Prazo</span><strong>${operations.overdue.length} tarefa(s) atrasada(s)</strong><small>Requer acompanhamento comercial.</small></div>` : ""}${operations.withoutTask.length ? `<div class="warning"><span>Agenda</span><strong>${operations.withoutTask.length} oportunidade(s) sem tarefa</strong><small>Sem proximo compromisso pendente.</small></div>` : ""}${data.summary.mom !== null && data.summary.mom < 0 ? `<div class="info"><span>Tendencia</span><strong>${Math.abs(data.summary.mom).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% menos leads</strong><small>Comparacao com o periodo anterior.</small></div>` : ""}</section>`);
-    }
 
     executiveKpis?.insertAdjacentHTML("afterend", `<section class="report-detail-drawer" id="report-detail-drawer" hidden></section>`);
     const sections = target.querySelectorAll(".reporting-section");
@@ -339,10 +317,10 @@
 
     const detailMessages = {
       leads: ["Total de leads", `${data.summary.leads} oportunidade(s) entraram no periodo selecionado.`],
-      pending: ["Tarefas pendentes", `${operations.pending.length} pendente(s), sendo ${operations.overdue.length} atrasada(s).`],
-      progress: ["Em andamento", `${operations.openLeads.length} oportunidade(s) permanecem abertas no funil.`],
-      completed: ["Tarefas concluidas", `${operations.completed.length} tarefa(s) foram concluidas dentro do filtro.`],
-      sla: ["SLA de tarefas", operations.sla === null ? "Ainda nao existe base concluida suficiente para calcular o SLA." : `${operations.sla}% das tarefas concluidas respeitaram o prazo cadastrado.`],
+      pipeline: ["Valor no funil", `${money(openPipeline)} em oportunidades abertas no periodo selecionado.`],
+      "funnel-ticket": ["Ticket medio do funil", `${money(commercialFunnelTicket)} por oportunidade no filtro atual.`],
+      sold: ["Valor vendido", `${money(commercialSoldValue)} em vendas fechadas no periodo.`],
+      "sales-ticket": ["Ticket medio vendido", `${money(commercialTicket)} por venda fechada.`],
       conversion: ["Conversao comercial", `${commercialSold.length} de ${commercialLeads.length} oportunidade(s) resultaram em venda.`]
     };
     target.querySelectorAll("[data-report-detail]").forEach((item) => {
