@@ -3140,12 +3140,26 @@
           <div class="actions">
             <button class="primary" id="card-config-expand" type="button">Abrir detalhes</button>
             <button class="secondary" id="card-config-task" type="button">Nova tarefa</button>
+            ${!crmLeadIsClosed(lead) ? `
+              <button class="secondary" id="card-config-won" type="button">Negocio fechado</button>
+              <button class="danger" id="card-config-lost" type="button">Negocio perdido</button>
+            ` : ""}
           </div>
         </div></div>`;
       document.body.appendChild(modal);
       modal.querySelectorAll("[data-close-card-config]").forEach(button => button.onclick = () => modal.remove());
       modal.querySelector("#card-config-expand").onclick = () => { state.crm.selectedLeadId = lead.id; state.crm.expandedLeadId = lead.id; modal.remove(); render(); };
       modal.querySelector("#card-config-task").onclick = () => { modal.remove(); openCommercialTaskModal(lead.id); };
+      modal.querySelector("#card-config-won")?.addEventListener("click", () => {
+        state.crm.selectedLeadId = lead.id;
+        modal.remove();
+        closeCRMAsWon();
+      });
+      modal.querySelector("#card-config-lost")?.addEventListener("click", () => {
+        state.crm.selectedLeadId = lead.id;
+        modal.remove();
+        closeCRMAsLost();
+      });
     }
 
     function crmStage(stageId) {
