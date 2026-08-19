@@ -3032,12 +3032,22 @@
 
     function openCommercialTaskModal(leadId = "", taskId = "") {
       const currentTask = (state.crm.tasks || []).find(task => task.id === taskId);
+      const requestedLead = (state.crm.leads || []).find(lead => lead.id === (currentTask ? currentTask.leadId : leadId));
+      if (!currentTask && requestedLead && crmLeadIsClosed(requestedLead)) {
+        toast("Negocios encerrados nao permitem novas tarefas comerciais.");
+        return;
+      }
+      const selectableLeads = (state.crm.leads || []).filter(lead => !crmLeadIsClosed(lead) || (currentTask && lead.id === currentTask.leadId));
+      if (!currentTask && !selectableLeads.length) {
+        toast("Nao ha oportunidades abertas para receber uma tarefa comercial.");
+        return;
+      }
       const modal = document.createElement("div");
       modal.className = "modal open";
       modal.innerHTML = `<div class="modal-box"><div class="panel-header"><div><p class="eyebrow">CRM Mirari</p><h2>${currentTask ? "Editar tarefa comercial" : "Nova tarefa comercial"}</h2></div><button class="ghost" type="button" data-close-commercial-task>Fechar</button></div>
         <form class="form-box" id="commercial-task-form">
           <div class="form-grid">
-            <label>Oportunidade <select id="commercial-task-lead">${(state.crm.leads || []).map(lead => option(lead.id, `${lead.client} | ${lead.interest || "Oportunidade"}`, currentTask ? currentTask.leadId : (leadId || state.crm.selectedLeadId))).join("")}</select></label>
+            <label>Oportunidade <select id="commercial-task-lead">${selectableLeads.map(lead => option(lead.id, `${lead.client} | ${lead.interest || "Oportunidade"}`, currentTask ? currentTask.leadId : (leadId || state.crm.selectedLeadId))).join("")}</select></label>
             <label>Tarefa <input id="commercial-task-title" required placeholder="Ex: Ligar para retorno da proposta" value="${escapeHtml(currentTask ? currentTask.title : "")}" /></label>
             <label>Responsavel <select id="commercial-task-owner">${state.users.filter(user => user.active).map(user => option(user.id, user.name, currentTask ? currentTask.ownerId : (state.sessionUserId || "u1"))).join("")}</select></label>
             <label>Data <input id="commercial-task-date" type="date" value="${escapeHtml(currentTask ? currentTask.dueDate : todayISO)}" required /></label>
@@ -3053,6 +3063,12 @@
       modal.querySelectorAll("[data-close-commercial-task]").forEach(button => button.onclick = () => modal.remove());
       modal.querySelector("#commercial-task-form").onsubmit = async event => {
         event.preventDefault();
+        const selectedLeadId = document.getElementById("commercial-task-lead").value;
+        const selectedTaskLead = (state.crm.leads || []).find(lead => lead.id === selectedLeadId);
+        if (!currentTask && (!selectedTaskLead || crmLeadIsClosed(selectedTaskLead))) {
+          toast("Negocios encerrados nao permitem novas tarefas comerciais.");
+          return;
+        }
         const task = currentTask || {
           id: uid("ct"),
           createdAt: nowISO(),
@@ -3061,7 +3077,7 @@
           required: false
         };
         Object.assign(task, {
-          leadId: document.getElementById("commercial-task-lead").value,
+          leadId: selectedLeadId,
           title: document.getElementById("commercial-task-title").value.trim(),
           ownerId: document.getElementById("commercial-task-owner").value,
           dueDate: document.getElementById("commercial-task-date").value,
@@ -3094,7 +3110,7 @@
           <div class="grid-3">
             <label>Colaborador <select id="commercial-owner-filter">${option("all", "Todos", state.filters.commercialOwner)}${state.users.map(user => option(user.id, user.name, state.filters.commercialOwner)).join("")}</select></label>
             <label>Oportunidade <select id="commercial-opportunity-filter">${option("all", "Todas", state.filters.commercialOpportunity)}${(state.crm.leads || []).map(lead => option(lead.id, lead.client, state.filters.commercialOpportunity)).join("")}</select></label>
-            <label>Status <select id="commercial-status-filter">${["all", "Pendente", "Atrasada", "Concluida"].map(value => option(value, value === "all" ? "Todos" : value, state.filters.commercialStatus)).join("")}</select></label>
+            <label>Status <select id="commercial-status-filter">${["all", "Pendente", "Atrasada", "Concluida", "Encerrada"].map(value => option(value, value === "all" ? "Todos" : value, state.filters.commercialStatus)).join("")}</select></label>
           </div>
           <div class="grid-3">
             <label>Prioridade <select id="commercial-priority-filter">${["all", "Alta", "Media", "Baixa"].map(value => option(value, value === "all" ? "Todas" : value, state.filters.commercialPriority)).join("")}</select></label>
@@ -3125,6 +3141,8 @@
     function openCRMCardConfig(leadId) {
       const lead = (state.crm.leads || []).find(item => item.id === leadId);
       if (!lead) return;
+      const leadClosed = crmLeadIsClosed(lead);
+      const leadLost = lead.status === "Perdida" || crmStage(lead.stageId).closedType === "lost";
       const modal = document.createElement("div");
       modal.className = "modal open";
       modal.innerHTML = `<div class="modal-box"><div class="panel-header"><div><p class="eyebrow">Configuracoes do cartao</p><h2>${escapeHtml(lead.client)}</h2></div><button class="ghost" type="button" data-close-card-config>Fechar</button></div>
@@ -3136,11 +3154,14 @@
             <span class="pill">Entrada: ${formatDate(lead.enteredAt || lead.createdAt)}</span>
             <span class="pill">Ciclo: ${crmPipelineMetrics(lead).totalCycle} dias</span>
           </div>
-          <p>${escapeHtml(lead.notes || "Sem observacoes.")}</p>
+          ${leadLost ? `
+            <p><strong>Motivo da perda:</strong> ${escapeHtml(lead.lostReasonCategory || lead.lostReason || "Nao informado")}</p>
+            ${lead.lostComment ? `<p><strong>Detalhes da perda:</strong> ${escapeHtml(lead.lostComment)}</p>` : ""}
+          ` : `<p>${escapeHtml(lead.notes || "Sem observacoes.")}</p>`}
           <div class="actions">
             <button class="primary" id="card-config-expand" type="button">Abrir detalhes</button>
-            <button class="secondary" id="card-config-task" type="button">Nova tarefa</button>
-            ${!crmLeadIsClosed(lead) ? `
+            ${!leadClosed ? `<button class="secondary" id="card-config-task" type="button">Nova tarefa</button>` : ""}
+            ${!leadClosed ? `
               <button class="secondary" id="card-config-won" type="button">Negocio fechado</button>
               <button class="danger" id="card-config-lost" type="button">Negocio perdido</button>
             ` : ""}
@@ -3149,7 +3170,7 @@
       document.body.appendChild(modal);
       modal.querySelectorAll("[data-close-card-config]").forEach(button => button.onclick = () => modal.remove());
       modal.querySelector("#card-config-expand").onclick = () => { state.crm.selectedLeadId = lead.id; state.crm.expandedLeadId = lead.id; modal.remove(); render(); };
-      modal.querySelector("#card-config-task").onclick = () => { modal.remove(); openCommercialTaskModal(lead.id); };
+      modal.querySelector("#card-config-task")?.addEventListener("click", () => { modal.remove(); openCommercialTaskModal(lead.id); });
       modal.querySelector("#card-config-won")?.addEventListener("click", () => {
         state.crm.selectedLeadId = lead.id;
         modal.remove();
@@ -3316,6 +3337,8 @@
     function crmTaskStatus(task) {
       if (!task) return "";
       if (task.status === "Concluida") return "Concluida";
+      const lead = (state.crm.leads || []).find(item => item.id === task.leadId);
+      if (lead && crmLeadIsClosed(lead)) return "Encerrada";
       if (task.dueDate < todayISO) return "Atrasada";
       return "Pendente";
     }
@@ -3327,11 +3350,12 @@
     }
 
     function crmNextTask(lead) {
+      if (crmLeadIsClosed(lead)) return null;
       return crmTasksForLead(lead.id).find(task => task.status !== "Concluida") || null;
     }
 
     function crmTaskState(lead) {
-      if (lead.status !== "Aberta") return "";
+      if (crmLeadIsClosed(lead) || lead.status !== "Aberta") return "";
       const task = crmNextTask(lead);
       if (!task) return "missing";
       if (crmTaskStatus(task) === "Atrasada") return "late";
@@ -3704,7 +3728,7 @@
                 ` : ""}
               </article>
               <article class="panel soft-panel crm-saas-subsection crm-saas-tasks" style="grid-column:1/-1">
-                <div class="section-title"><div><p class="eyebrow">Tarefas comerciais</p><h2>Agenda da oportunidade</h2></div><button class="secondary" id="add-crm-task-bottom" type="button">Nova tarefa</button></div>
+                <div class="section-title"><div><p class="eyebrow">Tarefas comerciais</p><h2>Agenda da oportunidade</h2></div>${leadClosed ? '<span class="pill">Negocio encerrado</span>' : '<button class="secondary" id="add-crm-task-bottom" type="button">Nova tarefa</button>'}</div>
                 <div class="task-list">
                   ${crmTasksForLead(lead.id, true).map(task => `<article class="task-card"><div class="row-between"><strong>${escapeHtml(task.title)}</strong><span class="pill ${crmTaskStatus(task) === "Atrasada" ? "danger-text" : ""}">${escapeHtml(crmTaskStatus(task))}</span></div><div class="subtask-meta"><span class="pill">${escapeHtml(userName(task.ownerId))}</span><span class="pill">${formatDate(task.dueDate)} ${escapeHtml(task.dueTime || "")}</span><span class="pill">${escapeHtml(task.priority)}</span><span class="pill">${task.automatic && task.required ? "Obrigatoria" : task.automatic ? "Automatica" : "Manual"}</span></div><div class="actions"><button class="primary" data-complete-commercial-task="${task.id}" type="button" ${crmTaskStatus(task) === "Concluida" ? "disabled" : ""}>Concluir</button><button class="secondary" data-edit-commercial-task="${task.id}" type="button">Editar</button><button class="danger" data-remove-commercial-task="${task.id}" type="button">Excluir</button></div></article>`).join("") || "<small>Nenhuma tarefa comercial vinculada.</small>"}
                 </div>

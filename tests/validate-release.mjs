@@ -75,6 +75,11 @@ assert.match(index, /id="card-config-won"[^>]*>Negocio fechado</, "O menu do car
 assert.match(index, /id="card-config-lost"[^>]*>Negocio perdido</, "O menu do cartao deve permitir concluir o negocio como perdido.");
 assert.match(index, /#card-config-won[\s\S]*state\.crm\.selectedLeadId = lead\.id;[\s\S]*closeCRMAsWon\(\)/, "O fechamento pelo menu deve agir sobre o cartao escolhido.");
 assert.match(index, /#card-config-lost[\s\S]*state\.crm\.selectedLeadId = lead\.id;[\s\S]*closeCRMAsLost\(\)/, "A perda pelo menu deve agir sobre o cartao escolhido.");
+assert.match(index, /leadLost[\s\S]*Motivo da perda:[\s\S]*lostReasonCategory/, "O menu de um negocio perdido deve exibir o motivo da perda no lugar das observacoes iniciais.");
+assert.match(index, /Negocios encerrados nao permitem novas tarefas comerciais/, "O cadastro de tarefas deve bloquear oportunidades ganhas ou perdidas.");
+assert.match(index, /selectableLeads[\s\S]*!crmLeadIsClosed\(lead\)/, "A lista de novas tarefas deve conter somente oportunidades abertas.");
+assert.match(index, /function crmNextTask\(lead\) \{\s+if \(crmLeadIsClosed\(lead\)\) return null;/, "Negocios encerrados nao podem continuar exibindo tarefas atrasadas no cartao.");
+assert.match(index, /leadClosed \? '<span class="pill">Negocio encerrado<\/span>'/, "O detalhe de um negocio encerrado nao deve oferecer uma nova tarefa.");
 assert.match(index, /Tarefas comerciais/);
 assert.match(index, /Sem proxima tarefa/);
 assert.match(index, /chatNotifications/);
