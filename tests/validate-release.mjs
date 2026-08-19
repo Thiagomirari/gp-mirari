@@ -13,7 +13,7 @@ assert.match(index, /GP Mirari - MVP Local/);
 assert.match(index, /function bindCriticalShellEvents\(\)/);
 assert.match(index, /function renderModuleFailure\(error\)/);
 assert.match(index, /data-module-recovery/);
-assert.match(index, /const taskLabel = !nextTask/);
+assert.match(index, /const taskLabel = crmLeadIsClosed\(lead\)/, "Cartoes encerrados devem priorizar o resultado e a data no lugar da proxima tarefa.");
 assert.match(index, /crmStage\(lead\.stageId\)\?\.name/);
 assert.ok(
   index.indexOf("bindCriticalShellEvents();", index.indexOf("saveState();")) < index.indexOf("renderMetrics();", index.indexOf("saveState();")),
@@ -80,6 +80,12 @@ assert.match(index, /Negocios encerrados nao permitem novas tarefas comerciais/,
 assert.match(index, /selectableLeads[\s\S]*!crmLeadIsClosed\(lead\)/, "A lista de novas tarefas deve conter somente oportunidades abertas.");
 assert.match(index, /function crmNextTask\(lead\) \{\s+if \(crmLeadIsClosed\(lead\)\) return null;/, "Negocios encerrados nao podem continuar exibindo tarefas atrasadas no cartao.");
 assert.match(index, /leadClosed \? '<span class="pill">Negocio encerrado<\/span>'/, "O detalhe de um negocio encerrado nao deve oferecer uma nova tarefa.");
+assert.match(index, /function crmCompleteTasksForClosedLead/, "O encerramento do negocio deve concluir suas tarefas comerciais.");
+assert.match(index, /crmCompleteTasksForClosedLead\(lead, at, "won"\)/, "Negocios ganhos devem concluir todas as tarefas pendentes.");
+assert.match(index, /crmCompleteTasksForClosedLead\(lead, at, "lost"\)/, "Negocios perdidos devem concluir todas as tarefas pendentes.");
+assert.match(index, /task\.completedByCRMClosure = true/, "A conclusao automatica deve ficar identificada para auditoria.");
+assert.match(index, /crmLeadClosureLabel\(lead\)/, "O cartao encerrado deve mostrar o resultado e a data do encerramento.");
+assert.match(ui, /crmCompleteTasksForClosedLead\(lead,at,"won"\)/, "O fechamento originado pela proposta tambem deve concluir as tarefas comerciais.");
 assert.match(index, /Tarefas comerciais/);
 assert.match(index, /Sem proxima tarefa/);
 assert.match(index, /chatNotifications/);

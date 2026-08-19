@@ -1579,6 +1579,22 @@
         task.required = task.automatic ? task.required !== false : false;
         task.automatic = !!task.automatic;
         task.createdAt = task.createdAt || nowISO();
+        const lead = next.crm.leads.find(item => item.id === task.leadId);
+        const stage = lead ? crmStageFrom(next.crm, lead.stageId) : {};
+        const outcome = lead && (lead.status === "Ganha" || stage.closedType === "won" || Number(stage.probability || 0) === 100)
+          ? "won"
+          : lead && (lead.status === "Perdida" || stage.closedType === "lost")
+            ? "lost"
+            : "";
+        if (outcome && task.status !== "Concluida") {
+          const closureEvent = [...(lead.events || [])].reverse().find(event => event.type === outcome);
+          const closureDate = outcome === "won" ? lead.crmDates?.closed : lead.crmDates?.lost;
+          task.status = "Concluida";
+          task.completedAt = closureEvent?.at || closureDate || lead.updatedAt || nowISO();
+          task.updatedAt = task.completedAt;
+          task.completedByCRMClosure = true;
+          task.crmClosureOutcome = outcome;
+        }
       });
       next.crm.taskTemplates.forEach(template => {
         template.daysAfterStage = Number(template.daysAfterStage || 1);
@@ -3210,6 +3226,26 @@
       return lead.status === "Ganha" || lead.status === "Perdida" || stage.closedType === "won" || stage.closedType === "lost";
     }
 
+    function crmLeadClosureOutcome(lead) {
+      const stage = crmStage(lead?.stageId);
+      if (lead?.status === "Perdida" || stage.closedType === "lost") return "lost";
+      if (lead?.status === "Ganha" || stage.closedType === "won" || Number(stage.probability || 0) === 100) return "won";
+      return "";
+    }
+
+    function crmLeadClosureDate(lead) {
+      const outcome = crmLeadClosureOutcome(lead);
+      const event = [...(lead?.events || [])].reverse().find(item => item.type === outcome);
+      const value = (outcome === "lost" ? lead?.crmDates?.lost : lead?.crmDates?.closed) || event?.at || lead?.updatedAt || "";
+      return String(value).slice(0, 10);
+    }
+
+    function crmLeadClosureLabel(lead) {
+      const outcome = crmLeadClosureOutcome(lead);
+      if (!outcome) return "";
+      return `${outcome === "lost" ? "Perdido" : "Concluido"} em ${formatDate(crmLeadClosureDate(lead))}`;
+    }
+
     function selectedLead() {
       const funnelId = activeCrmFunnel().id || state.crm.activeFunnelId;
       const leads = (state.crm.leads || []).filter(lead => lead.funnelId === funnelId);
@@ -3352,6 +3388,25 @@
     function crmNextTask(lead) {
       if (crmLeadIsClosed(lead)) return null;
       return crmTasksForLead(lead.id).find(task => task.status !== "Concluida") || null;
+    }
+
+    function crmCompleteTasksForClosedLead(lead, at = nowISO(), outcome = crmLeadClosureOutcome(lead)) {
+      if (!lead || !outcome) return 0;
+      const tasks = (state.crm.tasks || []).filter(task => task.leadId === lead.id && task.status !== "Concluida");
+      tasks.forEach(task => {
+        task.status = "Concluida";
+        task.completedAt = at;
+        task.updatedAt = at;
+        task.completedByCRMClosure = true;
+        task.crmClosureOutcome = outcome;
+      });
+      if (tasks.length) {
+        lead.events = lead.events || [];
+        lead.history = lead.history || [];
+        lead.events.push({ at, type: "commercial_tasks_completed_on_close", outcome, taskIds: tasks.map(task => task.id), userId: currentUser() ? currentUser().id : "" });
+        lead.history.push({ at, userId: currentUser() ? currentUser().id : "", text: `${tasks.length} tarefa(s) comercial(is) concluida(s) automaticamente no encerramento do negocio.` });
+      }
+      return tasks.length;
     }
 
     function crmTaskState(lead) {
@@ -3580,7 +3635,9 @@
       const taskState = crmTaskState(lead);
       const nextTask = crmNextTask(lead);
       const specifierName = crmSpecifierName(lead.specifierId || (crmLeadClient(lead) || {}).specifierId);
-      const taskLabel = !nextTask
+      const taskLabel = crmLeadIsClosed(lead)
+        ? crmLeadClosureLabel(lead)
+        : !nextTask
         ? (lead.status === "Aberta" ? "Sem proxima tarefa" : `Status: ${lead.status || "Encerrada"}`)
         : taskState === "late"
           ? "Tarefa atrasada"
@@ -3679,7 +3736,7 @@
                   <span class="pill">Contato ${formatDate((lead.crmDates && lead.crmDates.firstContact) || lead.createdAt)}</span>
                   <span class="pill">Etapa ${crmPipelineMetrics(lead).inCurrentStage} dias</span>
                   <span class="pill">Sem movimento ${crmPipelineMetrics(lead).withoutMovement} dias</span>
-                  <span class="pill ${crmTaskState(lead) === "late" ? "danger-text" : crmTaskState(lead) === "missing" ? "warning-text" : ""}">${crmNextTask(lead) ? `Tarefa ${formatDate(crmNextTask(lead).dueDate)}` : "Sem proxima tarefa"}</span>
+                  <span class="pill ${crmTaskState(lead) === "late" ? "danger-text" : crmTaskState(lead) === "missing" ? "warning-text" : ""}">${crmLeadIsClosed(lead) ? escapeHtml(crmLeadClosureLabel(lead)) : crmNextTask(lead) ? `Tarefa ${formatDate(crmNextTask(lead).dueDate)}` : "Sem proxima tarefa"}</span>
                 </div>
                 ${lead.labels && lead.labels.length ? `<div class="crm-labels">${lead.labels.map(label => `<span class="crm-label" style="background:${escapeHtml(label.color || "#8b6f47")}">${escapeHtml(label.text)}</span>`).join("")}</div>` : ""}
                 <p>${escapeHtml(lead.notes || "Sem observacoes.")}</p>
@@ -4970,6 +5027,7 @@
       lead.crmDates.closed = lead.crmDates.closed || todayISO;
       lead.updatedAt = todayISO;
       crmTouchStageAutomation(lead, oldStage, lead.stageId, at);
+      crmCompleteTasksForClosedLead(lead, at, "won");
       lead.events.push({ at, type: "won", value: lead.closedValue, userId: currentUser() ? currentUser().id : "" });
       lead.history.push({ at, userId: currentUser() ? currentUser().id : "", text: `Negocio fechado com valor de ${lead.closedValue}. Projeto criado automaticamente.` });
       const id = uid("p");
@@ -5052,6 +5110,7 @@
       lead.crmDates.lost = lead.crmDates.lost || todayISO;
       lead.updatedAt = todayISO;
       if (oldStage !== lead.stageId) crmTouchStageAutomation(lead, oldStage, lead.stageId, at);
+      crmCompleteTasksForClosedLead(lead, at, "lost");
       lead.events.push({ at, type: "lost", reason: lead.lostReasonCategory, comment: lead.lostComment, userId: currentUser() ? currentUser().id : "" });
       lead.history.push({ at, userId: currentUser() ? currentUser().id : "", text: `Negocio perdido. Motivo: ${lead.lostReasonCategory}${lead.lostComment ? ` | ${lead.lostComment}` : ""}` });
       toast("Negocio marcado como perdido.");
