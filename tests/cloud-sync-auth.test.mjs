@@ -9,7 +9,12 @@ assert.match(html, /client\.auth\.getSession\(\)/, "cloud writes must recover th
 assert.match(html, /client\.auth\.refreshSession\(\)/, "cloud writes must refresh a session that is close to expiring");
 assert.match(html, /await ensureAuthenticatedCloudSession\(\);[\s\S]*const snapshot = sharedStateSnapshot\(\);/, "authentication must be checked before building and sending the shared snapshot");
 assert.match(html, /else if \(expectsCloudAuth\(\) && state\.sessionUserId\)[\s\S]*state\.sessionUserId = "";/, "a local session marker must not bypass cloud authentication");
+assert.match(html, /const localProposals = Array\.isArray\(state\.proposals\) \? state\.proposals : \[\];/, "cloud loading must retain local proposals while reconciling");
+assert.match(html, /merged\.proposals = \[\.\.\.localOnlyProposals, \.\.\.reconciledRemoteProposals\];/, "local-only proposal versions must be restored into the merged state");
+assert.match(html, /if \(cloudRecoveryPending\) \{[\s\S]*await saveStateToCloudStrict\(\);/, "recovered local proposals must be sent back to the cloud immediately");
 assert.match(proposals, /isCloudSessionRequired\(error\)/, "proposal saving must distinguish an expired session from other sync failures");
 assert.match(proposals, /Sua sessao expirou; saia e entre novamente para sincronizar/, "the saved local draft must have an actionable recovery message");
+assert.match(proposals, /recordProposalDraftSnapshot\(clone,"Nova versao criada"\)/, "a new proposal version must create a recoverable snapshot");
+assert.match(proposals, /await persistCommercialStateConfirmed\(\)/, "a new proposal version must wait for cloud confirmation");
 
 console.log("cloud sync auth tests passed");
