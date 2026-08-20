@@ -21,7 +21,7 @@ assert.ok(
 );
 assert.match(index, /saas-core\.js/);
 assert.match(index, /saas-extension\.js/);
-assert.match(index, /saas-extension\.js\?v=20260820-sync-auth-fix/);
+assert.match(index, /saas-extension\.js\?v=20260820-proposal-cloud-recovery/);
 assert.match(index, /saas-theme\.css\?v=20260819-secure-report-share/);
 assert.match(index, /saas-core\.js\?v=20260820-pricing-safe-defaults/);
 assert.match(index, /reports-v4\.js\?v=20260819-secure-report-share/);
