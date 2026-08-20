@@ -1357,6 +1357,7 @@
     let cloudWriteQueue = Promise.resolve();
     let cloudStateUpdatedAt = "";
     let cloudSyncConflict = false;
+    let cloudRecoveryPending = false;
     const todayISO = new Date().toISOString().slice(0, 10);
     const nowISO = () => new Date().toISOString();
 
@@ -1714,10 +1715,33 @@
       const sessionUserId = state.sessionUserId;
       const sessionVersionAtLogin = state.sessionVersionAtLogin;
       const activeTab = state.activeTab;
+      const localProposals = Array.isArray(state.proposals) ? state.proposals : [];
       const localDraftSnapshots = Array.isArray(state.proposalDraftSnapshots) ? state.proposalDraftSnapshots : [];
       const merged = normalizeState(remoteState || clone(defaultState));
+      const remoteProposals = Array.isArray(merged.proposals) ? merged.proposals : [];
+      const remoteProposalById = new Map(remoteProposals.map(proposal => [proposal.id, proposal]));
+      const localOnlyProposals = [];
+      let recoveredProposal = false;
+      const proposalUpdatedAt = (proposal) => Date.parse(proposal?.updatedAt || proposal?.savedAt || proposal?.createdAt || "") || 0;
+      const reconciledRemoteProposals = remoteProposals.map(remoteProposal => {
+        const localProposal = localProposals.find(proposal => proposal?.id === remoteProposal.id);
+        if (localProposal && proposalUpdatedAt(localProposal) > proposalUpdatedAt(remoteProposal)) {
+          recoveredProposal = true;
+          return localProposal;
+        }
+        return remoteProposal;
+      });
+      localProposals.forEach(localProposal => {
+        if (localProposal?.id && !remoteProposalById.has(localProposal.id)) {
+          localOnlyProposals.push(localProposal);
+          recoveredProposal = true;
+        }
+      });
+      merged.proposals = [...localOnlyProposals, ...reconciledRemoteProposals];
       const remoteSnapshotIds = new Set((merged.proposalDraftSnapshots || []).map(snapshot => snapshot.id));
-      merged.proposalDraftSnapshots = [...localDraftSnapshots.filter(snapshot => !remoteSnapshotIds.has(snapshot.id)), ...(merged.proposalDraftSnapshots || [])].slice(0, 180);
+      const localOnlySnapshots = localDraftSnapshots.filter(snapshot => !remoteSnapshotIds.has(snapshot.id));
+      merged.proposalDraftSnapshots = [...localOnlySnapshots, ...(merged.proposalDraftSnapshots || [])].slice(0, 180);
+      cloudRecoveryPending = recoveredProposal || localOnlySnapshots.length > 0;
       merged.sessionUserId = sessionUserId;
       merged.sessionVersionAtLogin = sessionVersionAtLogin;
       merged.activeTab = activeTab || "projects";
@@ -1850,6 +1874,15 @@
         cloudSyncConflict = false;
         state = mergeCloudState(data.value);
         localStorage.setItem(storageKey, JSON.stringify(state));
+        if (cloudRecoveryPending) {
+          try {
+            await saveStateToCloudStrict();
+            cloudRecoveryPending = false;
+          } catch (recoveryError) {
+            console.warn("Falha ao recuperar propostas locais no Supabase:", recoveryError.message);
+            toast("As propostas mais recentes foram preservadas neste navegador e serao reenviadas assim que a sincronizacao for restabelecida.");
+          }
+        }
       } else {
         cloudStateUpdatedAt = "";
         await saveStateToCloudStrict();
