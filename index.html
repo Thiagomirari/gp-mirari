@@ -1740,9 +1740,40 @@
       return !!error && error.code === "state_conflict";
     }
 
+    function cloudSessionRequiredError() {
+      const error = new Error("Sua sessao do Supabase expirou. Entre novamente para sincronizar.");
+      error.code = "cloud_session_required";
+      return error;
+    }
+
+    function isCloudSessionRequired(error) {
+      if (!error) return false;
+      const status = Number(error.status || error.statusCode || 0);
+      const message = String(error.message || "").toLowerCase();
+      return error.code === "cloud_session_required" || status === 401 || /jwt|token.*expir|not authenticated|authentication required/.test(message);
+    }
+
+    async function ensureAuthenticatedCloudSession() {
+      const client = getCloudClient();
+      if (!client) throw new Error("Supabase nao configurado.");
+      const current = await client.auth.getSession();
+      if (current.error) throw current.error;
+      let session = current.data && current.data.session;
+      if (!session) throw cloudSessionRequiredError();
+      const expiresAt = Number(session.expires_at || 0) * 1000;
+      if (expiresAt && expiresAt <= Date.now() + 60000) {
+        const refreshed = await client.auth.refreshSession();
+        if (refreshed.error || !refreshed.data || !refreshed.data.session) throw cloudSessionRequiredError();
+        session = refreshed.data.session;
+      }
+      cloudSyncEnabled = true;
+      return session;
+    }
+
     async function writeStateToCloud() {
       if (!getCloudClient()) throw new Error("Supabase nao configurado.");
       const client = getCloudClient();
+      await ensureAuthenticatedCloudSession();
       const snapshot = sharedStateSnapshot();
       if (!cloudStateUpdatedAt) {
         const { data, error } = await client.from("gp_app_settings").select("updated_at").eq("key", cloudStateKey).maybeSingle();
@@ -1980,6 +2011,12 @@
             if (error) throw error;
             if (data && data.session && data.session.user) {
               await finishCloudLogin(data.session.user);
+            } else if (expectsCloudAuth() && state.sessionUserId) {
+              cloudSyncEnabled = false;
+              state.sessionUserId = "";
+              state.sessionVersionAtLogin = 0;
+              localStorage.setItem(storageKey, JSON.stringify(state));
+              rememberAuthNotice("Sua sessao expirou. Entre novamente para continuar e sincronizar seus rascunhos.");
             }
           }
         }
@@ -5776,7 +5813,7 @@
   </script>
   <!-- Script classico para que o MVP tambem carregue ao abrir este HTML diretamente. -->
   <script src="./assets/saas-core.js?v=20260820-pricing-safe-defaults"></script>
-  <script src="./assets/saas-extension.js?v=20260820-pricing-safe-defaults"></script>
+  <script src="./assets/saas-extension.js?v=20260820-sync-auth-fix"></script>
   <script src="./assets/reports-v4.js?v=20260819-secure-report-share"></script>
   <script src="./assets/signatures-ui.js?v=20260810-pdf-placement"></script>
 </body>

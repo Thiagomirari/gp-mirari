@@ -12,6 +12,8 @@ assert.match(source, /Menor valor entre as condicoes selecionadas/, "O destaque 
 assert.match(source, /const pdfTitle=\`\$\{proposal\.number\|\|"Proposta Mirari"\} v\$\{proposal\.version\|\|1\}\`;/, "O nome do PDF deve incluir a versao da proposta.");
 assert.match(source, /popup\.document\.title=pdfTitle/, "O titulo da janela de impressao deve incluir a versao da proposta.");
 assert.match(source, /paymentDiscount\(option,highestPaymentCents\)/, "O PDF deve preservar os descontos das condicoes de pagamento.");
+assert.match(source, /const creditCardNote=paymentOptions\.some\(\(option\)=>option\.type==="card"\|\|option\.type==="card_entry"\)\?/, "A observacao de parcelamento deve depender de uma opcao de cartao selecionada.");
+assert.match(source, /<div class="payment-list">\$\{paymentRows\}<\/div>\$\{creditCardNote\}/, "O PDF deve inserir a observacao condicional junto das formas de pagamento.");
 assert.match(source, /Markup e RT/, "A tela deve manter a orientacao de que markup e RT nao aparecem no PDF.");
 
 console.log("proposal-pdf-layout.test.mjs: ok");
