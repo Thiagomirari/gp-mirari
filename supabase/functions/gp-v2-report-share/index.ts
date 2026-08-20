@@ -13,7 +13,7 @@ function responseHeaders(request: Request) {
   const allowedOrigin = allowedOrigins.has(origin) || /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin) ? origin : "https://gp.mirari.com.br";
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Cache-Control": "no-store, max-age=0",
     "Content-Type": "application/json; charset=utf-8",

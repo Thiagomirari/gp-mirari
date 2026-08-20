@@ -32,6 +32,7 @@ for (const token of ["REPORT_SHARE_TOKEN_PEPPER", "hmacSha256", "randomToken", "
 assert.ok(edge.includes("snapshot_too_large"), "shared snapshots need a strict size limit");
 assert.ok(edge.includes("allowedSections"), "shared report sections need a server-side allowlist");
 assert.ok(edge.includes("sectionKeys"), "the server must strip data for unselected sections");
+assert.match(edge, /Access-Control-Allow-Headers[^\n]+x-client-info/, "Supabase browser calls must pass their CORS preflight");
 assert.doesNotMatch(edge, /token_hash:\s*accessToken/i, "raw access tokens must never be persisted");
 
 for (const token of ["Gerar link", "openReportShareOptions", "sharedReportSnapshot", "expiresInDays", "reportShareApi(\"revoke\"", "channel-detail", "conteudo confidencial"]) {
