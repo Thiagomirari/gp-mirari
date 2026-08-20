@@ -81,10 +81,10 @@
     const report = data.report || {}; document.title = `${data.title || "Relatório executivo"} | GP Mirari`; byId("report-title").textContent = data.title || report.title || "Relatório executivo"; byId("report-period").textContent = report.period || "Período compartilhado"; byId("report-expiry").textContent = dateTime(data.expiresAt); byId("report-generated").textContent = `Gerado em ${dateTime(report.generatedAt || data.createdAt)}`;
     const filterBox = byId("report-filters"); const filters = Array.isArray(report.filters) ? report.filters : []; filterBox.hidden = !filters.length; filterBox.replaceChildren(...filters.map((item) => node("span", "", item)));
     const root = byId("report-sections"); root.replaceChildren(); let index = 1; index = renderSummary(report, root, index); index = renderGoals(report, root, index); index = renderMarketing(report, root, index); index = renderChannelDetails(report, root, index); index = renderEvolution(report, root, index); index = renderCommercial(report, root, index); index = renderProductivity(report, root, index); renderFuture(report, root, index);
-    byId("loading-state").hidden = true; byId("report-content").hidden = false;
+    byId("loading-state").hidden = true; byId("error-state").hidden = true; byId("report-content").hidden = false;
   }
 
-  function fail(error) { sessionStorage.removeItem(storageKey); byId("loading-state").hidden = true; byId("error-state").hidden = false; if (String(error?.message) === "report_share_expired") byId("error-message").textContent = "A validade deste link terminou. Solicite um novo compartilhamento à Mirari."; }
+  function fail(error) { sessionStorage.removeItem(storageKey); byId("loading-state").hidden = true; byId("report-content").hidden = true; byId("error-state").hidden = false; if (String(error?.message) === "report_share_expired") byId("error-message").textContent = "A validade deste link terminou. Solicite um novo compartilhamento à Mirari."; }
   byId("print-report").addEventListener("click", () => window.print());
   loadReport(readToken()).then(render).catch(fail);
 })();

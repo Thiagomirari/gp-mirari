@@ -5,13 +5,14 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const read = (path) => readFile(join(root, path), "utf8");
-const [migration, hardening, edge, reports, page, publicScript, publicConfig, cpanel] = await Promise.all([
+const [migration, hardening, edge, reports, page, publicScript, publicStyles, publicConfig, cpanel] = await Promise.all([
   read("migrations/021-secure-report-sharing.sql"),
   read("migrations/022-report-sharing-service-role-hardening.sql"),
   read("supabase/functions/gp-v2-report-share/index.ts"),
   read("assets/reports-v4.js"),
   read("relatorio.html"),
   read("assets/report-public.js"),
+  read("assets/report-public.css"),
   read("assets/report-public-config.js"),
   read(".cpanel.yml"),
 ]);
@@ -47,6 +48,9 @@ assert.match(page, /noindex,nofollow,noarchive,nosnippet/);
 assert.doesNotMatch(page, /index\.html|saas-core|reports-v4/, "the public page must not load the authenticated application bundle");
 assert.match(publicScript, /history\.replaceState/, "the token fragment must be cleared after it is read");
 assert.match(publicScript, /sessionStorage/, "the cleared token must remain available only for the current tab session");
+assert.match(publicScript, /error-state"\)\.hidden = true/, "successful loading must hide any stale error state");
+assert.match(publicScript, /report-content"\)\.hidden = true/, "failed loading must hide report content");
+assert.match(publicStyles, /\[hidden\]\s*\{\s*display\s*:\s*none\s*!important/, "hidden loading, error and content states must never be overridden by layout styles");
 assert.match(publicScript, /textContent/, "public rendering must use safe text insertion");
 assert.doesNotMatch(publicScript, /innerHTML|outerHTML|document\.write/, "untrusted report data must never be rendered as HTML");
 assert.match(publicConfig, /gp-v2-report-share/);
