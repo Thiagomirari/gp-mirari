@@ -125,8 +125,11 @@
     const baseSaleCents = Math.max(0, Math.round(Number(proposal.totalCents ?? calculated.totalCents) || 0));
     const modelKey = formation.financialModelKey || "";
     const financialModel = (paymentModels || []).find((model) => model.key === modelKey) || null;
-    const financialFeeCents = Math.max(0, Math.round(Number(financialModel?.amountCents) || 0));
-    const saleCents = baseSaleCents + financialFeeCents;
+    const financialFeeCents = Math.max(0, Math.round(Number(financialModel?.financialFeeCents ?? financialModel?.amountCents) || 0));
+    const selectedSaleCents = Number(financialModel?.saleCents);
+    const saleCents = financialModel && Number.isFinite(selectedSaleCents)
+      ? Math.max(0, Math.round(selectedSaleCents))
+      : baseSaleCents + financialFeeCents;
     const itemSaleTotalCents = calculated.items.reduce((total, item) => total + item.totalCents, 0);
     let allocatedSaleCents = 0;
     const environments = calculated.items.map((item, index) => {

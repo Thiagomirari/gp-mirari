@@ -128,6 +128,30 @@ assert.equal(Math.round(priceFormation.saleScore * 100), 454);
 assert.equal(priceFormation.environments[0].purchaseCostCents, 20000);
 assert.equal(priceFormation.environments[0].saleCents, 113410);
 
+const conditionProposal = {
+  totalCents: 100000,
+  items: [{ name: "Cozinha", baseUnitCents: 40000, quantity: 1, markupPercent: 150 }]
+};
+const cashPricing = calculatePriceFormation(conditionProposal, { financialModelKey: "cash" }, [], [
+  { key: "cash", label: "A vista", saleCents: cash.totalCents, financialFeeCents: 0 }
+]);
+const cashEntryPricing = calculatePriceFormation(conditionProposal, { financialModelKey: "cash_entry:2" }, [], [
+  { key: "cash_entry:2", label: "A vista com entrada", saleCents: cashWithEntry.totalCents, financialFeeCents: 0 }
+]);
+const cardPricing = calculatePriceFormation(conditionProposal, { financialModelKey: "card:0" }, [], [
+  { key: "card:0", label: "Cartao de credito", saleCents: card12x.totalCents, financialFeeCents: card12x.totalCents - 100000 }
+]);
+assert.equal(cashPricing.saleCents, 100000);
+assert.equal(cashPricing.financialFeeCents, 0);
+assert.equal(cashPricing.contributionCents, 60000);
+assert.equal(cashEntryPricing.saleCents, cashWithEntry.totalCents);
+assert.equal(cashEntryPricing.financialFeeCents, 0);
+assert.equal(cashEntryPricing.contributionCents, cashWithEntry.totalCents - 40000);
+assert.equal(cardPricing.saleCents, card12x.totalCents);
+assert.equal(cardPricing.financialFeeCents, card12x.totalCents - 100000);
+assert.equal(cardPricing.contributionCents, 60000);
+assert.ok(cardPricing.contributionPercent < cashPricing.contributionPercent);
+
 const storeFinanced = calculatePaymentOption(100000, { type: "store_financed", installments: 12, entryPercent: 30 }, cardRates, defaultStoreRates);
 assert.equal(storeFinanced.entryCents, 30000);
 assert.equal(storeFinanced.feePercent, defaultStoreRates[12]);

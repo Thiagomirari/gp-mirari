@@ -316,6 +316,9 @@ Regras discutidas:
 
 - Imposto incide sobre venda total.
 - Taxas financeiras devem ser calculadas conforme condicao selecionada.
+- A formacao de preco deve exigir a selecao da condicao de pagamento analisada.
+- O valor de venda deve ser o total calculado para essa condicao: a vista, a vista com entrada, cartao ou parcelado pela loja.
+- Condicoes sem taxa financeira devem manter esse custo zerado; cartao e parcelamento devem considerar somente o custo financeiro correspondente.
 - RT deve sair da venda liquida:
 
 ```text
