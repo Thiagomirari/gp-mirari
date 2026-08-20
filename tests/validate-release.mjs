@@ -21,9 +21,9 @@ assert.ok(
 );
 assert.match(index, /saas-core\.js/);
 assert.match(index, /saas-extension\.js/);
-assert.match(index, /saas-extension\.js\?v=20260820-payment-price-formation/);
+assert.match(index, /saas-extension\.js\?v=20260820-pricing-safe-defaults/);
 assert.match(index, /saas-theme\.css\?v=20260819-secure-report-share/);
-assert.match(index, /saas-core\.js\?v=20260820-payment-price-formation/);
+assert.match(index, /saas-core\.js\?v=20260820-pricing-safe-defaults/);
 assert.match(index, /reports-v4\.js\?v=20260819-secure-report-share/);
 assert.match(index, /demoProjectCleanupVersion/, "A limpeza controlada dos projetos demonstrativos deve ser versionada.");
 assert.match(index, /defaultState\.projects = \[\]/, "Novas instalacoes nao devem recriar projetos demonstrativos.");
@@ -227,6 +227,9 @@ assert.match(ui, /Condicao de pagamento analisada/, "A formacao de preco deve pe
 assert.match(ui, /source\.type!=="cash"&&source\.type!=="pix"/, "A vista deve ser incluida uma unica vez e as demais condicoes habilitadas devem ser preservadas.");
 assert.match(ui, /saleCents:calculated\.totalCents/, "Cada condicao deve levar seu preco de venda calculado para a formacao.");
 assert.match(ui, /financialFeeCents/, "A formacao deve separar preco de venda e custo financeiro.");
+assert.match(core, /freightPercent: 10/, "Frete deve iniciar em 10%.");
+assert.match(ui, /parsed>0\?parsed:fallback/, "Configuracoes antigas zeradas devem voltar ao padrao seguro.");
+assert.match(ui, /pricingDefaultsVersion:1/, "Ajustes manuais posteriores devem ser identificados e preservados.");
 assert.match(ui, /Retornar a negociacao/);
 assert.match(ui, /Iniciar negociacao/);
 assert.match(ui, /Propostas vencidas/);
