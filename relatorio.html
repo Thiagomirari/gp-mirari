@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive,nosnippet">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Cache-Control" content="no-store, max-age=0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https://*.supabase.co; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; upgrade-insecure-requests">
+  <title>Relatório compartilhado | GP Mirari</title>
+  <link rel="stylesheet" href="./assets/report-public.css?v=20260819-secure-share">
+</head>
+<body>
+  <header class="public-topbar">
+    <a class="public-brand" href="https://mirari.com.br" rel="noreferrer" aria-label="Mirari">
+      <span>M</span>
+      <div><strong>MIRARI</strong><small>INTELIGÊNCIA COMERCIAL</small></div>
+    </a>
+    <div class="public-security"><i aria-hidden="true"></i><span>Visualização segura · somente leitura</span></div>
+  </header>
+
+  <main class="public-shell">
+    <section class="public-state" id="loading-state">
+      <div class="public-spinner" aria-hidden="true"></div>
+      <h1>Preparando o relatório</h1>
+      <p>Validando o acesso e carregando somente os dados compartilhados.</p>
+    </section>
+
+    <section class="public-state public-error" id="error-state" hidden>
+      <span>!</span>
+      <h1>Este relatório não está disponível</h1>
+      <p id="error-message">O link pode ter expirado, sido revogado ou estar incompleto.</p>
+    </section>
+
+    <article id="report-content" hidden>
+      <header class="public-report-header">
+        <div><p>RELATÓRIO COMPARTILHADO</p><h1 id="report-title">Relatório executivo</h1><span id="report-period"></span></div>
+        <aside><small>ACESSO ATÉ</small><strong id="report-expiry"></strong><button type="button" id="print-report">Imprimir / PDF</button></aside>
+      </header>
+      <section class="public-filters" id="report-filters" hidden></section>
+      <div class="public-sections" id="report-sections"></div>
+      <footer class="public-footer"><span>GP Mirari · Documento gerencial confidencial</span><span id="report-generated"></span></footer>
+    </article>
+  </main>
+
+  <script src="./assets/report-public-config.js?v=20260819-secure-share"></script>
+  <script src="./assets/report-public.js?v=20260819-secure-share"></script>
+</body>
+</html>

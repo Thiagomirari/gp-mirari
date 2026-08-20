@@ -66,6 +66,27 @@ Use somente a chave `anon public`.
 
 Nunca use `service_role` no navegador.
 
+## Compartilhamento seguro de relatorios
+
+Antes de publicar o botao **Gerar link** pela primeira vez:
+
+1. Aplique `migrations/021-secure-report-sharing.sql` no projeto Supabase.
+2. Opcionalmente, cadastre um segredo exclusivo e aleatorio de pelo menos 32 caracteres. Se ele nao existir, a funcao reutiliza `SIGNATURE_TOKEN_PEPPER` com separacao criptografica de dominio:
+
+```bash
+supabase secrets set REPORT_SHARE_TOKEN_PEPPER="VALOR_ALEATORIO_FORTE"
+supabase secrets set REPORT_SHARE_PUBLIC_URL="https://gp.mirari.com.br/relatorio.html"
+```
+
+3. Confirme que `GP_APP_ORGANIZATION_ID` ja esta configurado para a organizacao do GP Mirari.
+4. Publique a funcao publica. A verificacao JWT do gateway precisa ficar desligada porque a leitura externa usa token opaco; criacao, listagem e revogacao validam o JWT do usuario dentro da funcao:
+
+```bash
+supabase functions deploy gp-v2-report-share --no-verify-jwt
+```
+
+O valor de `REPORT_SHARE_TOKEN_PEPPER` e a chave secreta/service role ficam somente nos secrets do Supabase. Nunca os inclua nos arquivos do site ou no GitHub.
+
 ## Comandos Uteis
 
 Quando o Git estiver instalado localmente:
@@ -88,4 +109,6 @@ No cPanel, use a interface de Git para puxar a nova versao.
 - Conferir pagamento.
 - Abrir formacao de preco.
 - Gerar PDF de proposta.
+- Em Relatorios, gerar um link com validade de 1 dia e abri-lo em aba anonima.
+- Revogar o link e confirmar que a pagina publica deixa de carregar.
 - Confirmar se os dados continuam salvos no Supabase.

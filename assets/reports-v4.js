@@ -128,6 +128,16 @@
 
   const palette = ["#D8AA7F", "#5E7484", "#6F8A7B", "#B99058", "#A87878", "#8B8585"];
   const defaultPdfSections = ["summary", "goals", "marketing", "evolution", "commercial", "productivity", "future"];
+  const reportSectionOptions = [
+    ["summary", "Resumo executivo", "Indicadores principais e filtros aplicados"],
+    ["goals", "Metas comerciais", "Meta, atingimento e referencias de periodo"],
+    ["marketing", "Marketing", "Atracao e topo de funil"],
+    ["channel-detail", "Detalhamento por canal", "Inclui nomes das oportunidades; conteudo confidencial"],
+    ["evolution", "Evolucao", "Movimentacao de leads e vendas"],
+    ["commercial", "Comercial", "Funil, indicadores e performance por canal"],
+    ["productivity", "Equipe e parcerias", "Performance comercial e especificadores"],
+    ["future", "Operacao e pos-venda", "Bloco de preparacao futura"]
+  ];
   const emptyChart = (text) => `<div class="report-empty-chart"><span>Sem dados</span><small>${esc(text)}</small></div>`;
   const metric = (tone, label, value, detail, mark) => `<article class="report-metric report-metric-${tone}"><span class="report-metric-mark">${esc(mark)}</span><div><p>${esc(label)}</p><strong>${esc(value)}</strong><small>${esc(detail)}</small></div></article>`;
   const panelHead = (eyebrow, title, detail, control = "") => `<header class="report-panel-head"><div><span>${esc(eyebrow)}</span><h3>${esc(title)}</h3><p>${esc(detail)}</p></div>${control}</header>`;
@@ -264,20 +274,10 @@
 
   function openReportPrintOptions() {
     const selected = new Set(Array.isArray(window.reportPrintSections) ? window.reportPrintSections : defaultPdfSections);
-    const options = [
-      ["summary", "Resumo executivo", "Indicadores principais e filtros aplicados"],
-      ["goals", "Metas comerciais", "Meta, atingimento e referências de período"],
-      ["marketing", "Marketing", "Atração e topo de funil"],
-      ["channel-detail", "Detalhamento por canal", "Lista de oportunidades por canal; desmarcado por padrão"],
-      ["evolution", "Evolução", "Movimentação de leads e vendas"],
-      ["commercial", "Comercial", "Funil, indicadores e performance por canal"],
-      ["productivity", "Equipe e parcerias", "Performance comercial e especificadores"],
-      ["future", "Operação e pós-venda", "Bloco de preparação futura"]
-    ];
     const modal = document.createElement("div");
     modal.className = "modal open report-print-options-modal";
     modal.setAttribute("aria-hidden", "false");
-    modal.innerHTML = `<div class="modal-box"><div class="panel-header"><div><p class="eyebrow">Relatórios</p><h2>Selecionar conteúdo do PDF</h2></div><button class="ghost" type="button" data-close-report-print>Fechar</button></div><form class="form-box" id="report-print-options-form"><p class="muted">Escolha as seções que deseja incluir. O detalhamento de oportunidades por canal é opcional e inicia desmarcado.</p><div class="report-print-options">${options.map(([id, title, detail]) => `<label><input type="checkbox" name="report-print-section" value="${id}" ${selected.has(id) ? "checked" : ""}><span><strong>${esc(title)}</strong><small>${esc(detail)}</small></span></label>`).join("")}</div><div class="actions"><button class="secondary" type="button" data-close-report-print>Cancelar</button><button class="primary" type="submit">Gerar PDF</button></div></form></div>`;
+    modal.innerHTML = `<div class="modal-box"><div class="panel-header"><div><p class="eyebrow">Relatórios</p><h2>Selecionar conteúdo do PDF</h2></div><button class="ghost" type="button" data-close-report-print>Fechar</button></div><form class="form-box" id="report-print-options-form"><p class="muted">Escolha as seções que deseja incluir. O detalhamento de oportunidades por canal é opcional e inicia desmarcado.</p><div class="report-print-options">${reportSectionOptions.map(([id, title, detail]) => `<label><input type="checkbox" name="report-print-section" value="${id}" ${selected.has(id) ? "checked" : ""}><span><strong>${esc(title)}</strong><small>${esc(detail)}</small></span></label>`).join("")}</div><div class="actions"><button class="secondary" type="button" data-close-report-print>Cancelar</button><button class="primary" type="submit">Gerar PDF</button></div></form></div>`;
     document.body.appendChild(modal);
     modal.querySelectorAll("[data-close-report-print]").forEach((button) => button.addEventListener("click", () => modal.remove()));
     modal.querySelector("#report-print-options-form").addEventListener("submit", (event) => {
@@ -289,6 +289,140 @@
       modal.remove();
       printReport(sections);
     });
+  }
+
+  function sharedReportSnapshot(selectedSections) {
+    const sections = new Set(selectedSections);
+    const filters = window.reportFilters || periodFor("month");
+    const local = window.reportBlockFilters || {};
+    const global = window.reportGlobalFilters || {};
+    const data = dataFor(filters);
+    const commercialLeads = local.stage && local.stage !== "all" ? data.scoped.filter((lead) => stageFor(lead).id === local.stage) : data.scoped;
+    const commercialSold = local.stage && local.stage !== "all" ? data.sold.filter((lead) => stageFor(lead).id === local.stage) : data.sold;
+    const commercialProposals = local.stage && local.stage !== "all" ? data.proposals.filter((proposal) => commercialLeads.some((lead) => lead.id === (proposal.crmOpportunityRef || proposal.leadId || proposal.opportunityId))) : data.proposals;
+    const marketingRows = local.channel && local.channel !== "all" ? data.channels.filter((row) => row.name === local.channel) : data.channels;
+    const teamRows = local.owner && local.owner !== "all" ? data.team.filter((row) => row.id === local.owner) : data.team;
+    const partnerRows = local.partner && local.partner !== "all" ? data.partners.filter((row) => row.id === local.partner) : data.partners;
+    const commercialStages = local.stage && local.stage !== "all" ? data.stages.filter((stage) => stage.id === local.stage) : data.stages;
+    const commercialSoldValue = commercialSold.reduce((sum, lead) => sum + leadValue(lead), 0);
+    const commercialFunnelValue = commercialLeads.reduce((sum, lead) => sum + leadValue(lead), 0);
+    const commercialTicket = commercialSold.length ? commercialSoldValue / commercialSold.length : 0;
+    const commercialFunnelTicket = commercialLeads.length ? commercialFunnelValue / commercialLeads.length : 0;
+    const commercialProposalTicket = commercialProposals.length ? commercialProposals.reduce((sum, proposal) => sum + Number(proposal.totalCents || 0) / 100, 0) / commercialProposals.length : 0;
+    const commercialConversion = commercialLeads.length ? Math.round(commercialLeads.filter(isWon).length / commercialLeads.length * 100) : 0;
+    const openPipeline = commercialLeads.filter((lead) => !isWon(lead) && !isLost(lead)).reduce((sum, lead) => sum + leadValue(lead), 0);
+    const filterLabels = [];
+    if (global.team && global.team !== "all") filterLabels.push(`Equipe: ${global.team}`);
+    if (global.owner && global.owner !== "all") filterLabels.push(`Atendente: ${reportUser(global.owner).name || "Selecionado"}`);
+    if (global.stage && global.stage !== "all") filterLabels.push(`Status: ${stageFor({ stageId: global.stage }).name || "Selecionado"}`);
+    if (global.source && global.source !== "all") filterLabels.push(`Origem: ${global.source}`);
+    const snapshot = { version: 1, period: periodLabel(filters), filters: filterLabels };
+
+    if (sections.has("summary")) snapshot.summary = {
+      leads: data.summary.leads, pipeline: openPipeline, funnelTicket: commercialFunnelTicket,
+      soldValue: commercialSoldValue, salesTicket: commercialTicket, conversion: commercialConversion,
+      lostCount: data.lost.length, opportunities: commercialLeads.length
+    };
+    if (sections.has("goals")) {
+      const goal = salesGoalSummary(filters); const actual = Number(data.summary.soldValue || 0);
+      snapshot.goals = { configured: goal.configured, target: goal.target, annual: goal.annual, semester: goal.annual / 2, quarter: goal.annual / 4, month: goal.annual / 12, actual, attainment: goal.target ? Math.round(actual / goal.target * 100) : 0 };
+    }
+    if (sections.has("marketing")) snapshot.marketing = { qualification: data.summary.qualification, channels: marketingRows.map((row) => ({ name: row.name, leads: row.leads })) };
+    if (sections.has("channel-detail")) snapshot.channelDetails = channelRows(data.scoped).map((channel) => ({
+      name: channel.name,
+      opportunities: data.scoped.filter((lead) => String(lead.source || "Nao informado") === channel.name).map((lead) => ({
+        name: lead.client || lead.interest || "Oportunidade sem nome", interest: lead.interest || "Sem interesse informado",
+        date: firstContact(lead), stage: stageFor(lead).name || lead.status || "Sem etapa", owner: reportUser(lead.ownerId).name || "Nao informado", value: leadValue(lead)
+      }))
+    }));
+    if (sections.has("evolution")) snapshot.evolution = timelineRows(data, filters);
+    if (sections.has("commercial")) snapshot.commercial = {
+      stages: commercialStages.map((row) => ({ name: row.name, count: row.count, value: row.value, probability: row.probability })),
+      channels: channelRows(commercialLeads).map((row) => ({ name: row.name, leads: row.leads, won: row.won, value: row.value })),
+      soldValue: commercialSoldValue, funnelTicket: commercialFunnelTicket, proposalTicket: commercialProposalTicket,
+      salesTicket: commercialTicket, conversion: commercialConversion, closeDays: data.summary.closeDays, lostCount: data.lost.length
+    };
+    if (sections.has("productivity")) snapshot.productivity = {
+      team: teamRows.map((row) => ({ name: row.name, presented: row.presented, sold: row.sold, conversion: row.conversion, ticket: row.ticket })),
+      partners: partnerRows.slice(0, 5).map((row) => ({ name: row.name, sales: row.sales, rt: row.rt })),
+      partnerSales: partnerRows.reduce((sum, row) => sum + row.sales, 0), partnerRt: partnerRows.reduce((sum, row) => sum + row.rt, 0)
+    };
+    if (sections.has("future")) snapshot.future = true;
+    return snapshot;
+  }
+
+  async function reportShareApi(action, body = {}) {
+    const api = typeof getCloudClient === "function" ? getCloudClient() : null;
+    if (!api?.functions?.invoke) throw new Error("Supabase nao configurado.");
+    const { data, error } = await api.functions.invoke("gp-v2-report-share", { body: { action, ...body } });
+    if (error || data?.error) throw new Error(data?.error || error?.message || "report_share_unavailable");
+    return data;
+  }
+
+  async function copyReportLink(value) {
+    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(value);
+    else { const input = document.createElement("textarea"); input.value = value; document.body.appendChild(input); input.select(); document.execCommand("copy"); input.remove(); }
+    toast("Link copiado. Envie somente para quem deve visualizar o relatorio.");
+  }
+
+  function reportShareError(error) {
+    const code = String(error?.message || error || "");
+    const messages = {
+      report_share_permission_required: "Somente gestores e administradores podem compartilhar relatorios.",
+      report_share_unavailable: "O compartilhamento seguro ainda nao esta disponivel no servidor.",
+      report_share_create_failed: "Nao foi possivel gerar o link seguro.",
+      snapshot_too_large: "O relatorio ficou grande demais. Remova o detalhamento por canal e tente novamente."
+    };
+    return messages[code] || "Nao foi possivel concluir o compartilhamento.";
+  }
+
+  function openReportShareOptions() {
+    const selected = new Set(Array.isArray(window.reportShareSections) ? window.reportShareSections : defaultPdfSections);
+    const modal = document.createElement("div");
+    modal.className = "modal open report-print-options-modal report-share-modal";
+    modal.setAttribute("aria-hidden", "false");
+    modal.innerHTML = `<div class="modal-box"><div class="panel-header"><div><p class="eyebrow">Acesso externo</p><h2>Compartilhar relatorio</h2></div><button class="ghost" type="button" data-close-report-share>Fechar</button></div><form class="form-box" id="report-share-form"><p class="muted">O link abre uma pagina isolada e somente leitura. Ele expira automaticamente e pode ser revogado a qualquer momento.</p><div class="report-share-fields"><label><span>Titulo do compartilhamento</span><input class="saas-input" id="report-share-title" maxlength="120" value="Relatorio executivo - ${esc(periodLabel(window.reportFilters || periodFor("month")))}"></label><label><span>Validade</span><select class="saas-select" id="report-share-expiry"><option value="1">1 dia</option><option value="7" selected>7 dias</option><option value="30">30 dias</option></select></label></div><div class="report-print-options">${reportSectionOptions.map(([id, title, detail]) => `<label><input type="checkbox" name="report-share-section" value="${id}" ${selected.has(id) ? "checked" : ""}><span><strong>${esc(title)}</strong><small>${esc(detail)}</small></span></label>`).join("")}</div><p class="report-share-warning">Por seguranca, o detalhamento com nomes de oportunidades fica desmarcado por padrao. O destinatario nao recebe acesso ao GP Mirari nem a outros dados.</p><div class="report-share-result" id="report-share-result" hidden></div><div class="actions"><button class="secondary" type="button" data-close-report-share>Cancelar</button><button class="primary" type="submit">Gerar link seguro</button></div></form><section class="report-share-list"><header><strong>Links recentes</strong><small>Revogue qualquer acesso que nao seja mais necessario.</small></header><div id="report-share-list"><p class="muted">Carregando...</p></div></section></div>`;
+    document.body.appendChild(modal);
+    const close = () => modal.remove();
+    modal.querySelectorAll("[data-close-report-share]").forEach((button) => button.addEventListener("click", close));
+
+    const loadShares = async () => {
+      const target = modal.querySelector("#report-share-list");
+      try {
+        const data = await reportShareApi("list");
+        const shares = Array.isArray(data.shares) ? data.shares : [];
+        target.innerHTML = shares.length ? shares.map((share) => {
+          const expired = share.status !== "active" || new Date(share.expiresAt).getTime() <= Date.now();
+          return `<article><div><strong>${esc(share.title)}</strong><small>${expired ? (share.status === "revoked" ? "Revogado" : "Expirado") : `Valido ate ${new Date(share.expiresAt).toLocaleString("pt-BR")}`} · ${Number(share.accessCount || 0)} acesso(s)</small></div>${expired ? "" : `<button class="saas-button" type="button" data-revoke-report-share="${esc(share.id)}">Revogar</button>`}</article>`;
+        }).join("") : '<p class="muted">Nenhum link criado ainda.</p>';
+        target.querySelectorAll("[data-revoke-report-share]").forEach((button) => button.addEventListener("click", async () => {
+          button.disabled = true;
+          try { await reportShareApi("revoke", { shareId: button.dataset.revokeReportShare }); toast("Link revogado."); await loadShares(); }
+          catch (error) { toast(reportShareError(error)); button.disabled = false; }
+        }));
+      } catch (error) { target.innerHTML = `<p class="muted">${esc(reportShareError(error))}</p>`; }
+    };
+
+    modal.querySelector("#report-share-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const submit = event.currentTarget.querySelector('button[type="submit"]');
+      const sections = [...modal.querySelectorAll('input[name="report-share-section"]:checked')].map((input) => input.value);
+      if (!sections.length) return toast("Selecione ao menos uma secao para compartilhar.");
+      if (sections.includes("channel-detail") && !sections.includes("marketing")) sections.push("marketing");
+      window.reportShareSections = sections;
+      submit.disabled = true; submit.textContent = "Gerando...";
+      try {
+        const data = await reportShareApi("create", { title: $("report-share-title").value.trim(), expiresInDays: Number($("report-share-expiry").value), sections, snapshot: sharedReportSnapshot(sections) });
+        const result = modal.querySelector("#report-share-result");
+        result.hidden = false;
+        result.innerHTML = `<strong>Link pronto</strong><p>Copie e envie ao destinatario. O token nao aparece no banco de dados e o acesso expira em ${new Date(data.share.expiresAt).toLocaleString("pt-BR")}.</p><div><input class="saas-input" value="${esc(data.url)}" readonly><button class="saas-button primary" type="button" data-copy-report-link>Copiar link</button></div>`;
+        result.querySelector("[data-copy-report-link]").addEventListener("click", () => copyReportLink(data.url).catch(() => toast("Copie o link manualmente.")));
+        await copyReportLink(data.url).catch(() => undefined);
+        await loadShares();
+      } catch (error) { toast(reportShareError(error)); }
+      finally { submit.disabled = false; submit.textContent = "Gerar link seguro"; }
+    });
+    loadShares();
   }
 
   function dashboardMetrics() {
@@ -336,6 +470,7 @@
 
     target.innerHTML = `<main class="reporting-workspace"><header class="reporting-header"><div><p>INTELIGENCIA COMERCIAL</p><h2>Relatorios e KPIs</h2><span>Uma visao executiva do CRM, propostas e parcerias.</span></div><div class="reporting-actions"><button class="saas-button" id="report-pdf" type="button">Gerar PDF</button><button class="saas-button primary" id="reports-refresh" type="button">Atualizar</button></div></header><section class="reporting-filterbar"><div class="reporting-date"><span>Periodo analisado</span><strong>${periodLabel(filters)}</strong></div><div class="reporting-presets">${presets.map(([id, label]) => `<button class="${filters.preset === id ? "is-active" : ""}" data-report-preset="${id}" type="button">${label}</button>`).join("")}</div>${custom ? `<div class="reporting-custom-dates"><label>Inicio<input id="report-start" type="date" value="${esc(filters.start)}"></label><label>Fim<input id="report-end" type="date" value="${esc(filters.end)}"></label><button class="saas-button primary" id="reports-apply-period" type="button">Aplicar</button></div>` : ""}</section><section class="reporting-kpis">${metric("leads", "Total de leads", data.summary.leads, data.summary.mom === null ? "Sem comparativo anterior" : `${data.summary.mom >= 0 ? "+" : ""}${data.summary.mom.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% vs. mes anterior`, "#")}${metric("pipeline", "Valor no funil", money(openPipeline), `${commercialLeads.length} oportunidade(s) no periodo`, "R$")}${metric("ticket", "Ticket medio do funil", money(commercialFunnelTicket), "Media dos cartoes no funil", "TM")}${metric("proposal", "Ticket medio de orcamentos", money(commercialProposalTicket), `${commercialProposals.length} proposta(s)`, "OR")}${metric("sold", "Valor vendido", money(commercialSoldValue), `${commercialSold.length} venda(s) fechada(s)`, "R$")}${metric("conversion", "Conversao comercial", `${commercialConversion}%`, `${data.lost.length} negocio(s) perdido(s)`, "%")}</section><section class="reporting-section"><header class="reporting-section-head"><div><span>01</span><div><p>MARKETING</p><h3>Atracao e topo de funil</h3></div></div>${marketingFilter}</header><div class="reporting-grid marketing"><article class="report-panel">${panelHead("ORIGEM", "Leads por canal", "Distribuicao das oportunidades no periodo.")}${donutChart(marketingRows)}</article><article class="report-panel">${panelHead("VOLUME", "Canais de aquisicao", "Comparativo visual de entrada de leads.")}${channelBars(marketingRows)}</article><article class="report-side-kpi"><span>Qualificacao</span><strong>${data.summary.qualification}%</strong><p>Leads que avancaram para briefing, medicao ou etapa posterior.</p><i><b style="width:${data.summary.qualification}%"></b></i></article></div></section><section class="reporting-section"><header class="reporting-section-head"><div><span>02</span><div><p>COMERCIAL</p><h3>Desempenho e funil de vendas</h3></div></div>${commercialFilter}</header><div class="reporting-grid commercial"><article class="report-panel report-panel-wide">${panelHead("PIPELINE", "Funil de vendas", "Quantidade de oportunidades e valor por etapa.")}${funnel(commercialStages)}</article><article class="report-panel report-closing-panel">${panelHead("FECHAMENTO", "Indicadores de venda", "Leitura rapida do periodo filtrado.")}<div class="report-closing-list"><div><span>Ticket medio vendido</span><strong>${money(commercialTicket)}</strong></div><div><span>Tempo medio de fechamento</span><strong>${data.summary.closeDays} dias</strong></div><div><span>Negocios perdidos</span><strong>${data.lost.length}</strong></div></div></article></div><article class="report-panel report-table-panel">${panelHead("CANAIS", "Performance por canal", "Leads, vendas, conversao e ticket medio.")}<div class="report-table-scroll"><table class="report-table"><thead><tr><th>Canal</th><th>Leads</th><th>Vendas</th><th>Conversao</th><th>Ticket medio</th></tr></thead><tbody>${channelRows(commercialLeads).map((row) => `<tr><td><span class="report-table-dot"></span><strong>${esc(row.name)}</strong></td><td>${row.leads}</td><td>${row.won}</td><td><span class="report-percent">${row.leads ? Math.round(row.won / row.leads * 100) : 0}%</span></td><td>${row.won ? money(row.value / row.won) : "-"}</td></tr>`).join("") || '<tr><td colspan="5" class="report-table-empty">Nenhum canal para o filtro selecionado.</td></tr>'}</tbody></table></div></article></section><section class="reporting-section"><header class="reporting-section-head"><div><span>03</span><div><p>EQUIPE E PARCERIAS</p><h3>Produtividade comercial</h3></div></div><div class="reporting-section-filters">${teamFilter}${partnerFilter}</div></header><div class="reporting-grid productivity"><article class="report-panel report-team-panel">${panelHead("EQUIPE", "Performance por projetista ou consultor", "Revisoes serao alimentadas pelos projetos relacionais futuramente.")}<div class="report-table-scroll"><table class="report-table"><thead><tr><th>Responsavel</th><th>Apresentados</th><th>Vendidos</th><th>Conversao</th><th>Ticket medio</th><th>Revisoes</th></tr></thead><tbody>${teamRows.map((row) => `<tr><td><strong>${esc(row.name)}</strong></td><td>${row.presented}</td><td>${row.sold}</td><td><span class="report-percent">${row.conversion}%</span></td><td>${money(row.ticket)}</td><td>${row.revisions}</td></tr>`).join("") || '<tr><td colspan="6" class="report-table-empty">Nenhum responsavel com atividade no periodo.</td></tr>'}</tbody></table></div></article><article class="report-panel report-partner-panel">${panelHead("TOP 5", "Arquitetos e especificadores", "Vendido e RT estimada no periodo.")}${rankedBars(partnerRows)}</article></div><div class="reporting-partner-kpis">${metric("partner", "Vendas por parcerias", money(partnerRows.reduce((sum, row) => sum + row.sales, 0)), "Especificadores vinculados", "R$")}${metric("rt", "RT / comissao estimada", money(partnerRows.reduce((sum, row) => sum + row.rt, 0)), "Analises de preco salvas", "RT")}</div></section><section class="reporting-section reporting-future"><header class="reporting-section-head"><div><span>04</span><div><p>PREPARACAO FUTURA</p><h3>Operacao, qualidade e pos-venda</h3></div></div><span class="report-future-badge">Aguardando dados operacionais</span></header><div class="reporting-future-grid"><div><span>Assistencia tecnica / avarias</span><strong>-</strong><small>Chamados por projeto vendido</small></div><div><span>Lead time de entrega e montagem</span><strong>-</strong><small>Fechamento ate montagem concluida</small></div><div><span>NPS / satisfacao</span><strong>-</strong><small>Pesquisa apos a montagem</small></div></div></section><footer class="reporting-source">Fonte: CRM, propostas, usuarios e especificadores. Atualizado conforme os filtros selecionados.</footer></main>`;
 
+    target.querySelector(".reporting-actions")?.querySelector("#report-pdf")?.insertAdjacentHTML("afterend", '<button class="saas-button" id="report-share" type="button">Gerar link</button>');
     const filterbar = target.querySelector(".reporting-filterbar");
     filterbar?.insertAdjacentHTML("beforeend", `<div class="report-global-filters"><div class="report-global-filter-grid">${globalSelect("report-global-team", "Equipe", teamOptions, global.team, "Todas as equipes")}${globalSelect("report-global-owner", "Atendente", ownerOptions, global.owner, "Todos os atendentes")}${globalSelect("report-global-stage", "Status", stageOptions, global.stage, "Todos os status")}${globalSelect("report-global-source", "Origem", sourceOptions, global.source, "Todas as origens")}</div><div class="report-global-filter-actions"><button class="saas-button" id="report-clear-filters" type="button">Limpar</button><button class="saas-button primary" id="report-apply-filters" type="button">Aplicar filtros</button></div></div>`);
     target.querySelectorAll(".reporting-section-head > .report-select, .reporting-section-filters").forEach((element) => element.remove());
@@ -406,6 +541,7 @@
     $("reports-apply-period")?.addEventListener("click", () => { window.reportFilters = { preset: "custom", start: $("report-start").value || filters.start, end: $("report-end").value || filters.end }; refreshApp(); });
     $("reports-refresh").onclick = refreshApp;
     $("report-pdf").onclick = openReportPrintOptions;
+    $("report-share").onclick = openReportShareOptions;
     $("report-marketing-channel")?.addEventListener("change", (event) => { window.reportBlockFilters = { ...local, channel: event.target.value }; render(); });
     $("report-commercial-stage")?.addEventListener("change", (event) => { window.reportBlockFilters = { ...local, stage: event.target.value }; render(); });
     $("report-team-owner")?.addEventListener("change", (event) => { window.reportBlockFilters = { ...local, owner: event.target.value }; render(); });
