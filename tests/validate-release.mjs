@@ -21,7 +21,7 @@ assert.ok(
 );
 assert.match(index, /saas-core\.js/);
 assert.match(index, /saas-extension\.js/);
-assert.match(index, /saas-extension\.js\?v=20260831-small-proposal-checkbox/);
+assert.match(index, /saas-extension\.js\?v=20260831-proposal-conflict-recovery/);
 assert.match(index, /saas-theme\.css\?v=20260831-small-proposal-checkbox/);
 assert.match(index, /saas-core\.js\?v=20260831-composition-quantity/);
 assert.match(index, /reports-v4\.js\?v=20260819-secure-report-share/);
@@ -44,6 +44,10 @@ assert.match(index, /state_conflict/, "Atualizacoes concorrentes devem ser bloqu
 assert.match(index, /\.eq\("updated_at", cloudStateUpdatedAt\)/, "O salvamento deve usar controle otimista de concorrencia.");
 assert.match(index, /cloudWriteQueue/, "Gravacoes do mesmo navegador devem ser serializadas.");
 assert.match(index, /function queueStateWrite\(\)/, "A fila de sincronizacao precisa proteger contra falsos conflitos locais.");
+assert.match(index, /async function recoverProposalCloudConflict\(proposalNumber\)/, "Conflitos de propostas devem ser reconciliados sem exigir recarga destrutiva.");
+assert.match(index, /gpMirariProposalConflictBackup\.v1/, "A reconciliacao deve criar um backup local adicional das propostas.");
+assert.match(index, /const preserved = localProposals\.every/, "As propostas locais devem ser validadas antes de substituir o estado em memoria.");
+assert.match(ui, /recoverProposalCloudConflict\(proposalNumber\)/, "O salvamento comercial deve tentar reconciliar automaticamente conflitos remotos.");
 assert.match(index, /proposalDraftSnapshots/, "Rascunhos recuperaveis devem ser mantidos no estado.");
 assert.match(ui, /recordProposalDraftSnapshot/, "Cada rascunho de proposta deve criar uma copia recuperavel.");
 assert.match(ui, /proposal-draft-history/, "A proposta deve permitir abrir o historico de rascunhos.");

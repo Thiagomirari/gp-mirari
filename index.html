@@ -1350,6 +1350,7 @@
     const storageKey = "gestaoProjetosEtapas.v2";
     const oldStorageKey = "gestaoProjetosEtapas.v1";
     const authNoticeKey = "gpMirariAuthNotice.v1";
+    const proposalConflictBackupKey = "gpMirariProposalConflictBackup.v1";
     const cloudStateKey = "app_state";
     let cloudClient = null;
     let cloudSyncEnabled = false;
@@ -1855,6 +1856,44 @@
 
     async function saveStateToCloudStrict() {
       await queueStateWrite();
+    }
+
+    async function recoverProposalCloudConflict(proposalNumber) {
+      const client = getCloudClient();
+      if (client == null) throw new Error("Supabase nao configurado.");
+      await ensureAuthenticatedCloudSession();
+      const protectedNumber = String(proposalNumber || "").trim();
+      const localProposals = clone((state.proposals || []).filter(proposal => proposal.number === protectedNumber));
+      if (!protectedNumber || localProposals.length === 0) throw new Error("Propostas locais nao encontradas para reconciliacao.");
+      const protectedIds = new Set(localProposals.map(proposal => proposal.id));
+      const localSnapshots = clone((state.proposalDraftSnapshots || []).filter(snapshot => protectedIds.has(snapshot.proposalId)));
+      localStorage.setItem(proposalConflictBackupKey, JSON.stringify({ createdAt: new Date().toISOString(), proposalNumber: protectedNumber, proposals: localProposals, proposalDraftSnapshots: localSnapshots }));
+      const { data, error } = await client
+        .from("gp_app_settings")
+        .select("value, updated_at")
+        .eq("key", cloudStateKey)
+        .maybeSingle();
+      if (error) throw error;
+      if (data == null || data.value == null || !data.updated_at) throw new Error("Estado remoto indisponivel para reconciliacao.");
+      const mergedState = mergeCloudState(data.value);
+      const localById = new Map(localProposals.map(proposal => [proposal.id, proposal]));
+      mergedState.proposals = (mergedState.proposals || []).map(proposal => localById.get(proposal.id) || proposal);
+      localProposals.forEach(proposal => {
+        if (!(mergedState.proposals || []).some(candidate => candidate.id === proposal.id)) mergedState.proposals.push(proposal);
+      });
+      const snapshotById = new Map((mergedState.proposalDraftSnapshots || []).map(snapshot => [snapshot.id, snapshot]));
+      localSnapshots.forEach(snapshot => snapshotById.set(snapshot.id, snapshot));
+      mergedState.proposalDraftSnapshots = [...snapshotById.values()].slice(0, 180);
+      const preserved = localProposals.every(proposal => JSON.stringify((mergedState.proposals || []).find(candidate => candidate.id === proposal.id)) === JSON.stringify(proposal));
+      if (!preserved) throw new Error("A verificacao de integridade das propostas locais falhou.");
+      cloudStateUpdatedAt = data.updated_at;
+      cloudSyncConflict = false;
+      cloudWriteQueue = Promise.resolve();
+      state = mergedState;
+      localStorage.setItem(storageKey, JSON.stringify(state));
+      await queueStateWrite();
+      cloudRecoveryPending = false;
+      return true;
     }
 
     async function loadStateFromCloud() {
@@ -5846,7 +5885,7 @@
   </script>
   <!-- Script classico para que o MVP tambem carregue ao abrir este HTML diretamente. -->
   <script src="./assets/saas-core.js?v=20260831-composition-quantity"></script>
-  <script src="./assets/saas-extension.js?v=20260831-small-proposal-checkbox"></script>
+  <script src="./assets/saas-extension.js?v=20260831-proposal-conflict-recovery"></script>
   <script src="./assets/reports-v4.js?v=20260819-secure-report-share"></script>
   <script src="./assets/signatures-ui.js?v=20260810-pdf-placement"></script>
 </body>
