@@ -21,8 +21,8 @@ assert.ok(
 );
 assert.match(index, /saas-core\.js/);
 assert.match(index, /saas-extension\.js/);
-assert.match(index, /saas-extension\.js\?v=20260831-composition-quantity/);
-assert.match(index, /saas-theme\.css\?v=20260819-secure-report-share/);
+assert.match(index, /saas-extension\.js\?v=20260831-compact-proposal-items/);
+assert.match(index, /saas-theme\.css\?v=20260831-compact-proposal-items/);
 assert.match(index, /saas-core\.js\?v=20260831-composition-quantity/);
 assert.match(index, /reports-v4\.js\?v=20260819-secure-report-share/);
 assert.match(index, /demoProjectCleanupVersion/, "A limpeza controlada dos projetos demonstrativos deve ser versionada.");
@@ -208,6 +208,7 @@ assert.match(ui, /Regras comerciais/);
 assert.match(ui, /Somente ADM pode utilizar markup abaixo do padrao/);
 assert.match(ui, /Parcelas individuais/);
 assert.match(ui, /Configurar subitens/);
+assert.match(ui, /Editar subitens/);
 assert.match(ui, /Custo de producao/);
 assert.match(ui, /Valor de venda da composicao/);
 assert.match(ui, /composition-markup/);
