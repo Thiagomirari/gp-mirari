@@ -39,6 +39,14 @@ assert.equal(compositionWithGlobalRt.items[0].environmentBaseCents, 0);
 assert.equal(compositionWithGlobalRt.items[0].subItemsSaleCents, 150000);
 assert.equal(compositionWithGlobalRt.items[0].calculatedSubItems[0].totalCents, 150000);
 
+const repeatedComposition = calculateProposal([
+  { name: "Workspace", quantity: 15, markupPercent: 100, subItems: [{ name: "Modulo", quantity: 1, unitCostCents: 100000, markupPercent: 100 }] }
+]);
+assert.equal(repeatedComposition.baseCents, 1500000);
+assert.equal(repeatedComposition.markupCents, 1500000);
+assert.equal(repeatedComposition.totalCents, 3000000);
+assert.equal(repeatedComposition.items[0].calculatedSubItems[0].totalQuantity, 15);
+
 const proposalWithExcludedEnvironment = calculateProposal([
   { name: "Cozinha", baseUnitCents: 100000, quantity: 1, markupPercent: 100, included: true },
   { name: "Dormitorio", baseUnitCents: 50000, quantity: 1, markupPercent: 100, included: false }

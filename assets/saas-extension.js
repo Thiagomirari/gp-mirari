@@ -507,7 +507,7 @@
         row.classList.toggle("excluded",rawLines[index]?.included===false);
         if(rawLines[index]?.included===false){row.querySelector("[data-line-preview]").innerHTML='<span>Ambiente salvo, mas fora do PDF e da formacao de preco desta versao.</span>';return;}
         const item=core().calculateProposal([rawLines[index]],0,0).items[0];
-        const compositionSale=subItemsSaleCents(rawLines[index].subItems);
+        const compositionSale=item?.subItemsSaleCents||0;
         row.querySelector("[data-line-preview]").innerHTML=item?.baseCents?(item.hasComposition?`<span>Composicao: <strong>${rawLines[index].subItems.length} itens | custo ${core().money(item.baseCents)} | venda ${core().money(compositionSale)}</strong></span><span class="line-final">Preco final do ambiente: <strong>${core().money(item.totalCents)}</strong></span>`:`<span>Custo de producao: <strong>${core().money(item.baseCents)}</strong></span><span class="line-final">Preco final do ambiente: <strong>${core().money(item.totalCents)}</strong></span>`):"Informe um custo ou subitens para visualizar o preco final deste ambiente.";
       });
       $("proposal-totals").innerHTML=`<div class="saas-total-row strong saas-final-only"><span>Preco final</span><strong>${core().money(total.totalCents)}</strong></div>`;

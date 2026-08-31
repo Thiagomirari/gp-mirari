@@ -29,9 +29,12 @@ export function calculateProposal(lines, discountPercent = 0, globalRtPercent, o
       const subQuantity = Math.max(0.001, Number(subItem.quantity) || 0);
       const unitCostCents = cents(subItem.unitCostCents);
       const subMarkupPercent = clampMarkup(subItem.markupPercent ?? markupPercent);
-      const baseCents = Math.round(unitCostCents * subQuantity);
+      // The environment quantity repeats its complete composition. For example,
+      // 15 workstations with one configured subitem require that subitem 15 times.
+      const totalQuantity = subQuantity * quantity;
+      const baseCents = Math.round(unitCostCents * totalQuantity);
       const markupCents = Math.round(baseCents * subMarkupPercent / 100);
-      return { ...subItem, quantity: subQuantity, unitCostCents, markupPercent: subMarkupPercent, baseCents, markupCents, totalCents: baseCents + markupCents };
+      return { ...subItem, quantity: subQuantity, totalQuantity, unitCostCents, markupPercent: subMarkupPercent, baseCents, markupCents, totalCents: baseCents + markupCents };
     });
     // A composed environment is priced exclusively from its subitems.
     const hasComposition = calculatedSubItems.length > 0;
