@@ -85,14 +85,12 @@
     const hasComposition=subItems.length>0;
     const markupValue=hasComposition?subItemsAverageMarkupPercent(subItems):savedMarkup;
     const subItemsCost=subItemsCostCents(subItems);
-    const subItemsSale=subItemsSaleCents(subItems);
     const shownEnvironmentValue=hasComposition?subItemsCost:Number(item.baseUnitCents)||0;
     const included=item.included!==false;
     return `<article class="saas-line ${included?"":"excluded"}" data-line data-item-id="${esc(item.id||"")}" data-commercial-edit-allowed="${commercialEditAllowed?"1":""}" data-manual-base-cents="${Number(item.baseUnitCents)||0}" data-sub-items="${encodeURIComponent(JSON.stringify(subItems))}">
       <button class="saas-line-drag-handle" type="button" data-line-drag-handle aria-label="Arrastar ambiente para alterar a ordem" title="Arraste para alterar a ordem" ${editable?"":"disabled"}></button>
-      <div class="saas-line-include"><label class="saas-check"><input class="line-included" type="checkbox" ${included?"checked":""} ${editable?"":"disabled"}> Incluir no PDF e na formacao de preco</label></div>
       <div class="saas-line-grid">
-        <div class="saas-field line-name-field"><label>Produto ou ambiente</label><input class="saas-input line-name" placeholder="Ex.: Cozinha planejada" value="${esc(item.name||"")}"></div>
+        <div class="saas-field line-name-field"><label>Produto ou ambiente</label><div class="saas-line-name-control"><input class="line-included" type="checkbox" aria-label="Incluir no PDF e na formacao de preco" title="Incluir no PDF e na formacao de preco" ${included?"checked":""} ${editable?"":"disabled"}><input class="saas-input line-name" placeholder="Ex.: Cozinha planejada" value="${esc(item.name||"")}"></div></div>
         <div class="saas-field"><label>Custo de producao (R$)</label><input class="saas-input line-base" inputmode="decimal" oninput="formatCurrencyWhileTyping(this)" onkeyup="formatCurrencyWhileTyping(this)" placeholder="0,00" value="${shownEnvironmentValue?((shownEnvironmentValue/100).toFixed(2).replace('.',',')):""}" ${hasComposition?"readonly aria-readonly=\"true\"":""}></div>
         <div class="saas-field"><label>Quantidade</label><input class="saas-input line-qty" type="number" min="0.001" step="0.001" value="${item.quantity||1}"></div>
         <div class="saas-field"><label>${hasComposition?"Markup medio dos subitens":`Markup (%) ${markupLocked?'<span class="saas-lock-note">Bloqueado</span>':""}`}</label><div class="saas-percent-input"><input class="saas-input line-markup" type="number" min="0" max="1000" step="0.01" value="${markupValue}" ${(markupLocked||hasComposition)?"readonly":""} ${hasComposition?"aria-readonly=\"true\"":""}><span>%</span></div></div>
