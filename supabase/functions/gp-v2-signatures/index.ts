@@ -215,7 +215,7 @@ async function createDocument(request: Request, admin: AdminClient, userId: stri
   if (!allowedMimeTypes.has(file.type)) return reply(400, { error: "document_file_type_not_allowed" });
 
   const title = String(metadata.title || file.name || "").trim().slice(0, 180);
-  const documentKind = String(metadata.documentKind || "other");
+  let documentKind = String(metadata.documentKind || "other");
   const sourceType = String(metadata.sourceType || "manual");
   const signatureLevel = String(metadata.signatureLevel || "advanced");
   let purpose = "";
@@ -230,10 +230,16 @@ async function createDocument(request: Request, admin: AdminClient, userId: stri
 
   // Compliance is selected by the active, administrator-approved policy. Client input
   // is deliberately ignored so a user cannot bind a document to an arbitrary version.
-  const [{ data: privacyNotice }, { data: retentionPolicy }] = await Promise.all([
+  const [{ data: privacyNotice }, { data: exactRetentionPolicy }] = await Promise.all([
     admin.from("gp_v2_signature_privacy_notices").select("version").eq("organization_id", organizationId).eq("active", true).not("published_at", "is", null).order("published_at", { ascending: false }).limit(1).maybeSingle(),
-    admin.from("gp_v2_signature_retention_policies").select("version,legal_basis,purpose,retention_months").eq("organization_id", organizationId).eq("document_kind", documentKind).eq("active", true).not("approved_at", "is", null).order("approved_at", { ascending: false }).limit(1).maybeSingle(),
+    admin.from("gp_v2_signature_retention_policies").select("version,document_kind,legal_basis,purpose,retention_months").eq("organization_id", organizationId).eq("document_kind", documentKind).eq("active", true).not("approved_at", "is", null).order("approved_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
+  let retentionPolicy = exactRetentionPolicy;
+  if (!retentionPolicy) {
+    const { data: standardPolicy } = await admin.from("gp_v2_signature_retention_policies").select("version,document_kind,legal_basis,purpose,retention_months").eq("organization_id", organizationId).eq("active", true).not("approved_at", "is", null).order("document_kind", { ascending:false }).order("approved_at", { ascending:false }).limit(1).maybeSingle();
+    retentionPolicy = standardPolicy;
+    if (standardPolicy?.document_kind) documentKind = String(standardPolicy.document_kind);
+  }
   if (!privacyNotice || !retentionPolicy || !legalBases.has(String(retentionPolicy.legal_basis)) || String(retentionPolicy.purpose || "").trim().length < 20) {
     return reply(409, { error: "active_compliance_configuration_required", documentKind });
   }
@@ -456,13 +462,14 @@ function internalProviderConfig() {
 async function sendInternalDocument(request: Request, payload: Record<string, unknown>, admin: AdminClient, userId: string) {
   const organizationId = String(payload.organizationId || "");
   const documentId = String(payload.documentId || "");
+  const prepareOnly = payload.prepareOnly === true;
   const actor = await requireActor(admin, userId, organizationId, allowedRoles);
   if (!actor) return reply(403, { error: "signature_manager_role_required" });
   if (!isUuid(documentId)) return reply(400, { error: "document_id_invalid" });
   const documentIds = [...new Set([documentId, ...(Array.isArray(payload.documentIds) ? payload.documentIds.map(String) : [])])].slice(0, 10);
   if (documentIds.some((id) => !isUuid(id))) return reply(400, { error: "document_id_invalid" });
   const config = internalProviderConfig();
-  if (!config.enabled || !config.appUrlValid || !config.tokenPepper || !config.dataPepper || !config.emailConfigured) {
+  if (!config.enabled || !config.appUrlValid || !config.tokenPepper || !config.dataPepper || (!prepareOnly && !config.emailConfigured)) {
     return reply(503, { error: "internal_signature_provider_not_configured" });
   }
 
@@ -533,9 +540,9 @@ async function sendInternalDocument(request: Request, payload: Record<string, un
     const cpf = normalizeDigits(signer.cpf);
     const cnpj = normalizeDigits(signer.companyDocument);
     const phone = normalizeDigits(signer.phone);
-    const token = randomToken(32);
-    const tokenHash = await hmacSha256(config.tokenPepper, token);
-    const tokenFingerprint = (await sha256(token)).slice(0, 16);
+    const token = prepareOnly ? "" : randomToken(32);
+    const tokenHash = token ? await hmacSha256(config.tokenPepper, token) : "";
+    const tokenFingerprint = token ? (await sha256(token)).slice(0, 16) : "";
     signerRows.push({
       id: signerId,
       organization_id: organizationId,
@@ -558,16 +565,10 @@ async function sendInternalDocument(request: Request, payload: Record<string, un
       authentication_methods: ["individual_link", "email_otp", "express_consent"],
       status: "pending",
     });
-    linkRows.push({
-      organization_id: organizationId,
-      envelope_id: envelopeId,
-      signer_id: signerId,
-      token_hash: tokenHash,
-      token_fingerprint: tokenFingerprint,
-      expires_at: expiresAt,
-      created_by: userId,
-    });
-    invitationTokens.push({ signerId, name: String(signer.name || "").trim(), email: String(signer.email || "").trim().toLowerCase(), token, role: String(signer.role || "signer") });
+    if (!prepareOnly) {
+      linkRows.push({ organization_id: organizationId, envelope_id: envelopeId, signer_id: signerId, token_hash: tokenHash, token_fingerprint: tokenFingerprint, expires_at: expiresAt, created_by: userId });
+      invitationTokens.push({ signerId, name: String(signer.name || "").trim(), email: String(signer.email || "").trim().toLowerCase(), token, role: String(signer.role || "signer") });
+    }
   }
 
   const { error: envelopeError } = await admin.from("gp_v2_signature_envelopes").insert({
@@ -600,10 +601,12 @@ async function sendInternalDocument(request: Request, payload: Record<string, un
     await admin.from("gp_v2_signature_envelopes").update({ status: "failed", last_error_code: "signers_persist_failed", updated_at: now }).eq("id", envelopeId);
     return reply(500, { error: "signers_persist_failed" });
   }
-  const { error: linksError } = await admin.from("gp_v2_signature_access_links").insert(linkRows);
-  if (linksError) {
-    await admin.from("gp_v2_signature_envelopes").update({ status: "failed", last_error_code: "access_links_persist_failed", updated_at: now }).eq("id", envelopeId);
-    return reply(500, { error: "access_links_persist_failed" });
+  if (linkRows.length) {
+    const { error: linksError } = await admin.from("gp_v2_signature_access_links").insert(linkRows);
+    if (linksError) {
+      await admin.from("gp_v2_signature_envelopes").update({ status: "failed", last_error_code: "access_links_persist_failed", updated_at: now }).eq("id", envelopeId);
+      return reply(500, { error: "access_links_persist_failed" });
+    }
   }
   const { error: artifactError } = await admin.from("gp_v2_signature_artifacts").insert({
     organization_id: organizationId,
@@ -615,6 +618,13 @@ async function sendInternalDocument(request: Request, payload: Record<string, un
     sha256: version.sha256,
   });
   if (artifactError) return reply(500, { error: "original_artifact_persist_failed" });
+
+  if (prepareOnly) {
+    await admin.from("gp_v2_documents").update({ status: "preparing", updated_by: userId, updated_at: now }).eq("organization_id", organizationId).in("id", documentIds);
+    await appendEvidenceEvent(admin, { organizationId, envelopeId, eventType:"document.created", actorType:"user", occurredAt:document.created_at || now, timezone:safeTimezone(payload.timezone), ip:requestIp(request), userAgent:request.headers.get("user-agent") || "", result:"success", documentHash:version.sha256, authChannel:"supabase_auth", metadata:{ verificationCode:document.verification_code, preparedBeforeSending:true } });
+    await audit(admin, organizationId, userId, "signature_envelope", envelopeId, "internal_envelope_prepared", requestId, { signerCount: signers.length, documentCount: documentIds.length, expiresAt, signatureLevel: "advanced" });
+    return reply(201, { ok: true, envelopeId, status: "preparing", provider: "internal", signerCount: signers.length, documentCount: documentIds.length, invitationsDelivered: 0, expiresAt });
+  }
 
   await admin.from("gp_v2_signature_envelopes").update({ status: "awaiting_signature", sent_at: now, updated_at: now }).eq("id", envelopeId).eq("organization_id", organizationId);
   await admin.from("gp_v2_documents").update({ status: "awaiting_signature", updated_by: userId, updated_at: now }).eq("organization_id", organizationId).in("id", documentIds);
@@ -652,6 +662,66 @@ async function sendInternalDocument(request: Request, payload: Record<string, un
   if (!delivered) await admin.from("gp_v2_signature_envelopes").update({ last_error_code: "all_invitations_failed", updated_at: new Date().toISOString() }).eq("id", envelopeId);
   await audit(admin, organizationId, userId, "signature_envelope", envelopeId, "internal_envelope_sent", requestId, { signerCount: signers.length, documentCount: documentIds.length, delivered, expiresAt, signatureLevel: "advanced" });
   return reply(201, { ok: true, envelopeId, status: "awaiting_signature", provider: "internal", signerCount: signers.length, documentCount: documentIds.length, invitationsDelivered: delivered, expiresAt });
+}
+
+async function sendPreparedEnvelope(request: Request, payload: Record<string, unknown>, admin: AdminClient, userId: string) {
+  const organizationId = String(payload.organizationId || "");
+  const envelopeId = String(payload.envelopeId || "");
+  const actor = await requireActor(admin, userId, organizationId, allowedRoles);
+  if (!actor) return reply(403, { error: "signature_manager_role_required" });
+  if (!isUuid(envelopeId)) return reply(400, { error: "envelope_id_invalid" });
+  const config = internalProviderConfig();
+  if (!config.enabled || !config.appUrlValid || !config.tokenPepper || !config.dataPepper || !config.emailConfigured) return reply(503, { error: "internal_signature_provider_not_configured" });
+
+  const { data: envelope } = await admin.from("gp_v2_signature_envelopes").select("id,status,provider,expires_at,document_id,document_version_id,sent_at").eq("organization_id", organizationId).eq("id", envelopeId).maybeSingle();
+  if (!envelope || envelope.provider !== "internal") return reply(404, { error: "signature_envelope_not_found" });
+  if (["awaiting_signature","partially_signed","signed"].includes(String(envelope.status))) return reply(200, { ok:true, idempotent:true, envelopeId, status:envelope.status, invitationsDelivered:0 });
+  if (!["preparing","awaiting_send","failed"].includes(String(envelope.status))) return reply(409, { error:"signature_envelope_not_sendable" });
+
+  const [{ data: actions }, { data: signers }, { data: fields }, { data: envelopeDocuments }, { data: document }, { data: version }] = await Promise.all([
+    admin.from("gp_v2_signature_actions").select("id").eq("organization_id", organizationId).eq("envelope_id", envelopeId).limit(1),
+    admin.from("gp_v2_signature_signers").select("id,name,email,signer_role,status").eq("organization_id", organizationId).eq("envelope_id", envelopeId).order("signing_order"),
+    admin.from("gp_v2_signature_fields").select("signer_id,field_type").eq("organization_id", organizationId).eq("envelope_id", envelopeId),
+    admin.from("gp_v2_signature_envelope_documents").select("document_id").eq("organization_id", organizationId).eq("envelope_id", envelopeId).order("display_order"),
+    admin.from("gp_v2_documents").select("title,created_at").eq("organization_id", organizationId).eq("id", envelope.document_id).maybeSingle(),
+    admin.from("gp_v2_document_versions").select("sha256").eq("organization_id", organizationId).eq("id", envelope.document_version_id).maybeSingle(),
+  ]);
+  if (actions?.length) return reply(409, { error:"signature_fields_locked" });
+  if (!signers?.length || !document || !version || !envelopeDocuments?.length) return reply(409, { error:"signature_envelope_incomplete" });
+  const signerIdsWithSignature = new Set((fields || []).filter((field: any) => field.field_type === "signature").map((field: any) => field.signer_id));
+  const missingSignerIds = signers.filter((signer: any) => !signerIdsWithSignature.has(signer.id)).map((signer: any) => signer.id);
+  if (missingSignerIds.length) return reply(409, { error:"signature_fields_required", signerIds:missingSignerIds });
+
+  const now = new Date().toISOString();
+  const contextIp = requestIp(request), contextUserAgent = request.headers.get("user-agent") || "", timezone = safeTimezone(payload.timezone);
+  const documentIds = envelopeDocuments.map((item: any) => item.document_id);
+  let delivered = 0;
+  await admin.from("gp_v2_signature_access_links").update({ status:"revoked", revoked_at:now }).eq("organization_id", organizationId).eq("envelope_id", envelopeId).eq("status", "active");
+
+  for (let index = 0; index < signers.length; index += 1) {
+    const signer = signers[index] as Record<string, any>, token = randomToken(32), tokenHash = await hmacSha256(config.tokenPepper, token), tokenFingerprint = (await sha256(token)).slice(0, 16);
+    const { error: linkError } = await admin.from("gp_v2_signature_access_links").insert({ organization_id:organizationId, envelope_id:envelopeId, signer_id:signer.id, token_hash:tokenHash, token_fingerprint:tokenFingerprint, expires_at:envelope.expires_at, created_by:userId });
+    if (linkError) return reply(500, { error:"invitation_rotation_failed" });
+    const accessLink = `${config.appUrl}#t=${encodeURIComponent(token)}`;
+    try {
+      const messageId = await sendEmail(String(signer.email), `Assinatura solicitada: ${document.title}`, `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#252525"><h2>Assinatura eletrônica solicitada</h2><p>Olá, ${escapeHtml(signer.name)}.</p><p>Você recebeu ${documentIds.length === 1 ? "um documento" : `${documentIds.length} documentos`} para leitura e assinatura. O processo solicitará confirmação de dados, código por e-mail e concordância expressa.</p><p><a href="${escapeHtml(accessLink)}" style="display:inline-block;background:#285f52;color:#fff;padding:12px 18px;border-radius:7px;text-decoration:none">Acessar documentos</a></p><p>Este link é individual e temporário. Não o encaminhe a terceiros.</p></div>`, `signature-send/${envelopeId}/${signer.id}/1`);
+      delivered += 1;
+      const messageHash = await sha256(messageId);
+      await admin.from("gp_v2_signature_email_deliveries").upsert({ organization_id:organizationId, envelope_id:envelopeId, signer_id:signer.id, message_type:"invitation", provider:"resend", provider_message_id_hash:messageHash, delivery_status:"sent" }, { onConflict:"organization_id,provider,provider_message_id_hash" });
+      await admin.from("gp_v2_signature_signers").update({ status:"invited", updated_at:now }).eq("organization_id", organizationId).eq("id", signer.id);
+      await appendEvidenceEvent(admin, { organizationId, envelopeId, signerId:signer.id, eventType:"invitation.sent", actorType:"system", timezone, ip:contextIp, userAgent:contextUserAgent, tokenFingerprint, result:"success", documentHash:version.sha256, authChannel:"email", metadata:{ providerMessageIdHash:messageHash, signerOrder:index + 1 } });
+    } catch (error) {
+      const code = String(error instanceof Error ? error.message : "email_delivery_failed").slice(0,100);
+      await admin.from("gp_v2_signature_signers").update({ status:"delivery_failed", updated_at:now }).eq("organization_id", organizationId).eq("id", signer.id);
+      await appendEvidenceEvent(admin, { organizationId, envelopeId, signerId:signer.id, eventType:"invitation.delivery_failed", actorType:"system", timezone, ip:contextIp, userAgent:contextUserAgent, tokenFingerprint, result:"failed", documentHash:version.sha256, authChannel:"email", metadata:{ errorCode:code, signerOrder:index + 1 } });
+    }
+  }
+
+  await admin.from("gp_v2_signature_envelopes").update({ status:"awaiting_signature", sent_at:now, last_error_code:delivered ? "" : "all_invitations_failed", updated_at:now }).eq("organization_id", organizationId).eq("id", envelopeId);
+  await admin.from("gp_v2_documents").update({ status:"awaiting_signature", updated_by:userId, updated_at:now }).eq("organization_id", organizationId).in("id", documentIds);
+  await appendEvidenceEvent(admin, { organizationId, envelopeId, eventType:"document.sent", actorType:"user", occurredAt:now, timezone, ip:contextIp, userAgent:contextUserAgent, result:delivered ? "success" : "failed", documentHash:version.sha256, authChannel:"supabase_auth", metadata:{ signerCount:signers.length, documentCount:documentIds.length, provider:"internal" } });
+  await audit(admin, organizationId, userId, "signature_envelope", envelopeId, "internal_envelope_sent", String(request.headers.get("idempotency-key") || crypto.randomUUID()).slice(0,160), { signerCount:signers.length, documentCount:documentIds.length, delivered, expiresAt:envelope.expires_at, signatureLevel:"advanced" });
+  return reply(200, { ok:true, envelopeId, status:"awaiting_signature", invitationsDelivered:delivered, signerCount:signers.length, documentCount:documentIds.length, expiresAt:envelope.expires_at });
 }
 
 async function resendInternalInvitation(request: Request, payload: Record<string, unknown>, admin: AdminClient, userId: string) {
@@ -739,6 +809,7 @@ async function updateSignerAndResend(request: Request, payload: Record<string, u
   }).eq("organization_id", organizationId).eq("id", signerId);
   if (error) return reply(400, { error: "signer_update_failed" });
   await appendEvidenceEvent(admin, { organizationId, envelopeId: String(envelope.id), signerId, eventType: "signer.updated", actorType: "user", occurredAt: now, timezone: safeTimezone(payload.timezone), ip: requestIp(request), userAgent: request.headers.get("user-agent") || "", result: "success", authChannel: "supabase_auth", metadata: { contactUpdated: true, identityUpdated: true, companyRepresentative: signerType === "company_representative" } });
+  if (["preparing", "awaiting_send", "failed"].includes(String(envelope.status))) return reply(200, { ok:true, signerId, status:"pending", invitationSent:false });
   return resendInternalInvitation(request, { ...payload, signerId }, admin, userId);
 }
 
@@ -1065,6 +1136,7 @@ Deno.serve(async (request) => {
   const payload = await request.json().catch(() => ({})) as Record<string, unknown>;
   const action = String(payload.action || "");
   if (action === "send_document") return sendDocument(request, payload, admin, user.id);
+  if (action === "send_prepared_envelope") return sendPreparedEnvelope(request, payload, admin, user.id);
   if (action === "resend_invitation") return resendInternalInvitation(request, payload, admin, user.id);
   if (action === "correct_signer_and_resend") return correctSignerAndResend(request, payload, admin, user.id);
   if (action === "update_signer_and_resend") return updateSignerAndResend(request, payload, admin, user.id);

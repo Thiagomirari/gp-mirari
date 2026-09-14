@@ -166,6 +166,14 @@ assert.match(signatureApi, /correctSignerAndResend/, "delivery failures must all
 assert.match(signatureApi, /gp_v2_signature_envelope_documents/ , "new internal envelopes must persist their document folder");
 assert.match(signatureUi, /pdfjs-4\.10\.38\/pdf\.min\.js/, "visual field editor must use a locally pinned PDF.js bundle");
 assert.match(signatureUi, /sig-pdf-field/, "visual field editor must render draggable field overlays");
+assert.match(signatureUi, /data-field-tool="signature"/, "visual editor must expose a draggable signature tool");
+assert.match(signatureUi, /data-field-tool="initial"/, "visual editor must expose a draggable initials tool");
+assert.doesNotMatch(signatureUi, /id="sig-field-[xy]"/, "daily visual placement must not expose raw coordinate inputs");
+assert.match(signatureUi, /Vincular a um projeto \(opcional\)/, "document intake must support an optional project link");
+assert.match(signatureUi, /prepareOnly:true/, "recipient setup must prepare without sending invitations");
+assert.match(signatureApi, /sendPreparedEnvelope/, "prepared envelopes must have an explicit reviewed send step");
+assert.match(signatureApi, /signature_fields_required/, "sending must require a signature field for every recipient");
+assert.match(signatureUi, /request_timeout/, "document screens must recover from stalled requests");
 assert.match(fieldPreActionMigration, /awaiting_signature/, "field placement must remain editable before the first signer action");
 assert.match(fieldPreActionMigration, /first signature action/, "field placement must lock immediately after signer evidence begins");
 assert.match(envelopeBackfillMigration, /disable trigger gp_v2_signature_envelope_documents_guard/, "backfill must safely cover existing signed envelopes");
