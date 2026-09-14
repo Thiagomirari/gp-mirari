@@ -181,5 +181,10 @@ assert.match(envelopeBackfillMigration, /gp_v2_refresh_signature_envelope_manife
 assert.match(pdfjsBundle, /Mozilla Foundation/, "pinned PDF.js bundle must be present locally");
 assert.match(signatureApi, /updateSignerAndResend/, "full signer edits must reissue access before the first action");
 assert.match(signatureUi, /sig-edit-signer-form/, "admin UI must expose the signer editor before signature evidence exists");
+assert.match(signatureApi, /addPreparedSigner/, "internal envelopes must support adding a recipient before signature evidence begins");
+assert.match(signatureApi, /signature_fields_for_signer_required/, "a late-added recipient must receive an invitation only after signature placement");
+assert.match(signatureUi, /Adicionar destinatário/, "signature details must expose recipient inclusion before evidence begins");
+assert.match(signatureUi, /Trilha de evidências/, "audit history must remain available on demand without cluttering the main screen");
+assert.match(signatureUi, /localId:crypto\.randomUUID/, "visual fields need stable local identifiers so removal updates the preview immediately");
 
 console.log("signature-foundation: ok");

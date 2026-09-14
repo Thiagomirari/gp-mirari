@@ -18,6 +18,8 @@
     internal_signature_provider_not_configured:"O envio de assinaturas ainda não está configurado no servidor.",
     signature_fields_required:"Posicione ao menos uma assinatura para cada destinatário antes de enviar.",
     signature_fields_locked:"Os campos não podem mais ser alterados porque o processo já foi iniciado.",
+    signer_add_locked:"Não é possível adicionar destinatários depois que uma assinatura foi concluída.",
+    signature_fields_for_signer_required:"Posicione a assinatura deste destinatário antes de enviar o convite.",
     signers_invalid:"Revise nome, e-mail e CPF dos destinatários.",
     company_representative_invalid:"Revise razão social, CNPJ e cargo do representante.",
   };
@@ -58,6 +60,7 @@
     if (document.getElementById("signature-ui-style")) return;
     const style = document.createElement("style"); style.id = "signature-ui-style";
     style.textContent = `.sig-actions{display:flex;gap:10px;flex-wrap:wrap}.sig-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}.sig-stat{padding:15px;border:1px solid var(--line,#ddd);border-radius:12px;background:#fff}.sig-stat strong{display:block;font-size:24px;color:#285f52}.sig-table-wrap{overflow:auto}.sig-table{width:100%;border-collapse:collapse}.sig-table th,.sig-table td{padding:12px 10px;text-align:left;border-bottom:1px solid var(--line,#ddd);vertical-align:top}.sig-badge{display:inline-flex;padding:5px 9px;border-radius:999px;background:#f0ece7;font-size:12px;font-weight:700}.sig-badge.signed{background:#e6f5ec;color:#17603d}.sig-badge.failed,.sig-badge.declined,.sig-badge.cancelled,.sig-badge.delivery_failed{background:#fdeaea;color:#983737}.sig-form{display:grid;gap:14px;margin-top:16px}.sig-grid,.sig-signer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.sig-form label{display:grid;gap:6px;font-weight:700;font-size:13px}.sig-form input,.sig-form select,.sig-form textarea{padding:11px;border:1px solid var(--line,#ddd);border-radius:9px;background:#fff}.sig-form textarea{min-height:120px}.sig-panel{margin-top:16px}.sig-signer{padding:14px;border:1px solid var(--line,#ddd);border-radius:12px;margin-bottom:10px}.sig-help{padding:12px 14px;border-left:4px solid #285f52;background:#f5f1ec;font-size:13px}.sig-error{color:#9f3434}.sig-success{color:#17603d}.sig-empty{padding:28px;text-align:center;color:#6b6864}.sig-hash{max-width:250px;overflow-wrap:anywhere;font-family:monospace;font-size:11px}.sig-loader{display:grid;place-items:center;gap:12px;min-height:180px;color:#6b6864}.sig-spinner{width:30px;height:30px;border:3px solid #d9d2cb;border-top-color:#285f52;border-radius:50%;animation:sig-spin .8s linear infinite}@keyframes sig-spin{to{transform:rotate(360deg)}}.sig-upload{display:grid;place-items:center;gap:8px;padding:30px 18px;border:2px dashed #cfc5bb;border-radius:14px;background:#fbfaf8;text-align:center;cursor:pointer}.sig-upload:hover,.sig-upload.is-dragging{border-color:#285f52;background:#f2f7f5}.sig-upload input{position:absolute;width:1px;height:1px;opacity:0}.sig-file-name{font-weight:800;color:#285f52}.sig-steps{display:flex;gap:8px;align-items:center;margin:0 0 16px}.sig-step{display:flex;align-items:center;gap:7px;color:#6b6864;font-size:13px;font-weight:700}.sig-step b{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#ece6df}.sig-step.active{color:#285f52}.sig-step.active b{color:#fff;background:#285f52}.sig-field-editor{margin:20px 0;padding:0;border:1px solid var(--line,#ddd);border-radius:14px;background:#fff;overflow:hidden}.sig-editor-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding:16px 18px;border-bottom:1px solid var(--line,#ddd)}.sig-editor-shell{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:620px}.sig-editor-tools{padding:16px;border-right:1px solid var(--line,#ddd);background:#faf8f5}.sig-editor-tools label{display:grid;gap:6px;margin-bottom:14px;font-size:12px;font-weight:800}.sig-editor-tools select{width:100%;padding:10px;border:1px solid var(--line,#ddd);border-radius:8px;background:#fff}.sig-tool-title{margin:20px 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#6b6864}.sig-field-tool{display:flex;align-items:center;gap:9px;width:100%;margin:7px 0;padding:11px 12px;border:1px solid #d4ccc4;border-radius:9px;background:#fff;color:#173f37;font-weight:800;cursor:grab}.sig-field-tool:hover,.sig-field-tool.active{border-color:#285f52;box-shadow:0 0 0 2px #285f5218}.sig-tool-dot{width:10px;height:10px;border-radius:50%;background:var(--signer-color,#285f52)}.sig-editor-main{min-width:0;background:#eee9e3}.sig-pdf-status{padding:10px 14px;border-bottom:1px solid var(--line,#ddd);background:#fff;color:#6b6864;font-size:13px}.sig-pdf-preview{display:block;width:100%;height:680px;overflow:auto;padding:22px;background:#e9e5e0}.sig-pdf-page{position:relative;width:max-content;max-width:100%;margin:0 auto 22px;background:#fff;box-shadow:0 3px 14px #0002}.sig-pdf-canvas{display:block;max-width:100%;height:auto}.sig-pdf-field{position:absolute;z-index:2;display:flex;align-items:center;padding:5px 9px;border:2px solid var(--signer-color,#285f52);border-radius:5px;background:color-mix(in srgb,var(--signer-color,#285f52) 15%,white);color:#222;font-weight:800;font-size:11px;overflow:visible;touch-action:none;cursor:move;text-align:left}.sig-pdf-field:focus{outline:3px solid #0002}.sig-field-remove{position:absolute;right:-9px;top:-9px;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:#9f3434;color:#fff;font-size:13px;line-height:20px;cursor:pointer}.sig-field-resize{position:absolute;right:-5px;bottom:-5px;width:11px;height:11px;border:2px solid #fff;border-radius:2px;background:var(--signer-color,#285f52);cursor:nwse-resize}.sig-field-count{margin-top:14px;padding-top:12px;border-top:1px solid #e1dbd4;font-size:12px;color:#6b6864}.sig-project{display:block;margin-top:4px;color:#6b6864;font-size:12px}@media(max-width:900px){.sig-summary{grid-template-columns:repeat(2,1fr)}.sig-grid,.sig-signer-grid{grid-template-columns:1fr}.sig-editor-shell{grid-template-columns:1fr}.sig-editor-tools{border-right:0;border-bottom:1px solid var(--line,#ddd)}.sig-pdf-preview{height:520px;padding:10px}}`;
+    style.textContent += ".sig-field-tool{cursor:pointer}.sig-pdf-canvas{cursor:crosshair}.sig-signer-color{display:flex!important;align-items:center!important;grid-template-columns:18px 1fr;gap:8px!important;padding:9px 10px;margin:-4px 0 12px;border:1px solid #ddd5cc;border-radius:8px;background:#fff;font-size:12px!important}.sig-signer-color i{width:12px;height:12px;border-radius:50%;background:var(--signer-color,#285f52)}";
     document.head.appendChild(style);
   }
 
@@ -212,6 +215,10 @@
     document.getElementById("sig-send-form").onsubmit = async (event) => { event.preventDefault(); const signers = [...holder.querySelectorAll("[data-signer-row]")].map((row) => { const company = row.querySelector("[data-signer-company]").checked; return { name:row.querySelector("[data-signer-name]").value, email:row.querySelector("[data-signer-email]").value, cpf:row.querySelector("[data-signer-cpf]").value, role:row.querySelector("[data-signer-role]").value, signerType:company ? "company_representative" : "person", companyLegalName:company ? row.querySelector("[data-company-name]").value : "", companyDocument:company ? row.querySelector("[data-company-document]").value : "", jobTitle:company ? row.querySelector("[data-company-job]").value : "" }; }); const button = event.currentTarget.querySelector("button[type=submit]"); try { button.disabled = true; setFormMessage("Salvando destinatários. Nenhum convite será enviado ainda…", true); const documentIds = [...document.getElementById("sig-additional-documents").selectedOptions].map((item) => item.value); const data = await invoke({ action:"send_document", provider:"internal", prepareOnly:true, documentId:event.currentTarget.dataset.documentId, documentIds, expiresInHours:Number(document.getElementById("sig-expires").value), signers }); await showDetails(data.envelopeId); } catch (error) { setFormMessage(friendlyError(error)); button.disabled = false; } };
   }
 
+  function addSignerForm(envelopeId) {
+    return `<div class="sig-panel form-box"><h3>Adicionar destinatário</h3><p class="sig-help">Você pode incluir outro destinatário enquanto nenhuma assinatura tiver sido concluída. Posicione o campo dele no documento antes de enviar o convite.</p><form id="sig-add-recipient-form" class="sig-form" data-envelope-id="${envelopeId}"><div class="sig-grid"><label>Nome completo<input id="sig-add-recipient-name" required /></label><label>E-mail<input id="sig-add-recipient-email" type="email" required /></label><label>CPF<input id="sig-add-recipient-cpf" inputmode="numeric" required /></label><label>Papel<select id="sig-add-recipient-role">${Object.entries(roleText).map(([key,value]) => `<option value="${key}">${value}</option>`).join("")}</select></label></div><label><input id="sig-add-recipient-company" type="checkbox" /> Representa pessoa jurídica</label><div id="sig-add-recipient-company-fields" class="sig-grid hidden"><label>Razão social<input id="sig-add-recipient-company-name" /></label><label>CNPJ<input id="sig-add-recipient-company-document" inputmode="numeric" /></label><label>Cargo ou função<input id="sig-add-recipient-company-job" /></label></div><div class="sig-actions"><button class="primary" type="submit">Adicionar e posicionar campo</button><button class="secondary" data-close-workspace type="button">Cancelar</button></div><p id="sig-form-message" aria-live="polite"></p></form></div>`;
+  }
+
   function bindReplaceDocumentForm() {
     document.getElementById("sig-replace-form").onsubmit = async (event) => { event.preventDefault(); const file = document.getElementById("sig-replace-file").files[0]; if (!file || file.type !== "application/pdf") return setFormMessage("Selecione um arquivo PDF."); const form = new FormData(); form.set("file", file); form.set("metadata", JSON.stringify({ organizationId, replaceDocumentId:event.currentTarget.dataset.documentId, timezone:timezone() })); try { setFormMessage("Enviando nova versão e revogando os convites sem assinatura…", true); const data = await invokeUpload(form); setFormMessage(data.cancelledEnvelopeCount ? "Nova versão criada. Os convites anteriores foram revogados; envie a nova versão para assinatura." : "Nova versão criada. Envie-a para assinatura.", true); setTimeout(refresh, 900); } catch (error) { setFormMessage(error.message); } };
   }
@@ -226,9 +233,9 @@
     const colors = ["#285f52", "#b87535", "#4f67a5", "#8a4f88", "#77752e", "#a34747"];
     const labels = { signature:"Assinatura", initial:"Rubrica", signer_name:"Nome", signed_at:"Data da assinatura" };
     const sizes = { signature:[0.30,0.075], initial:[0.15,0.06], signer_name:[0.24,0.05], signed_at:[0.22,0.05] };
-    let fields = (savedFields || []).map((item) => ({ envelopeDocumentId:item.envelope_document_id, documentVersionId:item.document_version_id, signerId:item.signer_id, fieldType:item.field_type, pageNumber:Number(item.page_number), xRatio:Number(item.x_ratio), yRatio:Number(item.y_ratio), widthRatio:Number(item.width_ratio), heightRatio:Number(item.height_ratio), pageRotation:Number(item.page_rotation || 0), required:item.required !== false }));
+    let fields = (savedFields || []).map((item) => ({ localId:crypto.randomUUID(), envelopeDocumentId:item.envelope_document_id, documentVersionId:item.document_version_id, signerId:item.signer_id, fieldType:item.field_type, pageNumber:Number(item.page_number), xRatio:Number(item.x_ratio), yRatio:Number(item.y_ratio), widthRatio:Number(item.width_ratio), heightRatio:Number(item.height_ratio), pageRotation:Number(item.page_rotation || 0), required:item.required !== false }));
     let activeType = "signature", previewDocumentId = envelopeDocuments[0].id, renderToken = 0, dirty = false;
-    const message = document.getElementById("sig-field-message"), list = document.getElementById("sig-field-list"), host = document.getElementById("sig-field-preview-frame"), status = document.getElementById("sig-pdf-status"), documentSelect = document.getElementById("sig-field-document"), signerSelect = document.getElementById("sig-field-signer");
+    const message = document.getElementById("sig-field-message"), list = document.getElementById("sig-field-list"), host = document.getElementById("sig-field-preview-frame"), status = document.getElementById("sig-pdf-status"), documentSelect = document.getElementById("sig-field-document"), signerSelect = document.getElementById("sig-field-signer"), signerColorLabel = document.getElementById("sig-selected-signer-color");
     const signerColor = (id) => colors[Math.max(0, signers.findIndex((item) => item.id === id)) % colors.length];
     const selectedDocument = () => envelopeDocuments.find((item) => item.id === documentSelect.value) || envelopeDocuments[0];
     const markDirty = (text = "Alteração pendente. Salve os campos antes de enviar.") => { dirty = true; message.textContent = text; message.className = "sig-success"; renderSummary(); };
@@ -236,23 +243,35 @@
       const counts = signers.map((signer) => ({ signer, signatures:fields.filter((field) => field.signerId === signer.id && field.fieldType === "signature").length, initials:fields.filter((field) => field.signerId === signer.id && field.fieldType === "initial").length }));
       list.innerHTML = `<div class="sig-field-count"><strong>${fields.length} campo(s) posicionado(s)</strong>${counts.map((item) => `<div><span class="sig-tool-dot" style="--signer-color:${signerColor(item.signer.id)};display:inline-block;margin-right:6px"></span>${esc(item.signer.name)}: ${item.signatures} assinatura(s), ${item.initials} rubrica(s)</div>`).join("")}</div>`;
     }
-    function removeField(index) { fields.splice(index, 1); markDirty("Campo removido. Salve para confirmar."); paintAllFields(); }
+    function refreshSelectedSignerColor() {
+      const signer = signers.find((item) => item.id === signerSelect.value);
+      if (!signerColorLabel) return;
+      signerColorLabel.style.setProperty("--signer-color", signerColor(signerSelect.value));
+      signerColorLabel.innerHTML = "<i></i>Campos de " + esc(signer?.name || "destinatário");
+    }
+    function removeField(localId) {
+      const before = fields.length;
+      fields = fields.filter((field) => field.localId !== localId);
+      if (fields.length === before) return;
+      markDirty("Campo removido. Salve para confirmar.");
+      paintAllFields();
+    }
     function paintField(stage, field) {
-      const index = fields.indexOf(field), marker = document.createElement("div"), signer = signers.find((item) => item.id === field.signerId);
+      const marker = document.createElement("div"), signer = signers.find((item) => item.id === field.signerId);
       marker.className = "sig-pdf-field"; marker.tabIndex = 0; marker.style.setProperty("--signer-color", signerColor(field.signerId)); marker.style.left = `${field.xRatio * 100}%`; marker.style.top = `${field.yRatio * 100}%`; marker.style.width = `${field.widthRatio * 100}%`; marker.style.height = `${field.heightRatio * 100}%`; marker.innerHTML = `<span>${esc(labels[field.fieldType] || field.fieldType)} · ${esc(signer?.name || "Destinatário")}</span><button class="sig-field-remove" type="button" title="Remover campo" aria-label="Remover campo">×</button><span class="sig-field-resize" title="Redimensionar"></span>`;
       const updateStyle = () => { marker.style.left = `${field.xRatio * 100}%`; marker.style.top = `${field.yRatio * 100}%`; marker.style.width = `${field.widthRatio * 100}%`; marker.style.height = `${field.heightRatio * 100}%`; };
-      marker.querySelector(".sig-field-remove").onclick = (event) => { event.stopPropagation(); removeField(index); };
+      marker.querySelector(".sig-field-remove").onclick = (event) => { event.preventDefault(); event.stopPropagation(); marker.remove(); removeField(field.localId); };
       marker.querySelector(".sig-field-resize").onpointerdown = (event) => { event.preventDefault(); event.stopPropagation(); const rect = stage.getBoundingClientRect(), startX = event.clientX, startY = event.clientY, startW = field.widthRatio, startH = field.heightRatio; event.currentTarget.setPointerCapture(event.pointerId); event.currentTarget.onpointermove = (move) => { field.widthRatio = Math.max(0.07, Math.min(1 - field.xRatio, startW + (move.clientX - startX) / rect.width)); field.heightRatio = Math.max(0.035, Math.min(1 - field.yRatio, startH + (move.clientY - startY) / rect.height)); updateStyle(); }; event.currentTarget.onpointerup = (up) => { up.currentTarget.onpointermove = null; markDirty("Tamanho ajustado. Salve os campos antes de enviar."); }; };
       marker.onpointerdown = (event) => { if (event.target.closest("button,.sig-field-resize")) return; event.preventDefault(); event.stopPropagation(); const rect = stage.getBoundingClientRect(), startX = event.clientX, startY = event.clientY, originX = field.xRatio, originY = field.yRatio; marker.setPointerCapture(event.pointerId); marker.onpointermove = (move) => { field.xRatio = Math.max(0, Math.min(1 - field.widthRatio, originX + (move.clientX - startX) / rect.width)); field.yRatio = Math.max(0, Math.min(1 - field.heightRatio, originY + (move.clientY - startY) / rect.height)); updateStyle(); }; marker.onpointerup = () => { marker.onpointermove = null; markDirty("Campo reposicionado. Salve os campos antes de enviar."); }; };
-      marker.onkeydown = (event) => { const step = event.shiftKey ? 0.02 : 0.005; if (event.key === "Delete" || event.key === "Backspace") { event.preventDefault(); removeField(index); return; } if (!["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(event.key)) return; event.preventDefault(); if (event.key === "ArrowLeft") field.xRatio = Math.max(0, field.xRatio - step); if (event.key === "ArrowRight") field.xRatio = Math.min(1 - field.widthRatio, field.xRatio + step); if (event.key === "ArrowUp") field.yRatio = Math.max(0, field.yRatio - step); if (event.key === "ArrowDown") field.yRatio = Math.min(1 - field.heightRatio, field.yRatio + step); updateStyle(); markDirty(); };
+      marker.onkeydown = (event) => { const step = event.shiftKey ? 0.02 : 0.005; if (event.key === "Delete" || event.key === "Backspace") { event.preventDefault(); removeField(field.localId); return; } if (!["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(event.key)) return; event.preventDefault(); if (event.key === "ArrowLeft") field.xRatio = Math.max(0, field.xRatio - step); if (event.key === "ArrowRight") field.xRatio = Math.min(1 - field.widthRatio, field.xRatio + step); if (event.key === "ArrowUp") field.yRatio = Math.max(0, field.yRatio - step); if (event.key === "ArrowDown") field.yRatio = Math.min(1 - field.heightRatio, field.yRatio + step); updateStyle(); markDirty(); };
       stage.append(marker);
     }
     function paintAllFields() { host.querySelectorAll(".sig-pdf-page").forEach((stage) => { stage.querySelectorAll(".sig-pdf-field").forEach((node) => node.remove()); fields.filter((field) => field.envelopeDocumentId === previewDocumentId && field.pageNumber === Number(stage.dataset.page)).forEach((field) => paintField(stage, field)); }); renderSummary(); }
     function addField(stage, clientX, clientY, fieldType = activeType) {
       const item = selectedDocument(), rect = stage.getBoundingClientRect(), [width,height] = sizes[fieldType] || sizes.signature;
       const x = Math.max(0, Math.min(1 - width, (clientX - rect.left) / rect.width - width / 2)), y = Math.max(0, Math.min(1 - height, (clientY - rect.top) / rect.height - height / 2));
-      fields.push({ envelopeDocumentId:item.id, documentVersionId:item.document_version_id, signerId:signerSelect.value, fieldType, pageNumber:Number(stage.dataset.page), xRatio:x, yRatio:y, widthRatio:width, heightRatio:height, pageRotation:0, required:true });
-      paintAllFields(); markDirty(`${labels[fieldType]} adicionada. Arraste para mover ou use a alça para redimensionar.`);
+      fields.push({ localId:crypto.randomUUID(), envelopeDocumentId:item.id, documentVersionId:item.document_version_id, signerId:signerSelect.value, fieldType, pageNumber:Number(stage.dataset.page), xRatio:x, yRatio:y, widthRatio:width, heightRatio:height, pageRotation:0, required:true });
+      paintAllFields(); markDirty(`${labels[fieldType]} adicionada. Clique no PDF para posicionar os próximos campos; use a alça apenas se quiser redimensionar.`);
     }
     async function loadPreview() {
       const token = ++renderToken; previewDocumentId = documentSelect.value; host.replaceChildren(); status.textContent = "Carregando PDF…"; host.setAttribute("aria-busy", "true");
@@ -267,21 +286,58 @@
           if (token !== renderToken) return;
           const page = await pdf.getPage(pageNumber), viewport = page.getViewport({ scale:1.35 }), canvas = document.createElement("canvas"), stage = document.createElement("div"), context = canvas.getContext("2d");
           canvas.width = viewport.width; canvas.height = viewport.height; canvas.className = "sig-pdf-canvas"; stage.className = "sig-pdf-page"; stage.dataset.page = String(pageNumber); stage.append(canvas); host.append(stage);
-          stage.ondragover = (event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; };
-          stage.ondrop = (event) => { event.preventDefault(); const type = event.dataTransfer.getData("text/signature-field") || activeType; addField(stage, event.clientX, event.clientY, type); };
-          stage.onclick = (event) => { if (event.target !== canvas) return; addField(stage, event.clientX, event.clientY); };
+           stage.onclick = (event) => { if (event.target !== canvas) return; addField(stage, event.clientX, event.clientY); };
           await page.render({ canvasContext:context, viewport }).promise;
         }
-        paintAllFields(); status.textContent = `${pdf.numPages} página(s). Selecione um campo e clique no PDF ou arraste o campo para a posição desejada.`;
+       paintAllFields(); status.textContent = `${pdf.numPages} página(s). Selecione o destinatário e o tipo de campo; depois clique no PDF para posicionar.`;
       } catch (error) { if (token === renderToken) { status.innerHTML = `<span class="sig-error">${esc(friendlyError(error, "Não foi possível abrir o PDF."))}</span> <button class="secondary" id="sig-preview-retry" type="button">Tentar novamente</button>`; document.getElementById("sig-preview-retry")?.addEventListener("click", loadPreview); } }
       finally { if (token === renderToken) host.removeAttribute("aria-busy"); }
     }
     async function saveFields() { message.textContent = "Salvando campos…"; message.className = "sig-success"; const response = await invoke({ action:"save_signature_fields", envelopeId:envelope.id, fields }); dirty = false; message.textContent = `${response.fieldCount} campo(s) salvo(s).`; renderSummary(); return response; }
-    document.querySelectorAll("[data-field-tool]").forEach((button) => { button.onclick = () => { activeType = button.dataset.fieldTool; document.querySelectorAll("[data-field-tool]").forEach((item) => item.classList.toggle("active", item === button)); }; button.ondragstart = (event) => { activeType = button.dataset.fieldTool; event.dataTransfer.setData("text/signature-field", activeType); event.dataTransfer.effectAllowed = "copy"; }; });
+    document.querySelectorAll("[data-field-tool]").forEach((button) => { button.removeAttribute("draggable"); button.onclick = () => { activeType = button.dataset.fieldTool; document.querySelectorAll("[data-field-tool]").forEach((item) => item.classList.toggle("active", item === button)); }; });
     documentSelect.onchange = loadPreview;
+    signerSelect.onchange = refreshSelectedSignerColor;
     document.getElementById("sig-field-save").onclick = async () => { try { await saveFields(); } catch (error) { message.textContent = friendlyError(error); message.className = "sig-error"; } };
     document.getElementById("sig-field-send").onclick = async (event) => { if (!confirm("Revisou os destinatários e todos os campos? Após o envio, os convites serão liberados.")) return; try { event.currentTarget.disabled = true; if (dirty || fields.length) await saveFields(); message.textContent = "Enviando convites individuais…"; const response = await invoke({ action:"send_prepared_envelope", envelopeId:envelope.id }); alert(`${response.invitationsDelivered} convite(s) enviado(s).`); await refresh(); } catch (error) { message.textContent = friendlyError(error); message.className = "sig-error"; event.currentTarget.disabled = false; } };
-    renderSummary(); loadPreview();
+    refreshSelectedSignerColor(); renderSummary(); loadPreview();
+  }
+
+  function bindAddSignerForm() {
+    const company = document.getElementById("sig-add-recipient-company"), companyFields = document.getElementById("sig-add-recipient-company-fields");
+    company.onchange = () => companyFields.classList.toggle("hidden", !company.checked);
+    document.getElementById("sig-add-recipient-form").onsubmit = async (event) => {
+      event.preventDefault();
+      const isCompany = company.checked;
+      const signer = {
+        name:document.getElementById("sig-add-recipient-name").value,
+        email:document.getElementById("sig-add-recipient-email").value,
+        cpf:document.getElementById("sig-add-recipient-cpf").value,
+        role:document.getElementById("sig-add-recipient-role").value,
+        signerType:isCompany ? "company_representative" : "person",
+        companyLegalName:isCompany ? document.getElementById("sig-add-recipient-company-name").value : "",
+        companyDocument:isCompany ? document.getElementById("sig-add-recipient-company-document").value : "",
+        jobTitle:isCompany ? document.getElementById("sig-add-recipient-company-job").value : "",
+      };
+      try {
+        setFormMessage("Adicionando destinatário…", true);
+        await invoke({ action:"add_prepared_signer", envelopeId:event.currentTarget.dataset.envelopeId, signer });
+        await showDetails(event.currentTarget.dataset.envelopeId);
+      } catch (error) { setFormMessage(friendlyError(error)); }
+    };
+  }
+
+  async function showEvidence(envelopeId) {
+    const workspace = document.getElementById("sig-workspace");
+    workspace.innerHTML = `<div class="sig-loader"><span class="sig-spinner" aria-hidden="true"></span><span>Carregando trilha de evidências…</span></div>`;
+    try {
+      const { data: events, error } = await withTimeout(getClient().from("gp_v2_signature_events").select("sequence_number,event_type,occurred_at,result").eq("organization_id", organizationId).eq("envelope_id", envelopeId).order("sequence_number"), 15000);
+      if (error) throw error;
+      workspace.innerHTML = `<div class="sig-panel form-box"><div class="panel-header"><div><h3>Trilha de evidências</h3><p class="muted">Registros cronológicos protegidos do processo de assinatura.</p></div><button class="secondary" data-return-details type="button">Voltar aos detalhes</button></div><div class="sig-table-wrap"><table class="sig-table"><thead><tr><th>#</th><th>Evento</th><th>Data e hora</th><th>Resultado</th></tr></thead><tbody>${(events || []).map((item) => `<tr><td>#${item.sequence_number}</td><td>${esc(item.event_type)}</td><td>${dateBr(item.occurred_at)}</td><td>${esc(item.result)}</td></tr>`).join("") || "<tr><td colspan=\"4\">Nenhuma evidência registrada.</td></tr>"}</tbody></table></div></div>`;
+      workspace.querySelector("[data-return-details]").onclick = () => showDetails(envelopeId);
+    } catch (error) {
+      workspace.innerHTML = `<div class="sig-panel form-box"><p class="sig-error">${esc(friendlyError(error, "Não foi possível carregar a trilha."))}</p><button class="secondary" data-return-details type="button">Voltar aos detalhes</button></div>`;
+      workspace.querySelector("[data-return-details]").onclick = () => showDetails(envelopeId);
+    }
   }
 
   async function showDetails(envelopeId) {
@@ -298,12 +354,44 @@
       const firstError = results.find((item) => item.error)?.error; if (firstError) throw firstError;
       const [envelope, signers, events, envelopeDocuments, fields] = results.map((item) => item.data);
       if (!envelope) throw new Error("Processo não encontrado.");
-      const docs = envelopeDocuments || [], signerRows = signers || [], preparing = ["preparing","awaiting_send","failed"].includes(envelope.status);
+       const docs = envelopeDocuments || [], signerRows = signers || [], preparing = ["preparing","awaiting_send","failed"].includes(envelope.status);
+       const hasSignedSigner = signerRows.some((item) => item.status === "signed" || item.signed_at);
+       const evidenceStarted = signerRows.some((item) => item.viewed_at);
+       const canAddSigner = !hasSignedSigner && !evidenceStarted && ["preparing","awaiting_send","failed","awaiting_signature"].includes(envelope.status);
+       const canEditFields = !hasSignedSigner && !evidenceStarted && ["preparing","awaiting_send","failed","awaiting_signature"].includes(envelope.status);
       workspace.innerHTML = `<div class="sig-panel form-box"><div class="panel-header"><div><h3>${preparing ? "Revisão antes do envio" : "Detalhes do processo"}</h3><p class="muted">Estado: ${esc(statusText[envelope.status] || envelope.status)} · expira: ${dateBr(envelope.expires_at)}</p></div><div class="sig-actions">${envelope.status === "finalizing" ? `<button class="primary" data-retry-finalization="${envelope.id}" type="button">Retomar finalização</button>` : ""}<button class="secondary" data-close-workspace type="button">Fechar</button></div></div><h4>Destinatários</h4><div class="sig-table-wrap"><table class="sig-table"><tbody>${signerRows.map((item) => `<tr><td><strong>${esc(item.name)}</strong><br>${esc(item.email)}</td><td>${esc(roleText[item.signer_role] || item.signer_role)}</td><td><span class="sig-badge ${esc(item.status)}">${esc(statusText[item.status] || item.status)}</span></td><td>${dateBr(item.signed_at)}</td><td>${preparing ? `<button class="secondary" data-edit-signer="${item.id}" type="button">Editar dados</button>` : !["signed","declined"].includes(item.status) && envelope.status !== "signed" ? `<button class="secondary" data-resend="${item.id}" type="button">Reenviar</button><button class="secondary" data-correct-signer="${item.id}" data-signer-name="${esc(item.name)}" data-signer-email="${esc(item.email)}" type="button">Corrigir e reenviar</button>` : ""}</td></tr>`).join("")}</tbody></table></div>${events?.length ? `<h4>Trilha cronológica</h4><div class="sig-table-wrap"><table class="sig-table"><tbody>${events.map((item) => `<tr><td>#${item.sequence_number}</td><td>${esc(item.event_type)}</td><td>${dateBr(item.occurred_at)}</td><td>${esc(item.result)}</td></tr>`).join("")}</tbody></table></div>` : ""}</div>`;
-      bindWorkspaceClose();
-      if (preparing && docs.length && signerRows.length) {
+       bindWorkspaceClose();
+       const inlineEvidenceHeading = [...workspace.querySelectorAll("h4")].find((heading) => heading.textContent === "Trilha cronológica");
+       if (inlineEvidenceHeading) {
+         const inlineEvidenceTable = inlineEvidenceHeading.nextElementSibling;
+         inlineEvidenceHeading.remove();
+         inlineEvidenceTable?.remove();
+       }
+       const topActions = workspace.querySelector(".panel-header .sig-actions");
+       if (topActions) {
+         const evidenceButton = document.createElement("button");
+         evidenceButton.className = "secondary";
+         evidenceButton.type = "button";
+         evidenceButton.textContent = "Trilha de evidências";
+         evidenceButton.onclick = () => showEvidence(envelopeId);
+         topActions.prepend(evidenceButton);
+         if (canAddSigner) {
+           const addButton = document.createElement("button");
+           addButton.className = "secondary";
+           addButton.type = "button";
+           addButton.textContent = "Adicionar destinatário";
+           addButton.onclick = () => { workspace.innerHTML = addSignerForm(envelopeId); bindAddSignerForm(); bindWorkspaceClose(); };
+           topActions.prepend(addButton);
+         }
+       }
+       if (canEditFields && docs.length && signerRows.length) {
         const editor = `<section class="sig-field-editor"><div class="sig-editor-head"><div><div class="sig-steps"><span class="sig-step"><b>1</b> Documento</span><span class="sig-step"><b>2</b> Destinatários</span><span class="sig-step active"><b>3</b> Campos</span><span class="sig-step"><b>4</b> Envio</span></div><h4>Posicione assinaturas e rubricas</h4><p class="muted">Escolha o destinatário e arraste um campo para o PDF. Não é necessário informar coordenadas.</p></div><div class="sig-actions"><button class="secondary" id="sig-field-save" type="button">Salvar posições</button><button class="primary" id="sig-field-send" type="button">Revisar e enviar convites</button></div></div><div class="sig-editor-shell"><aside class="sig-editor-tools"><label>Documento<select id="sig-field-document">${docs.map((item) => `<option value="${item.id}">${esc(item.gp_v2_documents?.title || item.gp_v2_document_versions?.file_name || "Documento")}</option>`).join("")}</select></label><label>Destinatário<select id="sig-field-signer">${signerRows.map((item) => `<option value="${item.id}">${esc(item.name)} · ${esc(item.email)}</option>`).join("")}</select></label><p class="sig-tool-title">Campos principais</p><button class="sig-field-tool active" draggable="true" data-field-tool="signature" type="button"><span class="sig-tool-dot"></span>Assinatura</button><button class="sig-field-tool" draggable="true" data-field-tool="initial" type="button"><span class="sig-tool-dot"></span>Rubrica</button><p class="sig-tool-title">Informações automáticas</p><button class="sig-field-tool" draggable="true" data-field-tool="signer_name" type="button"><span class="sig-tool-dot"></span>Nome</button><button class="sig-field-tool" draggable="true" data-field-tool="signed_at" type="button"><span class="sig-tool-dot"></span>Data da assinatura</button><div id="sig-field-list"></div></aside><main class="sig-editor-main"><div id="sig-pdf-status" class="sig-pdf-status">Preparando visualização…</div><div id="sig-field-preview-frame" class="sig-pdf-preview" aria-live="polite"></div></main></div><p id="sig-field-message" style="padding:0 18px 14px" aria-live="polite"></p></section>`;
-        workspace.insertAdjacentHTML("afterbegin", editor); bindFieldsEditor(envelope, docs, signerRows, fields || []);
+         workspace.insertAdjacentHTML("afterbegin", editor);
+         const fieldsEditor = workspace.querySelector(".sig-field-editor");
+         fieldsEditor.querySelector(".sig-editor-head .muted").textContent = "Selecione o destinatário e o tipo de campo; depois clique diretamente no PDF. Não há coordenadas para preencher.";
+         fieldsEditor.querySelector("#sig-field-signer").insertAdjacentHTML("afterend", "<div class=\"sig-signer-color\" id=\"sig-selected-signer-color\"></div>");
+         if (!preparing) fieldsEditor.querySelector("#sig-field-send").textContent = "Salvar e enviar novos convites";
+         bindFieldsEditor(envelope, docs, signerRows, fields || []);
       }
       root().querySelectorAll("[data-resend]").forEach((button) => button.onclick = async () => { try { await invoke({ action:"resend_invitation", signerId:button.dataset.resend }); alert("Novo convite enviado e link anterior revogado."); } catch (error) { alert(friendlyError(error)); } });
       root().querySelectorAll("[data-correct-signer]").forEach((button) => button.onclick = async () => { const name = prompt("Nome do signatário:", button.dataset.signerName || ""); if (name === null) return; const email = prompt("E-mail correto para envio:", button.dataset.signerEmail || ""); if (email === null) return; try { await invoke({ action:"correct_signer_and_resend", signerId:button.dataset.correctSigner, name, email }); alert("Dados corrigidos. O link anterior foi revogado e um novo convite foi enviado."); await showDetails(envelopeId); } catch (error) { alert(friendlyError(error)); } });
